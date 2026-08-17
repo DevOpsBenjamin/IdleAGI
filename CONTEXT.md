@@ -80,9 +80,15 @@ La puissance effective de calcul ($\text{EffectiveCompute}$) est distribuée ent
 ## 3. Paliers de Progression & Prestige
 
 ### Tier 1 : Checkpoint / Fine-Tuning (Soft Reset ~15-30 min)
-- **Action** : Réinitialise les Tokens temporaires et les liquidités courantes pour figer un Checkpoint optimisé du modèle.
-- **Gains** : Points d'Architecture & Poids optimisés.
-- **Bonus** : Accélération de la tokenisation de base, réductions permanentes sur le coût du hardware de base.
+- **Définition & Seuil d'Activation** : Disponible dès que le modèle accumule au moins $1.00 \times 10^6$ **Paramètres** ($1\text{M}$ params, Phase 3). Le joueur fige les poids synaptiques pour en extraire des leçons architecturales.
+- **Formule des Points d'Architecture ($AP$)** :
+  $$AP = \left\lfloor \left( \frac{\text{Parameters}}{10^6} \right)^{0.5} \right\rfloor$$
+  *(Ex: $1\text{M} \to 1\ AP$, $4\text{M} \to 2\ AP$, $9\text{M} \to 3\ AP$, $16\text{M} \to 4\ AP$, $100\text{M} \to 10\ AP$)*
+- **Bonus Passif Universel ($\mu_{\text{checkpoint}}$)** : Chaque $AP$ total accumulé confère $+5\%$ de vitesse de calcul brute permanente ($+5\% \text{ TFLOPS}$ par $AP$).
+- **Périmètre de Réinitialisation (Soft Reset Scope)** :
+  - *Devises volatiles effacées* : Raw Text (0), Tokens (0), Funds (\$0), Paramètres non-figés (0), Hardware possédé (retour à 0 hôte/GPU), Upgrades logicielles actives, Grille électrique et Refroidissement réinitialisés aux valeurs de départ.
+  - *Éléments permanents conservés* : Points d'Architecture totaux et non dépensés, Nœuds débloqués de l'Arbre d'Architecture, Statistiques de vie (nombre de prestiges, temps total, record de paramètres), Visibilité permanente de l'onglet Arbre d'Architecture.
+- **Cycle de Relance** : Le joueur redémarre en Phase 0 mais accéléré exponentiellement par les multiplicateurs de l'Arbre de Talents (vitesse de transcription, remise hardware, efficacité de tokenisation).
 
 ### Tier 2 : Changement de Paradigme (Hard Reset local ~2-3h)
 - **Action** : Transition vers une nouvelle architecture fondamentale (Transformer classique $\to$ Mixture of Experts (MoE) $\to$ Neuromorphique $\to$ Quantum AI).
