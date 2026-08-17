@@ -15,11 +15,13 @@ import TerminalStdout from '@/components/TerminalStdout.vue'
 import OscilloscopeCanvas from '@/components/OscilloscopeCanvas.vue'
 import DatacenterTelemetry from '@/components/DatacenterTelemetry.vue'
 import MobileNavigation, { type MobileTab } from '@/components/MobileNavigation.vue'
+import ArchitectureTalentTree from '@/components/ArchitectureTalentTree.vue'
 
 const store = useGameStore()
 const { fps, currentTps } = useGameLoop()
 
 const activeMobileTab = ref<MobileTab>('ingestion')
+const showTalentTreeModal = ref(false)
 
 const hardwareArray = computed(() => Object.values(store.hardware))
 const upgradesArray = computed(() => Object.values(store.upgrades))
@@ -114,8 +116,12 @@ onUnmounted(() => {
       :funds-rate="store.funds.ratePerSec"
       :data-broker-unlocked="store.unlockedFeatures.dataBroker"
       :has-hardware="hasHardware"
+      :architecture-points="store.prestige.architecturePoints"
+      :total-architecture-points="store.prestige.totalArchitecturePoints"
+      :has-prestige-unlocked="store.canPrestige || store.prestige.totalArchitecturePoints > 0 || store.currentPhase >= 3"
       @save="store.saveToLocalStorage()"
       @reset="store.hardReset()"
+      @open-talent-tree="showTalentTreeModal = true"
     />
 
     <!-- Main Scrollable Content Area -->
@@ -174,6 +180,12 @@ onUnmounted(() => {
               :effective-compute="store.effectiveCompute"
               :thermal-efficiency="store.thermalState.efficiency"
               :model-quality-multiplier="store.modelQualityMultiplier"
+              :can-prestige="store.canPrestige"
+              :pending-a-p="store.pendingAP"
+              :architecture-points="store.prestige.architecturePoints"
+              :total-architecture-points="store.prestige.totalArchitecturePoints"
+              @open-talent-tree="showTalentTreeModal = true"
+              @trigger-prestige="store.triggerPrestige()"
             />
           </Transition>
 
@@ -321,6 +333,18 @@ onUnmounted(() => {
       :fps="fps"
       :tps="currentTps"
       :thermal-state="store.thermalState"
+    />
+
+    <!-- Architecture Talent Tree Modal -->
+    <ArchitectureTalentTree
+      :is-open="showTalentTreeModal"
+      :architecture-points="store.prestige.architecturePoints"
+      :total-architecture-points="store.prestige.totalArchitecturePoints"
+      :checkpoint-multiplier="store.checkpointMultiplier"
+      :talents="store.prestige.talents"
+      :get-node-status="(id) => store.prestige.getNodeStatus(id)"
+      @close="showTalentTreeModal = false"
+      @buy-talent="(id) => store.buyTalent(id)"
     />
   </div>
 </template>

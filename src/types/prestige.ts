@@ -1,11 +1,17 @@
 import type Decimal from 'break_infinity.js'
 
+export type TalentBranch = 'ingestion' | 'infrastructure' | 'compute'
+
 export type TalentCategory =
   | 'transcription'
   | 'hardware'
   | 'compute'
   | 'thermodynamics'
   | 'economics'
+  | 'power'
+  | 'memory'
+
+export type TalentNodeStatus = 'locked' | 'available' | 'insufficient_ap' | 'purchased'
 
 export type TalentEffectType =
   | 'tflops_mult'
@@ -14,6 +20,9 @@ export type TalentEffectType =
   | 'hardware_cost_discount'
   | 'cooling_efficiency_mult'
   | 'token_generation_mult'
+  | 'grid_capacity_mult'
+  | 'buffer_capacity_mult'
+  | 'model_quality_mult'
 
 export interface TalentEffect {
   type: TalentEffectType
@@ -25,12 +34,14 @@ export interface TalentNode {
   name: string
   description: string
   category: TalentCategory
-  tier: number
+  branch: TalentBranch
+  tier: 1 | 2 | 3
   cost: number // in Architecture Points (AP)
   purchased: boolean
   requires?: string[]
   effect: TalentEffect
   icon?: string
+  lore?: string
 }
 
 export interface PrestigeState {

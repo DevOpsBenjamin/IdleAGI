@@ -60,8 +60,8 @@ describe('Prestige Engine & PrestigeStore Unit Tests', () => {
       const store = usePrestigeStore()
       store.architecturePoints = 10
 
-      // opt_hardware_rebate requires opt_bpe_fast_track
-      const buyLocked = store.buyTalent('opt_hardware_rebate')
+      // opt_syntactic_indexing requires opt_bpe_fast_track
+      const buyLocked = store.buyTalent('opt_syntactic_indexing')
       expect(buyLocked.success).toBe(false)
       expect(buyLocked.reason).toBe('missing_prerequisite')
 
@@ -72,10 +72,10 @@ describe('Prestige Engine & PrestigeStore Unit Tests', () => {
       expect(store.talentMultipliers.scrapePowerMultiplier).toBeCloseTo(1.5)
 
       // Now buy dependent talent
-      const buyUnlocked = store.buyTalent('opt_hardware_rebate')
+      const buyUnlocked = store.buyTalent('opt_syntactic_indexing')
       expect(buyUnlocked.success).toBe(true)
       expect(store.architecturePoints).toBe(7) // cost was 2
-      expect(store.talentMultipliers.hardwareDiscountMultiplier).toBeCloseTo(0.85)
+      expect(store.talentMultipliers.tokenGenerationMultiplier).toBeCloseTo(2.0)
     })
   })
 

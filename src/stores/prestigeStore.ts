@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import Decimal from 'break_infinity.js'
-import type { TalentNode, PrestigeState } from '@/types/prestige'
+import type { TalentNode, TalentBranch, TalentNodeStatus, PrestigeState } from '@/types/prestige'
 import { TALENT_TREE_NODES } from '@/domain/constants/talents'
 import { PrestigeEngine } from '@/domain/engine/PrestigeEngine'
 
@@ -21,6 +21,28 @@ export const usePrestigeStore = defineStore('prestige', () => {
   const talentMultipliers = computed(() => {
     return PrestigeEngine.calculateTalentMultipliers(talents.value)
   })
+
+  const purchasedTalentsCount = computed<number>(() => {
+    return Object.values(talents.value).filter((t) => t.purchased).length
+  })
+
+  const totalTalentsCount = computed<number>(() => {
+    return Object.keys(talents.value).length
+  })
+
+  const hasAvailableTalents = computed<boolean>(() => {
+    return Object.keys(talents.value).some(
+      (id) => PrestigeEngine.getNodeStatus(id, talents.value, architecturePoints.value) === 'available'
+    )
+  })
+
+  function getNodeStatus(talentId: string): TalentNodeStatus {
+    return PrestigeEngine.getNodeStatus(talentId, talents.value, architecturePoints.value)
+  }
+
+  function getTalentsByBranch(branch: TalentBranch): TalentNode[] {
+    return PrestigeEngine.getTalentsByBranch(talents.value, branch)
+  }
 
   function calculatePendingAP(parameters: Decimal): number {
     return PrestigeEngine.calculateArchitecturePoints(parameters)
@@ -112,6 +134,11 @@ export const usePrestigeStore = defineStore('prestige', () => {
     talents,
     checkpointMultiplier,
     talentMultipliers,
+    purchasedTalentsCount,
+    totalTalentsCount,
+    hasAvailableTalents,
+    getNodeStatus,
+    getTalentsByBranch,
     calculatePendingAP,
     canPrestige,
     claimPrestige,
