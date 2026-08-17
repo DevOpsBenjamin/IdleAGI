@@ -20,6 +20,7 @@ export interface TickContext {
   modelQualityMultiplier: number
   bandwidthSpeedMultiplier?: number
   isThrottling?: boolean
+  isOverloaded?: boolean
   totalTokensServed: Decimal
   autoBrokerAccumulator: number
   onSellRawTextQuiet: (amount: number) => void
@@ -211,6 +212,17 @@ export class TickEngine {
         milestones
       )
       for (const evt of thermalEvents) {
+        onAddLog(evt.message, evt.type)
+      }
+    }
+
+    // Power Grid Overload Milestones
+    if (context.isOverloaded) {
+      const powerEvents = MilestoneTracker.checkPowerMilestones(
+        true,
+        milestones
+      )
+      for (const evt of powerEvents) {
         onAddLog(evt.message, evt.type)
       }
     }

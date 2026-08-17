@@ -96,13 +96,28 @@ const phaseBadgeClass = computed(() => {
       <!-- Power Grid (Unlocked when hardware is present) -->
       <div
         v-if="hasHardware"
-        class="flex items-center gap-2 bg-[#161B22]/70 border border-[#21262D] px-3 py-1.5 rounded animate-fadeIn"
+        class="flex items-center gap-2 bg-[#161B22]/70 border px-3 py-1.5 rounded animate-fadeIn transition-all"
+        :class="powerState.isOverloaded ? 'border-[#EF4444]/60 bg-[#EF4444]/10' : powerState.status === 'strained' ? 'border-[#FFB800]/40' : 'border-[#21262D]'"
       >
-        <Zap class="w-4 h-4" :class="powerState.isOverloaded ? 'text-[#EF4444] animate-bounce' : 'text-[#FFB800]'" />
+        <Zap
+          class="w-4 h-4 transition-colors"
+          :class="powerState.isOverloaded ? 'text-[#EF4444] animate-bounce' : powerState.status === 'strained' ? 'text-[#FFB800]' : 'text-[#00FF66]'"
+        />
         <div class="flex flex-col">
-          <span class="text-[9px] text-[#8B949E] uppercase">Réseau Électrique</span>
-          <span class="font-bold text-[#F0F6FC]">
+          <div class="flex items-center gap-1">
+            <span class="text-[9px] text-[#8B949E] uppercase">Réseau Électrique</span>
+            <span
+              v-if="powerState.isOverloaded"
+              class="text-[8px] font-bold px-1 rounded bg-[#EF4444]/20 text-[#EF4444] uppercase animate-pulse"
+            >
+              -50% Surcharge
+            </span>
+          </div>
+          <span class="font-bold" :class="powerState.isOverloaded ? 'text-[#EF4444]' : 'text-[#F0F6FC]'">
             {{ formatWatts(powerState.totalDrawWatts) }} / {{ formatWatts(powerState.gridCapacityWatts) }}
+            <span class="text-[10px] font-normal" :class="powerState.isOverloaded ? 'text-[#EF4444]' : powerState.status === 'strained' ? 'text-[#FFB800]' : 'text-[#8B949E]'">
+              ({{ powerState.gridLoadPercent.toFixed(0) }}%)
+            </span>
           </span>
         </div>
       </div>

@@ -336,4 +336,41 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(store.thermalState.status).toBe('warm')
     expect(store.thermalState.temperatureCelsius).toBeLessThan(80)
   })
+
+  it('allows purchasing power grid upgrades to expand electrical capacity and resolve circuit breaker overloads', () => {
+    const store = useGameStore()
+    store.funds.current = new Decimal(10000)
+    store.unlockedFeatures.scriptsSection = true
+    store.unlockedFeatures.tokenizerUnlocked = true
+    store.unlockedFeatures.trainingAllocation = true
+    store.hardware.gaming_pc.count = 1
+    store.gridCapacityWatts = new Decimal(500)
+    store.coolingCapacityWatts = new Decimal(2000) // prevent thermal throttling
+
+    // Gaming PC (120W) + 2x RTX 3090 (2 * 350W = 700W) = 820W draw > 500W grid capacity!
+    store.hardware.rtx_3090.count = 2
+    expect(store.totalPowerDrawWatts.toNumber()).toBe(820)
+    expect(store.powerState.isOverloaded).toBe(true)
+    expect(store.powerState.status).toBe('overloaded')
+    expect(store.powerState.effectiveMultiplier).toBe(0.5)
+
+    // Compute suffers 50% penalty
+    const rawCompute = store.totalRawCompute // 0.15 (host) + 2 * 35.6 = 71.35 TFLOPS
+    expect(store.effectiveCompute.toNumber()).toBeCloseTo(rawCompute.mul(0.5).toNumber())
+
+    // Buy power upgrades
+    expect(store.buyUpgrade('power_psu_500w')).toBe(true) // +400W -> 900W
+    expect(store.gridCapacityWatts.toNumber()).toBe(900)
+
+    // Now grid capacity (900W) > total draw (820W) -> overload resolved!
+    expect(store.powerState.isOverloaded).toBe(false)
+    expect(store.powerState.status).toBe('strained') // 820/900 = 91.1%
+    expect(store.powerState.effectiveMultiplier).toBe(1.0)
+    expect(store.effectiveCompute.toNumber()).toBeCloseTo(rawCompute.toNumber())
+
+    // Buy additional power upgrade to bring load into nominal range (<80%)
+    expect(store.buyUpgrade('power_psu_850w_gold')).toBe(true) // +750W -> 1650W
+    expect(store.gridCapacityWatts.toNumber()).toBe(1650)
+    expect(store.powerState.status).toBe('nominal') // 820/1650 = 49.7%
+  })
 })

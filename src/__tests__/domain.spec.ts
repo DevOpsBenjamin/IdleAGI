@@ -134,20 +134,36 @@ describe('ComputeEngine Domain Unit Tests', () => {
     expect(stateThrottled.temperatureCelsius).toBeGreaterThan(90)
   })
 
-  it('calculates power grid state and overload penalty correctly', () => {
-    const gridNormal = ComputeEngine.calculatePowerState(
-      new Decimal(80),
+  it('calculates power grid state, load %, operational status, and overload penalty correctly', () => {
+    // Nominal state: 70W / 100W = 70% load
+    const gridNominal = ComputeEngine.calculatePowerState(
+      new Decimal(70),
       new Decimal(100)
     )
-    expect(gridNormal.isOverloaded).toBe(false)
-    expect(gridNormal.gridLoadPercent).toBe(80)
+    expect(gridNominal.isOverloaded).toBe(false)
+    expect(gridNominal.gridLoadPercent).toBe(70)
+    expect(gridNominal.status).toBe('nominal')
+    expect(gridNominal.effectiveMultiplier).toBe(1.0)
 
+    // Strained state: 85W / 100W = 85% load
+    const gridStrained = ComputeEngine.calculatePowerState(
+      new Decimal(85),
+      new Decimal(100)
+    )
+    expect(gridStrained.isOverloaded).toBe(false)
+    expect(gridStrained.gridLoadPercent).toBe(85)
+    expect(gridStrained.status).toBe('strained')
+    expect(gridStrained.effectiveMultiplier).toBe(1.0)
+
+    // Overloaded state: 150W / 100W = 150% load
     const gridOverloaded = ComputeEngine.calculatePowerState(
       new Decimal(150),
       new Decimal(100)
     )
     expect(gridOverloaded.isOverloaded).toBe(true)
     expect(gridOverloaded.gridLoadPercent).toBe(150)
+    expect(gridOverloaded.status).toBe('overloaded')
+    expect(gridOverloaded.effectiveMultiplier).toBe(0.5)
 
     // Effective compute suffers 50% penalty on grid overload
     const thermal = ComputeEngine.calculateThermalState(new Decimal(0), new Decimal(100))
@@ -255,6 +271,24 @@ describe('MilestoneTracker Domain Unit Tests', () => {
     expect(events).toHaveLength(1)
     expect(unlocks.hardwareSection).toBe(true)
     expect(milestones.potatoPcUnlocked).toBe(true)
+  })
+
+  it('triggers thermal throttling and power grid overload milestones only once', () => {
+    const milestones = createInitialMilestones()
+
+    // Thermal throttling milestone
+    const thermalEvents1 = MilestoneTracker.checkThermalMilestones(true, milestones)
+    expect(thermalEvents1).toHaveLength(1)
+    expect(milestones.firstThrottling).toBe(true)
+    const thermalEvents2 = MilestoneTracker.checkThermalMilestones(true, milestones)
+    expect(thermalEvents2).toHaveLength(0)
+
+    // Power grid overload milestone
+    const powerEvents1 = MilestoneTracker.checkPowerMilestones(true, milestones)
+    expect(powerEvents1).toHaveLength(1)
+    expect(milestones.firstGridOverload).toBe(true)
+    const powerEvents2 = MilestoneTracker.checkPowerMilestones(true, milestones)
+    expect(powerEvents2).toHaveLength(0)
   })
 })
 

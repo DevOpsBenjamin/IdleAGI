@@ -159,4 +159,22 @@ export class MilestoneTracker {
     }
     return events
   }
+
+  /**
+   * Check power grid overload milestone alert.
+   */
+  public static checkPowerMilestones(
+    isOverloaded: boolean,
+    milestones: MilestoneState
+  ): MilestoneEvent[] {
+    const events: MilestoneEvent[] = []
+    if (isOverloaded && !milestones.firstGridOverload) {
+      milestones.firstGridOverload = true
+      events.push({
+        message: 'ALERTE RÉSEAU ÉLECTRIQUE : Disjoncteur en surcharge ! La consommation dépasse la capacité du réseau électrique (-50% de puissance de calcul effective). Améliorez vos alimentations et lignes électriques dans l’onglet Énergie.',
+        type: 'warn',
+      })
+    }
+    return events
+  }
 }

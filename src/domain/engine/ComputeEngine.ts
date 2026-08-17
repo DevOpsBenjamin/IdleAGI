@@ -256,21 +256,35 @@ export class ComputeEngine {
   }
 
   /**
-   * Compute power grid state and load percentage.
+   * Determine power grid status from load percentage and overload condition.
+   */
+  public static calculatePowerStatus(loadPercent: number, isOverloaded: boolean): 'nominal' | 'strained' | 'overloaded' {
+    if (isOverloaded) return 'overloaded'
+    if (loadPercent > 80.0) return 'strained'
+    return 'nominal'
+  }
+
+  /**
+   * Compute power grid state, load percentage, operational status and effective multiplier.
    */
   public static calculatePowerState(
     totalDrawWatts: Decimal,
     gridCapacityWatts: Decimal
   ): PowerState {
     const loadPercent = gridCapacityWatts.gt(0)
-      ? totalDrawWatts.div(gridCapacityWatts).mul(100).toNumber()
+      ? Math.round(totalDrawWatts.div(gridCapacityWatts).mul(1000).toNumber()) / 10
       : 0
+    const isOverloaded = totalDrawWatts.gt(gridCapacityWatts)
+    const status = this.calculatePowerStatus(loadPercent, isOverloaded)
+    const effectiveMultiplier = isOverloaded ? 0.5 : 1.0
 
     return {
       totalDrawWatts,
       gridCapacityWatts,
       gridLoadPercent: loadPercent,
-      isOverloaded: totalDrawWatts.gt(gridCapacityWatts),
+      isOverloaded,
+      status,
+      effectiveMultiplier,
     }
   }
 
@@ -283,8 +297,8 @@ export class ComputeEngine {
     powerState: PowerState
   ): Decimal {
     let comp = rawCompute.mul(thermalState.efficiency)
-    if (powerState.isOverloaded) {
-      comp = comp.mul(0.5) // 50% penalty if grid is overloaded
+    if (powerState.effectiveMultiplier < 1.0) {
+      comp = comp.mul(powerState.effectiveMultiplier)
     }
     return comp
   }
