@@ -32,7 +32,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     requiredFeature: 'dataBroker',
   },
 
-  // Phase 1 : Potato PC Scripts
+  // Phase 1 : Potato PC Scripts & Early Memory
   script_simple_scraper: {
     id: 'script_simple_scraper',
     name: 'Script simple_scraper.py',
@@ -41,6 +41,16 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'scraping',
+    requiredFeature: 'scriptsSection',
+  },
+  ram_sdram_256mb: {
+    id: 'ram_sdram_256mb',
+    name: 'Barrette 256 Mo SDRAM Récupérée',
+    description: 'Étend la mémoire vive du vieux PC : capacité Raw Text portée à 1 500 caractères.',
+    cost: new Decimal(4.50),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
     requiredFeature: 'scriptsSection',
   },
   script_cron_autobroker: {
@@ -66,7 +76,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
   script_ram_expansion_512: {
     id: 'script_ram_expansion_512',
     name: 'Patch Swap swap_ram.sh',
-    description: 'Étend la mémoire tampon : capacité de Raw Text portée à 1 500 caractères.',
+    description: 'Étend la mémoire tampon virtuelle : capacité de Raw Text portée à 2 500 caractères.',
     cost: new Decimal(10.00),
     currency: 'funds',
     purchased: false,
@@ -84,7 +94,37 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     requiredFeature: 'scriptsSection',
   },
 
-  // Phase 2 & 3 : Tokenizer & Datacenter
+  // Phase 2 : Workstation & Tokenizer RAM Kits
+  ram_ddr2_8gb: {
+    id: 'ram_ddr2_8gb',
+    name: 'Kit 8 Go DDR2-800 Dual-Channel',
+    description: 'Double la RAM système : capacité Raw Text à 6 000 chars et Tokens à 3 000 $T$.',
+    cost: new Decimal(14.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
+    requiredFeature: 'tokenizerUnlocked',
+  },
+  ram_ddr3_16gb: {
+    id: 'ram_ddr3_16gb',
+    name: 'Kit 16 Go DDR3/DDR4 d\'Occasion',
+    description: 'Capacité Raw Text portée à 15 000 chars et Tokens à 8 000 $T$.',
+    cost: new Decimal(28.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
+    requiredFeature: 'tokenizerUnlocked',
+  },
+  ram_ddr4_32gb: {
+    id: 'ram_ddr4_32gb',
+    name: 'Kit 32 Go DDR4-3200 Dual-Rank',
+    description: 'Capacité Raw Text portée à 40 000 chars et Tokens à 25 000 $T$.',
+    cost: new Decimal(65.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
+    requiredFeature: 'tokenizerUnlocked',
+  },
   fast_bpe_tokenizer: {
     id: 'fast_bpe_tokenizer',
     name: 'BPE Tokenizer Vectorisé',
@@ -95,21 +135,21 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     category: 'tokenizer',
     requiredFeature: 'tokenizerUnlocked',
   },
-  ram_buffer_expansion_1: {
-    id: 'ram_buffer_expansion_1',
-    name: 'Extension Buffer RAM Datacenter (16GB)',
-    description: 'Capacité Raw Text portée à 5 000 chars et Tokens à 2 500 $T$.',
-    cost: new Decimal(100.00),
-    currency: 'funds',
-    purchased: false,
-    category: 'hardware',
-    requiredFeature: 'tokenizerUnlocked',
-  },
   cooling_optimization_v1: {
     id: 'cooling_optimization_v1',
     name: 'Dissipateur Cuivre Haut Débit',
     description: 'Améliore la dissipation thermique passive (+200W de Cooling Capacity).',
     cost: new Decimal(120.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
+    requiredFeature: 'tokenizerUnlocked',
+  },
+  ram_ddr4_64gb: {
+    id: 'ram_ddr4_64gb',
+    name: 'Kit 64 Go DDR4-3600 High-Speed',
+    description: 'Capacité Raw Text portée à 100 000 chars et Tokens à 75 000 $T$.',
+    cost: new Decimal(140.00),
     currency: 'funds',
     purchased: false,
     category: 'hardware',
@@ -134,6 +174,28 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     purchased: false,
     category: 'scraping',
     requiredFeature: 'tokenizerUnlocked',
+  },
+
+  // Phase 3 : Training & Datacenter Memory
+  ram_ddr5_128gb: {
+    id: 'ram_ddr5_128gb',
+    name: 'Kit 128 Go DDR5-6000 EXPO',
+    description: 'Capacité Raw Text portée à 300 000 chars et Tokens à 250 000 $T$.',
+    cost: new Decimal(380.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
+    requiredFeature: 'trainingAllocation',
+  },
+  ram_ddr5_256gb: {
+    id: 'ram_ddr5_256gb',
+    name: 'Kit 256 Go DDR5 Octo-Channel ECC',
+    description: 'Capacité Raw Text portée à 1 000 000 chars et Tokens à 1 000 000 $T$.',
+    cost: new Decimal(850.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
+    requiredFeature: 'trainingAllocation',
   },
 }
 

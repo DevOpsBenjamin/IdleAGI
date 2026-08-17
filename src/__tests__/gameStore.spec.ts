@@ -145,6 +145,12 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(boughtAutoBroker).toBe(true)
     expect(store.unlockedFeatures.autoBroker).toBe(true)
 
+    // Buy SDRAM RAM expansion ($4.50)
+    store.funds.current = new Decimal(4.50)
+    const boughtRam = store.buyUpgrade('ram_sdram_256mb')
+    expect(boughtRam).toBe(true)
+    expect(store.rawText.max.toNumber()).toBe(1500)
+
     // Run ticks to verify passive scraping and automatic broker selling
     store.rawText.current = new Decimal(35)
     store.funds.current = new Decimal(0)
