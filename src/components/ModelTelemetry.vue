@@ -2,25 +2,44 @@
 import { computed } from 'vue'
 import { Cpu, Sparkles, Gauge, Activity, Zap } from 'lucide-vue-next'
 import { formatNumber, formatFlops, formatVram, formatBandwidth } from '@/utils/format'
+import CognitiveTelemetry from './telemetry/CognitiveTelemetry.vue'
+import type { CognitiveStatus } from '@/types/cognitive'
 import type Decimal from 'break_infinity.js'
 
-const props = defineProps<{
-  parameters: Decimal
-  totalVramGB: Decimal
-  totalMemoryBandwidthGBs?: Decimal
-  bandwidthSpeedMultiplier?: number
-  effectiveCompute: Decimal
-  thermalEfficiency: number
-  modelQualityMultiplier?: number
-  canPrestige?: boolean
-  pendingAP?: number
-  architecturePoints?: number
-  totalArchitecturePoints?: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    parameters: Decimal
+    totalVramGB: Decimal
+    totalMemoryBandwidthGBs?: Decimal
+    bandwidthSpeedMultiplier?: number
+    effectiveCompute: Decimal
+    thermalEfficiency: number
+    modelQualityMultiplier?: number
+    canPrestige?: boolean
+    pendingAP?: number
+    architecturePoints?: number
+    totalArchitecturePoints?: number
+    // Cognitive props
+    entropy?: number
+    alignment?: number
+    cognitiveStatus?: CognitiveStatus
+    rlhfCost?: Decimal | number
+    rlhfBatchCount?: number
+    canPerformRlhf?: boolean
+    apiMultiplier?: number
+    researchMultiplier?: number
+    isTrainingActive?: boolean
+    showCognitive?: boolean
+  }>(),
+  {
+    showCognitive: true,
+  },
+)
 
 const emit = defineEmits<{
   (e: 'open-talent-tree'): void
   (e: 'trigger-prestige'): void
+  (e: 'perform-rlhf'): void
 }>()
 
 const paramsFormatted = computed(() => formatNumber(props.parameters))
@@ -36,6 +55,7 @@ const speedDisplay = computed(() => {
   const mult = props.bandwidthSpeedMultiplier ?? 1.0
   return `x${mult.toFixed(2)}`
 })
+const shouldShowCognitive = computed(() => props.showCognitive ?? true)
 </script>
 
 <template>
@@ -111,6 +131,21 @@ const speedDisplay = computed(() => {
         </div>
       </div>
     </div>
+
+    <!-- Cognitive Model Section (Entropy, Alignment, Multipliers & RLHF) -->
+    <CognitiveTelemetry
+      v-if="shouldShowCognitive"
+      :entropy="entropy"
+      :alignment="alignment"
+      :status="cognitiveStatus"
+      :rlhf-cost="rlhfCost"
+      :rlhf-batch-count="rlhfBatchCount"
+      :can-perform-rlhf="canPerformRlhf"
+      :api-multiplier="apiMultiplier"
+      :research-multiplier="researchMultiplier"
+      :is-training-active="isTrainingActive"
+      @perform-rlhf="emit('perform-rlhf')"
+    />
 
     <!-- Tier 1 Checkpoint & Talent Tree Banner (Progressive disclosure when parameters >= 500k or AP > 0) -->
     <div
