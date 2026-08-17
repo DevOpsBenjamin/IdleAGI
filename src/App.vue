@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
+import { useGameLoop } from '@/composables/useGameLoop'
 import { formatNumber, formatMoney, formatWatts, formatFlops } from '@/utils/format'
 import { 
   Terminal, 
@@ -12,32 +13,99 @@ import {
   Sparkles, 
   Layers, 
   Play,
-  HardDrive
+  HardDrive,
+  Clock,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-vue-next'
 
 const store = useGameStore()
+const { fps, currentTps } = useGameLoop()
 
-const totalTflops = computed(() => {
-  let sum = 0
-  for (const h of Object.values(store.hardware)) {
-    sum += h.tflops.toNumber() * h.count
+const terminalContainer = ref<HTMLElement | null>(null)
+
+// Auto-scroll terminal to bottom when new logs arrive
+watch(() => store.terminalLogs.length, async () => {
+  await nextTick()
+  if (terminalContainer.value) {
+    terminalContainer.value.scrollTop = terminalContainer.value.scrollHeight
   }
-  return sum
 })
 
-const totalWatts = computed(() => {
-  let sum = 0
-  for (const h of Object.values(store.hardware)) {
-    sum += h.powerWatts.toNumber() * h.count
-  }
-  return sum
-})
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  const s = Math.floor(seconds % 60)
+  if (h > 0) return `${h}h ${m}m ${s}s`
+  if (m > 0) return `${m}m ${s}s`
+  return `${s}s`
+}
 </script>
 
 <template>
   <div class="min-h-screen bg-[#07090E] text-[#E2E8F0] font-mono flex flex-col relative overflow-hidden">
     <!-- Scanline effect overlay -->
     <div class="fixed inset-0 scanlines opacity-40 pointer-events-none z-50"></div>
+
+    <!-- Offline Catch-Up Modal -->
+    <div 
+      v-if="store.lastOfflineReport" 
+      class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    >
+      <div class="bg-[#0D1117] border border-[#38BDF8]/40 rounded-xl max-w-lg w-full p-6 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in-95 duration-200">
+        <div class="flex items-center gap-3 border-b border-[#21262D] pb-4">
+          <div class="p-2.5 rounded-lg bg-[#38BDF8]/10 border border-[#38BDF8]/30 text-[#38BDF8]">
+            <Clock class="w-6 h-6 animate-spin" style="animation-duration: 8s;" />
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-[#F0F6FC] flex items-center gap-2">
+              RAPPORT DE SIMULATION HORS-LIGNE
+            </h2>
+            <p class="text-xs text-[#8B949E]">Temps écoulé : {{ formatDuration(store.lastOfflineReport.elapsedSeconds) }}</p>
+          </div>
+        </div>
+
+        <!-- Pacing Philosophy Notice -->
+        <div class="bg-[#161B22] border border-[#38BDF8]/30 rounded-lg p-3.5 text-xs text-[#8B949E] leading-relaxed flex gap-3">
+          <AlertTriangle class="w-5 h-5 text-[#FFB800] shrink-0 mt-0.5" />
+          <div>
+            <p class="text-[#E2E8F0] font-medium mb-1">Philosophie de Conception :</p>
+            <p>{{ store.lastOfflineReport.welcomeMessage }}</p>
+            <p v-if="store.lastOfflineReport.cappedAt24h" class="text-[#FFB800] mt-1 font-semibold">
+              ⚠️ Plafond de 24h atteint. Les gains ont été calculés sur les premières 24 heures.
+            </p>
+          </div>
+        </div>
+
+        <!-- Resource Gains Summary -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-[#161B22] p-3 rounded-lg border border-[#21262D]">
+            <div class="text-[#8B949E]">Tokens Produits</div>
+            <div class="text-sm font-bold text-[#00FF66] mt-0.5">+{{ formatNumber(store.lastOfflineReport.tokensGained) }}</div>
+          </div>
+          <div class="bg-[#161B22] p-3 rounded-lg border border-[#21262D]">
+            <div class="text-[#8B949E]">Fonds Générés</div>
+            <div class="text-sm font-bold text-[#00FF66] mt-0.5">+{{ formatMoney(store.lastOfflineReport.fundsGained) }}</div>
+          </div>
+          <div class="bg-[#161B22] p-3 rounded-lg border border-[#21262D]">
+            <div class="text-[#8B949E]">Paramètres Acquis</div>
+            <div class="text-sm font-bold text-[#38BDF8] mt-0.5">+{{ formatNumber(store.lastOfflineReport.parametersGained) }}</div>
+          </div>
+          <div class="bg-[#161B22] p-3 rounded-lg border border-[#21262D]">
+            <div class="text-[#8B949E]">Temps Simulé</div>
+            <div class="text-sm font-bold text-[#F0F6FC] mt-0.5">{{ formatDuration(store.lastOfflineReport.simulatedSeconds) }}</div>
+          </div>
+        </div>
+
+        <button 
+          @click="store.dismissOfflineReport()"
+          class="w-full py-2.5 px-4 rounded-lg bg-[#38BDF8] hover:bg-[#0284C7] text-black font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-lg hover:shadow-[#38BDF8]/20"
+        >
+          <CheckCircle class="w-4 h-4" />
+          REPRENDRE LA SESSION ACTIVE
+        </button>
+      </div>
+    </div>
 
     <!-- Header Navigation Bar -->
     <header class="border-b border-[#21262D] bg-[#0D1117]/80 backdrop-blur-md px-6 py-3.5 flex items-center justify-between z-10">
@@ -58,12 +126,12 @@ const totalWatts = computed(() => {
         <div class="flex items-center gap-2">
           <Zap class="w-4 h-4 text-[#FFB800]" />
           <span class="text-[#8B949E]">Power:</span>
-          <span class="font-bold text-[#F0F6FC]">{{ formatWatts(totalWatts) }} / {{ formatWatts(store.gridCapacityWatts) }}</span>
+          <span class="font-bold text-[#F0F6FC]">{{ formatWatts(store.totalPowerDrawWatts) }} / {{ formatWatts(store.gridCapacityWatts) }}</span>
         </div>
         <div class="flex items-center gap-2">
           <Cpu class="w-4 h-4 text-[#38BDF8]" />
           <span class="text-[#8B949E]">Compute:</span>
-          <span class="font-bold text-[#F0F6FC]">{{ formatFlops(totalTflops) }}</span>
+          <span class="font-bold text-[#F0F6FC]">{{ formatFlops(store.effectiveCompute) }}</span>
         </div>
         <div class="flex items-center gap-2">
           <Database class="w-4 h-4 text-[#00FF66]" />
@@ -139,11 +207,11 @@ const totalWatts = computed(() => {
           <div class="flex items-center justify-between border-b border-[#21262D] pb-3">
             <div class="flex items-center gap-2 text-sm font-bold text-[#F0F6FC]">
               <Terminal class="w-4 h-4 text-[#00FF66]" />
-              <h3>2. MODEL TELEMETRY</h3>
+              <h3>2. MODEL TELEMETRY & STDOUT</h3>
             </div>
             <div class="flex items-center gap-1 text-xs text-[#00FF66]">
               <span class="w-2 h-2 rounded-full bg-[#00FF66] animate-pulse"></span>
-              ACTIVE
+              20 HZ LOOP
             </div>
           </div>
 
@@ -153,17 +221,29 @@ const totalWatts = computed(() => {
               <div class="text-base font-bold text-[#F0F6FC] mt-0.5">{{ formatNumber(store.parameters) }}</div>
             </div>
             <div class="bg-[#161B22] p-3 rounded border border-[#21262D]">
-              <div class="text-[#8B949E]">VRAM Used</div>
-              <div class="text-base font-bold text-[#F0F6FC] mt-0.5">4.0 / 12.0 GB</div>
+              <div class="text-[#8B949E]">VRAM Allouée</div>
+              <div class="text-base font-bold text-[#F0F6FC] mt-0.5">{{ formatNumber(store.totalVramGB) }} GB</div>
             </div>
           </div>
 
           <!-- Console Output Window -->
-          <div class="bg-[#05070A] border border-[#21262D] rounded p-3 font-mono text-xs text-[#8B949E] h-48 overflow-y-auto space-y-1">
-            <div class="text-[#00FF66]">[SYS_INIT] Singularity Loop OS v{{ store.version }} loaded.</div>
-            <div class="text-[#8B949E]">[HARDWARE] Found: 1x CPU d'occasion (4 Cores, 50 GFLOPS).</div>
-            <div class="text-[#8B949E]">[POWER] Grid status: 65W / 500W load. Cooling nominal.</div>
-            <div class="text-[#38BDF8]">[AI_THOUGHT] Initializing basic character embeddings...</div>
+          <div 
+            ref="terminalContainer"
+            class="bg-[#05070A] border border-[#21262D] rounded p-3 font-mono text-xs h-56 overflow-y-auto space-y-1 scroll-smooth"
+          >
+            <div 
+              v-for="log in store.terminalLogs" 
+              :key="log.id" 
+              :class="{
+                'text-[#00FF66]': log.type === 'success',
+                'text-[#38BDF8]': log.type === 'info',
+                'text-[#FFB800]': log.type === 'warn',
+                'text-[#EF4444]': log.type === 'error',
+                'text-[#8B949E]': log.type === 'thought',
+              }"
+            >
+              <span class="text-[#484F58]">[{{ new Date(log.timestamp).toLocaleTimeString() }}]</span> {{ log.message }}
+            </div>
           </div>
         </div>
       </div>
@@ -199,10 +279,10 @@ const totalWatts = computed(() => {
               </div>
 
               <div class="flex justify-between items-center pt-1 border-t border-[#21262D]/50 text-xs">
-                <span class="text-[#8B949E]">Cost: <strong class="text-[#00FF66]">{{ formatMoney(hw.baseCost.mul(Math.pow(hw.costMult, hw.count))) }}</strong></span>
+                <span class="text-[#8B949E]">Cost: <strong class="text-[#00FF66]">{{ formatMoney(store.getHardwareCost(hw.id)) }}</strong></span>
                 <button 
                   @click="store.buyHardware(hw.id)"
-                  :disabled="store.funds.current.lt(hw.baseCost.mul(Math.pow(hw.costMult, hw.count)))"
+                  :disabled="store.funds.current.lt(store.getHardwareCost(hw.id))"
                   class="px-3 py-1 rounded bg-[#21262D] hover:bg-[#30363D] disabled:opacity-40 disabled:cursor-not-allowed text-[#F0F6FC] text-xs font-semibold cursor-pointer transition-colors"
                 >
                   Acquire
@@ -219,9 +299,12 @@ const totalWatts = computed(() => {
     <footer class="border-t border-[#21262D] bg-[#0D1117] px-6 py-2.5 text-xs text-[#8B949E] flex justify-between items-center z-10">
       <div>Project Singularity Loop • 100% Client-Side LocalStorage</div>
       <div class="flex items-center gap-3">
-        <span class="flex items-center gap-1.5"><Activity class="w-3.5 h-3.5 text-[#00FF66]" /> 20 Ticks/s</span>
+        <span class="flex items-center gap-1.5"><Activity class="w-3.5 h-3.5 text-[#00FF66]" /> {{ currentTps }} Ticks/s ({{ fps }} FPS)</span>
         <span>•</span>
-        <span class="flex items-center gap-1.5"><Flame class="w-3.5 h-3.5 text-[#38BDF8]" /> Thermals: 0% Throttling</span>
+        <span class="flex items-center gap-1.5">
+          <Flame class="w-3.5 h-3.5" :class="store.thermalState.isThrottling ? 'text-[#FFB800]' : 'text-[#38BDF8]'" />
+          Thermals: {{ store.thermalState.isThrottling ? `${Math.round((1 - store.thermalState.efficiency) * 100)}% Throttling` : 'Nominal' }}
+        </span>
       </div>
     </footer>
   </div>

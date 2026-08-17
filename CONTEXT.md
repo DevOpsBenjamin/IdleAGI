@@ -69,3 +69,16 @@ La puissance effective de calcul ($\text{EffectiveCompute}$) est distribuée ent
 ### Tier 3 : Singularité & Boucle Temporelle (Endgame & New Game+)
 - **Action** : L'IA franchit le seuil d'Artificial Superintelligence (ASI) et résout la singularité.
 - **Gains** : Déblocage des fins narratives scénarisées, modificateurs de défi et boucle New Game+.
+
+---
+
+## 4. Moteur Temporel & Rythme de Jeu (Temporal Mechanics)
+
+### Tick Moteur (20 Hz / 50ms)
+- **Définition** : Pas de temps de simulation unitaire ($\Delta t = 0.05\text{ s}$) exécuté à intervalle fixe.
+- **Rôle** : Synchronise l'ensemble des transferts de flux (Scraping $\to$ Tokens $\to$ Inférence/Entraînement/R&D).
+
+### Progression Hors-Ligne (Offline Catch-Up)
+- **Définition** : Simulation par pas discrets du temps écoulé depuis la dernière fermeture de session.
+- **Plafond strict** : Plafonné à 24 heures maximales.
+- **Philosophie de Conception (Active Loop)** : *Project Singularity Loop* est conçu pour des sessions de jeu actives, dynamiques et stratégiques (prises de décision d'allocation, upgrades de refroidissement, prestiges) plutôt que des jours d'attente passive.
