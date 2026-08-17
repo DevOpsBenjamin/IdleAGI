@@ -8,6 +8,8 @@ export type ScenarioAction =
   | { type: 'sell_all_raw_text' }
   | { type: 'buy_hardware'; hardwareId: string }
   | { type: 'buy_upgrade'; upgradeId: string }
+  | { type: 'buy_talent'; talentId: string }
+  | { type: 'trigger_prestige' }
   | { type: 'set_allocations'; allocations: AllocationState }
   | { type: 'set_preset'; preset: AllocationPreset }
   | { type: 'wait_seconds'; seconds: number }
@@ -47,6 +49,10 @@ export interface ScenarioStateAccessor {
   readonly hardware: Record<string, { count: number; maxCount?: number }>
   readonly upgrades: Record<string, { purchased: boolean }>
   readonly unlockedFeatures: Record<string, boolean>
+  readonly architecturePoints?: number
+  readonly totalArchitecturePoints?: number
+  readonly prestigeCount?: number
+  readonly checkpointMultiplier?: number
 }
 
 export interface SimulationOptions {

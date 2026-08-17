@@ -146,17 +146,18 @@ export class ComputeEngine {
   }
 
   /**
-   * Check if hardware can be purchased factoring in costs, maxCount caps, RAM upgrade prerequisites, and GPU slots.
+   * Check if hardware can be purchased factoring in costs, maxCount caps, RAM upgrade prerequisites, GPU slots, and talent discount.
    */
   public static canBuyHardware(
     hardware: Record<string, HardwareNode>,
     node: HardwareNode | undefined,
     availableFunds: Decimal,
-    purchasedUpgradeIds: Set<string> | string[] = new Set()
+    purchasedUpgradeIds: Set<string> | string[] = new Set(),
+    costDiscountMultiplier = 1.0
   ): HardwareBuyResult {
     if (!node) return { canBuy: false, reason: 'insufficient_funds' }
 
-    const cost = this.calculateHardwareCost(node)
+    const cost = this.calculateHardwareCost(node).mul(costDiscountMultiplier)
     if (availableFunds.lt(cost)) {
       return { canBuy: false, reason: 'insufficient_funds' }
     }
@@ -227,14 +228,15 @@ export class ComputeEngine {
   }
 
   /**
-   * Compute thermodynamic state, thermal throttling efficiency, and temperature.
+   * Compute thermodynamic state, thermal throttling efficiency, and temperature factoring in talent cooling multipliers.
    */
   public static calculateThermalState(
     totalPowerWatts: Decimal,
-    coolingCapacityWatts: Decimal
+    coolingCapacityWatts: Decimal,
+    coolingEfficiencyMultiplier = 1.0
   ): ThermalState {
     const heat = this.calculateHeatGenerated(totalPowerWatts)
-    const cooling = coolingCapacityWatts
+    const cooling = coolingCapacityWatts.mul(coolingEfficiencyMultiplier)
     let efficiency = 1.0
 
     if (heat.gt(0) && heat.gt(cooling)) {
@@ -265,22 +267,24 @@ export class ComputeEngine {
   }
 
   /**
-   * Compute power grid state, load percentage, operational status and effective multiplier.
+   * Compute power grid state, load percentage, operational status and effective multiplier factoring in smart grid talent multipliers.
    */
   public static calculatePowerState(
     totalDrawWatts: Decimal,
-    gridCapacityWatts: Decimal
+    gridCapacityWatts: Decimal,
+    gridCapacityMultiplier = 1.0
   ): PowerState {
-    const loadPercent = gridCapacityWatts.gt(0)
-      ? Math.round(totalDrawWatts.div(gridCapacityWatts).mul(1000).toNumber()) / 10
+    const effectiveGridCapacity = gridCapacityWatts.mul(gridCapacityMultiplier)
+    const loadPercent = effectiveGridCapacity.gt(0)
+      ? Math.round(totalDrawWatts.div(effectiveGridCapacity).mul(1000).toNumber()) / 10
       : 0
-    const isOverloaded = totalDrawWatts.gt(gridCapacityWatts)
+    const isOverloaded = totalDrawWatts.gt(effectiveGridCapacity)
     const status = this.calculatePowerStatus(loadPercent, isOverloaded)
     const effectiveMultiplier = isOverloaded ? 0.5 : 1.0
 
     return {
       totalDrawWatts,
-      gridCapacityWatts,
+      gridCapacityWatts: effectiveGridCapacity,
       gridLoadPercent: loadPercent,
       isOverloaded,
       status,

@@ -1,10 +1,16 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import Decimal from 'break_infinity.js'
 import type { Resource } from '@/types'
 import { RAW_TEXT_SNIPPETS } from '@/domain/constants/snippets'
+import { usePrestigeStore } from './prestigeStore'
 
 export const useResourcesStore = defineStore('resources', () => {
+  const prestigeStore = usePrestigeStore()
+
+  const baseMaxRawText = ref<Decimal>(new Decimal(200))
+  const baseMaxTokens = ref<Decimal>(new Decimal(100))
+
   const rawText = ref<Resource>({
     current: new Decimal(0),
     max: new Decimal(200),
@@ -16,6 +22,37 @@ export const useResourcesStore = defineStore('resources', () => {
     max: new Decimal(100),
     ratePerSec: new Decimal(0),
   })
+
+  function recalculateBufferCapacities(multiplier = prestigeStore.talentMultipliers.bufferCapacityMultiplier) {
+    rawText.value.max = baseMaxRawText.value.mul(multiplier)
+    tokens.value.max = baseMaxTokens.value.mul(multiplier)
+  }
+
+  function setMaxRawText(val: Decimal | number) {
+    const d = typeof val === 'number' ? new Decimal(val) : val
+    baseMaxRawText.value = Decimal.max(baseMaxRawText.value, d)
+    recalculateBufferCapacities()
+  }
+
+  function setMaxTokens(val: Decimal | number) {
+    const d = typeof val === 'number' ? new Decimal(val) : val
+    baseMaxTokens.value = Decimal.max(baseMaxTokens.value, d)
+    recalculateBufferCapacities()
+  }
+
+  function resetBufferCapacities() {
+    baseMaxRawText.value = new Decimal(200)
+    baseMaxTokens.value = new Decimal(100)
+    recalculateBufferCapacities()
+  }
+
+  watch(
+    () => prestigeStore.talentMultipliers.bufferCapacityMultiplier,
+    (newMult) => {
+      recalculateBufferCapacities(newMult)
+    },
+    { immediate: true }
+  )
 
   const funds = ref<Resource>({
     current: new Decimal(0),
@@ -85,6 +122,12 @@ export const useResourcesStore = defineStore('resources', () => {
     totalTokensServed,
     currentSnippetIndex,
     currentSnippet,
+    baseMaxRawText,
+    baseMaxTokens,
+    setMaxRawText,
+    setMaxTokens,
+    recalculateBufferCapacities,
+    resetBufferCapacities,
     manualScrape,
     sellRawText,
     sellAllRawText,

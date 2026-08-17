@@ -4,8 +4,8 @@ import type {
   GameState,
   OfflineProgressSummary,
 } from '@/types'
-import { INITIAL_HARDWARE_CONFIG } from '@/domain/constants/hardware'
-import { INITIAL_UPGRADES_CONFIG } from '@/domain/constants/upgrades'
+import { createInitialHardware } from '@/domain/constants/hardware'
+import { createInitialUpgrades } from '@/domain/constants/upgrades'
 import type { useTerminalStore } from '../terminalStore'
 import type { useResourcesStore } from '../resourcesStore'
 import type { useHardwareStore } from '../hardwareStore'
@@ -89,21 +89,23 @@ export class GameStateHydrator {
    * Resets volatile resources & hardware while preserving AP, talents, lifetime stats, and unlock flags.
    */
   public static performSoftReset(stores: StoreCollection): void {
-    // 1. Reset volatile currencies
+    // 1. Reset volatile currencies & counters
     stores.resources.rawText.current = new Decimal(0)
     stores.resources.tokens.current = new Decimal(0)
     stores.resources.funds.current = new Decimal(0)
     stores.resources.parameters = new Decimal(0)
     stores.resources.researchPoints.current = new Decimal(0)
     stores.resources.totalTokensServed = new Decimal(0)
+    stores.resources.totalCharsRead = new Decimal(0)
+    stores.resources.resetBufferCapacities()
 
     // 2. Reset hardware to initial catalog
-    stores.hardwareStore.hardware = JSON.parse(JSON.stringify(INITIAL_HARDWARE_CONFIG))
+    stores.hardwareStore.hardware = createInitialHardware()
     stores.hardwareStore.gridCapacityWatts = new Decimal(100)
     stores.hardwareStore.coolingCapacityWatts = new Decimal(50)
 
     // 3. Reset upgrades
-    stores.upgradesStore.upgrades = JSON.parse(JSON.stringify(INITIAL_UPGRADES_CONFIG))
+    stores.upgradesStore.upgrades = createInitialUpgrades()
 
     // 4. Reset allocations
     stores.allocation.allocations = {
@@ -115,7 +117,24 @@ export class GameStateHydrator {
     // 5. Reset phase to Phase 0
     stores.features.setPhase(0, true)
 
-    // 6. Reset early unlocked features while preserving prestige unlock flags
+    // 6. Reset early milestones to allow fresh progression
+    stores.features.reachedMilestones = {
+      readingSkill1: false,
+      readingSkill2: false,
+      dataBrokerUnlocked: false,
+      potatoPcUnlocked: false,
+      firstPotatoPc: false,
+      firstCpu: false,
+      firstGpu: false,
+      trainingUnlocked: false,
+      researchUnlocked: false,
+      first1000Params: false,
+      first10000Params: false,
+      first1000Funds: false,
+      firstThrottling: false,
+    }
+
+    // 7. Reset early unlocked features while preserving prestige unlock flags
     stores.features.unlockedFeatures = {
       ...stores.features.unlockedFeatures,
       dataBroker: false,

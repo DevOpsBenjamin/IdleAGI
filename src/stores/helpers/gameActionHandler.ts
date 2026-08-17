@@ -81,26 +81,26 @@ export class GameActionHandler {
         .filter((u) => u.purchased)
         .map((u) => u.id)
     )
+    const discount = stores.prestigeStore.talentMultipliers.hardwareDiscountMultiplier
     const result = stores.hardwareStore.buyHardware(
       id,
       stores.resources.funds.current,
-      purchasedUpgrades
+      purchasedUpgrades,
+      discount
     )
     if (result.success && result.node) {
-      const discount = stores.prestigeStore.talentMultipliers.hardwareDiscountMultiplier
-      const finalCost = result.cost.mul(discount)
-      stores.resources.funds.current = stores.resources.funds.current.sub(finalCost)
+      stores.resources.funds.current = stores.resources.funds.current.sub(result.cost)
 
       stores.terminal.addLog(
-        `Achat matériel effectué : ${result.node.name} pour $${finalCost.toFixed(2)}.`,
+        `Achat matériel effectué : ${result.node.name} pour $${result.cost.toFixed(2)}.`,
         'success'
       )
 
       HardwareUnlockEngine.handlePurchase(id, result.node, {
         unlockFeature: (feat) => stores.features.unlockFeature(feat),
         setPhase: (p) => stores.features.setPhase(p),
-        setMaxRawText: (v) => { stores.resources.rawText.max = Decimal.max(stores.resources.rawText.max, v) },
-        setMaxTokens: (v) => { stores.resources.tokens.max = Decimal.max(stores.resources.tokens.max, v) },
+        setMaxRawText: (v) => { stores.resources.setMaxRawText(v) },
+        setMaxTokens: (v) => { stores.resources.setMaxTokens(v) },
         setMaxGridCapacity: (w) => { stores.hardwareStore.gridCapacityWatts = Decimal.max(stores.hardwareStore.gridCapacityWatts, w) },
         setMaxCoolingCapacity: (w) => { stores.hardwareStore.coolingCapacityWatts = Decimal.max(stores.hardwareStore.coolingCapacityWatts, w) },
         milestones: stores.features.reachedMilestones,
@@ -141,8 +141,8 @@ export class GameActionHandler {
 
       UpgradeEffectEngine.apply(id, {
         unlockFeature: (feat) => stores.features.unlockFeature(feat),
-        setMaxRawText: (v) => { stores.resources.rawText.max = Decimal.max(stores.resources.rawText.max, v) },
-        setMaxTokens: (v) => { stores.resources.tokens.max = Decimal.max(stores.resources.tokens.max, v) },
+        setMaxRawText: (v) => { stores.resources.setMaxRawText(v) },
+        setMaxTokens: (v) => { stores.resources.setMaxTokens(v) },
         addCoolingCapacity: (w) => { stores.hardwareStore.coolingCapacityWatts = stores.hardwareStore.coolingCapacityWatts.add(w) },
         addGridCapacity: (w) => { stores.hardwareStore.gridCapacityWatts = stores.hardwareStore.gridCapacityWatts.add(w) },
       })
@@ -172,6 +172,8 @@ export class GameActionHandler {
         effectiveCompute,
         modelQualityMultiplier,
         bandwidthSpeedMultiplier: stores.hardwareStore.bandwidthSpeedMultiplier,
+        tokenGenerationMultiplier: stores.prestigeStore.talentMultipliers.tokenGenerationMultiplier,
+        scrapeMultiplier: stores.prestigeStore.talentMultipliers.scrapePowerMultiplier,
         isThrottling: stores.hardwareStore.thermalState.isThrottling,
         isOverloaded: stores.hardwareStore.powerState.isOverloaded,
         totalTokensServed: stores.resources.totalTokensServed,

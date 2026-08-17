@@ -19,6 +19,8 @@ export interface TickContext {
   effectiveCompute: Decimal
   modelQualityMultiplier: number
   bandwidthSpeedMultiplier?: number
+  tokenGenerationMultiplier?: number
+  scrapeMultiplier?: number
   isThrottling?: boolean
   isOverloaded?: boolean
   totalTokensServed: Decimal
@@ -64,7 +66,8 @@ export class TickEngine {
     let parameters = context.parameters
 
     // 1. Automatic scraping
-    const baseAutoScrapePerSec = EconomyEngine.calculateAutoScrapeRate(upgrades)
+    const scrapeMult = context.scrapeMultiplier ?? 1.0
+    const baseAutoScrapePerSec = EconomyEngine.calculateAutoScrapeRate(upgrades, scrapeMult)
     if (baseAutoScrapePerSec > 0) {
       const charsGained = new Decimal(baseAutoScrapePerSec * dt)
       rawText.current = Decimal.min(rawText.max, rawText.current.add(charsGained))
@@ -87,13 +90,15 @@ export class TickEngine {
     // 2. Automatic tokenization via compute
     const isTokenizerActive = unlockedFeatures.tokenizerUnlocked && effectiveCompute.gt(0)
     const bwMultiplier = context.bandwidthSpeedMultiplier ?? 1.0
+    const tokenGenMultiplier = context.tokenGenerationMultiplier ?? 1.0
     let tokensToCreate = new Decimal(0)
 
     if (isTokenizerActive) {
       const tokenizingCap = EconomyEngine.calculateTokenizingCapacity(
         effectiveCompute,
         upgrades,
-        dt
+        dt,
+        tokenGenMultiplier
       ).mul(bwMultiplier)
       const charsAvailable = rawText.current
       const tokensPossibleFromText = charsAvailable.div(4)
