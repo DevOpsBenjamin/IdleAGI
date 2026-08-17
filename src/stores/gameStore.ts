@@ -62,6 +62,7 @@ export const useGameStore = defineStore('game', () => {
   const totalVramGB = computed(() => hardwareStore.totalVramGB)
   const totalMemoryBandwidthGBs = computed(() => hardwareStore.totalMemoryBandwidthGBs)
   const bandwidthSpeedMultiplier = computed(() => hardwareStore.bandwidthSpeedMultiplier)
+  const pcieSlots = computed(() => hardwareStore.pcieSlots)
   const thermalState = computed(() => hardwareStore.thermalState)
   const powerState = computed(() => hardwareStore.powerState)
   const effectiveCompute = computed(() => hardwareStore.effectiveCompute)
@@ -204,7 +205,7 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      if ((id === 'rtx_3060' || id === 'gtx_750ti' || id === 'gtx_gpu') && !features.reachedMilestones.firstGpu) {
+      if ((id === 'rtx_3060' || id === 'gtx_750ti' || id === 'gtx_1060' || id === 'gtx_gpu') && !features.reachedMilestones.firstGpu) {
         features.reachedMilestones.firstGpu = true
         terminal.addLog(
           'GPU dédié déployé avec succès. Accélération massive de la bande passante mémoire et tokenisation !',
@@ -212,7 +213,7 @@ export const useGameStore = defineStore('game', () => {
         )
       }
 
-      if (id === 'a100_blade') {
+      if (id === 'a100_sxm4' || id === 'a100_blade') {
         terminal.addLog(
           'Lame Datacenter NVIDIA A100 en ligne ! Mémoire HBM2e 2 To/s connectée.',
           'success'
@@ -221,6 +222,14 @@ export const useGameStore = defineStore('game', () => {
 
       return true
     }
+
+    if (result.reason === 'no_pcie_slots') {
+      terminal.addLog(
+        'Impossible d’installer ce GPU : aucun slot PCIe disponible ! Achetez ou améliorez une station hôte pour obtenir des slots supplémentaires.',
+        'warn'
+      )
+    }
+
     return false
   }
 
@@ -499,6 +508,7 @@ export const useGameStore = defineStore('game', () => {
     totalVramGB,
     totalMemoryBandwidthGBs,
     bandwidthSpeedMultiplier,
+    pcieSlots,
     thermalState,
     powerState,
     effectiveCompute,

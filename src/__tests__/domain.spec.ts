@@ -45,6 +45,30 @@ describe('ComputeEngine Domain Unit Tests', () => {
     expect(mult).toBeCloseTo(1.40)
   })
 
+  it('calculates PCIe slots provided and used across host machines and GPUs', () => {
+    const hw = createInitialHardware()
+    // Potato PC has 0 PCIe slots
+    hw.potato_pc.count = 1
+    let pcie = ComputeEngine.calculatePcieSlots(hw)
+    expect(pcie.totalSlots).toBe(0)
+    expect(pcie.freeSlots).toBe(0)
+    expect(ComputeEngine.canInstallGpu(hw, hw.gtx_750ti)).toBe(false)
+
+    // Add 1 Gaming PC (2 slots PCIe)
+    hw.gaming_pc.count = 1
+    pcie = ComputeEngine.calculatePcieSlots(hw)
+    expect(pcie.totalSlots).toBe(2)
+    expect(pcie.freeSlots).toBe(2)
+    expect(ComputeEngine.canInstallGpu(hw, hw.gtx_750ti)).toBe(true)
+
+    // Install 2 GPUs
+    hw.gtx_750ti.count = 2
+    pcie = ComputeEngine.calculatePcieSlots(hw)
+    expect(pcie.usedSlots).toBe(2)
+    expect(pcie.freeSlots).toBe(0)
+    expect(ComputeEngine.canInstallGpu(hw, hw.rtx_3060)).toBe(false)
+  })
+
   it('calculates thermal state and throttling correctly', () => {
     // Under cooling capacity: 100W power -> 90W heat <= 100W cooling -> efficiency 1.0
     const stateNormal = ComputeEngine.calculateThermalState(

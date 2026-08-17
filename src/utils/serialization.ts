@@ -37,6 +37,7 @@ export function serializeHardwareNode(node: HardwareNode): SerializedHardwareNod
   return {
     id: node.id,
     name: node.name,
+    category: node.category,
     count: node.count,
     baseCost: node.baseCost.toString(),
     costMult: node.costMult,
@@ -45,6 +46,8 @@ export function serializeHardwareNode(node: HardwareNode): SerializedHardwareNod
     memoryBandwidthGBs: node.memoryBandwidthGBs.toString(),
     memoryType: node.memoryType,
     powerWatts: node.powerWatts.toString(),
+    pcieSlotsProvided: node.pcieSlotsProvided,
+    pcieSlotsRequired: node.pcieSlotsRequired,
     description: node.description,
     tier: node.tier ?? 1,
   }
@@ -58,6 +61,7 @@ export function deserializeHardwareNode(
   return {
     id: raw.id ?? fallback.id,
     name: raw.name ?? fallback.name,
+    category: raw.category ?? fallback.category ?? 'host',
     count: typeof raw.count === 'number' ? raw.count : fallback.count,
     baseCost: new Decimal(raw.baseCost ?? fallback.baseCost),
     costMult: typeof raw.costMult === 'number' ? raw.costMult : fallback.costMult,
@@ -66,6 +70,8 @@ export function deserializeHardwareNode(
     memoryBandwidthGBs: new Decimal(raw.memoryBandwidthGBs ?? fallback.memoryBandwidthGBs),
     memoryType: raw.memoryType ?? fallback.memoryType,
     powerWatts: new Decimal(raw.powerWatts ?? fallback.powerWatts),
+    pcieSlotsProvided: raw.pcieSlotsProvided ?? fallback.pcieSlotsProvided,
+    pcieSlotsRequired: raw.pcieSlotsRequired ?? fallback.pcieSlotsRequired,
     description: raw.description ?? fallback.description,
     tier: raw.tier ?? fallback.tier ?? 1,
   }

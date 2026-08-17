@@ -173,6 +173,7 @@ onUnmounted(() => {
               :hardware-list="hardwareArray"
               :funds-current="store.funds.current"
               :current-phase="store.currentPhase"
+              :pcie-slots="store.pcieSlots"
               :get-hardware-cost="(id) => store.getHardwareCost(id)"
               @buy-hardware="(id) => store.buyHardware(id)"
             />

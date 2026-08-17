@@ -21,9 +21,10 @@ Ce document constitue le glossaire canonique et le modèle de domaine du jeu inc
 - **Rôle** : Carburant primaire de l'entraînement de modèles et des réponses aux requêtes API clientes.
 - **Débit** : Mesuré en $Tokens/s$.
 
-### Compute ($TFLOPS$)
-- **Définition** : Puissance de calcul brute totale fournie par le matériel actif (CPU, GPU, TPU, Quantum Cores).
-- **Rôle** : Distribué dynamiquement entre les 3 canaux d'allocation (Inférence, Entraînement, R&D).
+### Compute ($TFLOPS$) & Architecture Matérielle (Hôtes vs GPUs)
+- **Systèmes Hôtes (`host`)** : Stations et tours fournissant l'orchestration CPU, la RAM système (dimensionnant le buffer de données brutes) et les **Slots PCIe** (`pcieSlotsProvided`).
+- **Accélérateurs Dédiés (`gpu`)** : Cartes graphiques et puces Tensor branchées sur les slots PCIe disponibles (`pcieSlotsRequired`), fournissant la puissance de calcul brute ($TFLOPS$), la VRAM et la bande passante mémoire.
+- **Rôle** : Puissance distribuée dynamiquement entre les 3 canaux d'allocation (Inférence, Entraînement, R&D).
 
 ### VRAM & RAM (Capacité mémoire)
 - **Définition** : Capacité mémoire physique disponible ($GB$, $TB$, $PB$).

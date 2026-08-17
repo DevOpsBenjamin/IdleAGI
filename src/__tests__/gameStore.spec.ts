@@ -215,6 +215,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(store.unlockedFeatures.researchAllocation).toBe(false)
 
     store.tokens.current = new Decimal(100)
+    store.hardware.core2_quad.count = 1
     store.hardware.rtx_3060.count = 1
     store.allocations = { inferencePercent: 0, trainingPercent: 100, researchPercent: 0 }
 

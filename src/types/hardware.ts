@@ -1,10 +1,12 @@
 import type Decimal from 'break_infinity.js'
 
 export type HardwareTier = 0 | 1 | 2 | 3
+export type HardwareCategory = 'host' | 'gpu'
 
 export interface HardwareNode {
   readonly id: string
   name: string
+  category: HardwareCategory
   count: number
   baseCost: Decimal
   costMult: number
@@ -13,6 +15,8 @@ export interface HardwareNode {
   memoryBandwidthGBs: Decimal
   memoryType: string
   powerWatts: Decimal
+  pcieSlotsProvided?: number
+  pcieSlotsRequired?: number
   description?: string
   tier: number
 }
@@ -20,6 +24,7 @@ export interface HardwareNode {
 export interface SerializedHardwareNode {
   id: string
   name: string
+  category?: HardwareCategory
   count: number
   baseCost: string
   costMult: number
@@ -28,6 +33,8 @@ export interface SerializedHardwareNode {
   memoryBandwidthGBs?: string
   memoryType?: string
   powerWatts: string
+  pcieSlotsProvided?: number
+  pcieSlotsRequired?: number
   description?: string
   tier: number
 }
