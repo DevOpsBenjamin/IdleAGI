@@ -18,6 +18,7 @@ export interface TickContext {
   milestones: MilestoneState
   effectiveCompute: Decimal
   modelQualityMultiplier: number
+  bandwidthSpeedMultiplier?: number
   totalTokensServed: Decimal
   autoBrokerAccumulator: number
   onSellRawTextQuiet: (amount: number) => void
@@ -83,10 +84,15 @@ export class TickEngine {
 
     // 2. Automatic tokenization via compute
     const isTokenizerActive = unlockedFeatures.tokenizerUnlocked && effectiveCompute.gt(0)
+    const bwMultiplier = context.bandwidthSpeedMultiplier ?? 1.0
     let tokensToCreate = new Decimal(0)
 
     if (isTokenizerActive) {
-      const tokenizingCap = EconomyEngine.calculateTokenizingCapacity(effectiveCompute, upgrades, dt)
+      const tokenizingCap = EconomyEngine.calculateTokenizingCapacity(
+        effectiveCompute,
+        upgrades,
+        dt
+      ).mul(bwMultiplier)
       const charsAvailable = rawText.current
       const tokensPossibleFromText = charsAvailable.div(4)
       tokensToCreate = Decimal.min(tokenizingCap, tokensPossibleFromText)
@@ -115,7 +121,7 @@ export class TickEngine {
     if (isTokenizerActive) {
       // A. Inference: Consumes Tokens to earn Funds ($)
       const infCompute = effectiveCompute.mul(infRatio)
-      const maxTokensToServe = infCompute.mul(20).mul(dt)
+      const maxTokensToServe = infCompute.mul(20 * bwMultiplier).mul(dt)
       tokensServed = Decimal.min(maxTokensToServe, tokens.current)
 
       const actualPricePerToken = EconomyEngine.calculateActualTokenPrice(

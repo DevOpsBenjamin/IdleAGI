@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { HardDrive, Plus, Zap, Cpu, MemoryStick } from 'lucide-vue-next'
-import { formatMoney, formatFlops, formatWatts } from '@/utils/format'
+import { HardDrive, Plus, Zap, Cpu, MemoryStick, Activity } from 'lucide-vue-next'
+import { formatMoney, formatFlops, formatWatts, formatVram, formatBandwidth } from '@/utils/format'
 import type { HardwareNode } from '@/types/game'
 import type Decimal from 'break_infinity.js'
 
@@ -18,20 +18,16 @@ const emit = defineEmits<{
 
 const visibleHardware = computed(() => {
   return props.hardwareList.filter((hw) => {
-    if (hw.id === 'potato_pc') return true
-    if (hw.id === 'used_cpu') {
-      const potato = props.hardwareList.find((h) => h.id === 'potato_pc')
-      return (potato && potato.count > 0) || props.fundsCurrent.gte(15) || hw.count > 0
-    }
-    if (hw.id === 'gtx_gpu') {
-      const cpu = props.hardwareList.find((h) => h.id === 'used_cpu')
-      return (cpu && cpu.count > 0) || props.fundsCurrent.gte(75) || hw.count > 0
-    }
-    if (hw.id === 'server_blade') {
-      const gpu = props.hardwareList.find((h) => h.id === 'gtx_gpu')
-      return (gpu && gpu.count > 0) || props.fundsCurrent.gte(1000) || hw.count > 0
-    }
-    return true
+    // Already owned hardware is always visible
+    if (hw.count > 0) return true
+
+    // Tier 0 hardware (Potato PC, Core 2 Quad) always visible once hardware section is unlocked
+    if (hw.tier === 0) return true
+
+    // Higher tiers unlock when player has accumulated decent capital or unlocked corresponding phase
+    const thresholdRatio = hw.tier === 1 ? 0.3 : hw.tier === 2 ? 0.2 : 0.15
+    const costThreshold = hw.baseCost.mul(thresholdRatio)
+    return props.fundsCurrent.gte(costThreshold) || props.currentPhase >= hw.tier
   })
 })
 </script>
@@ -59,7 +55,7 @@ const visibleHardware = computed(() => {
     </div>
 
     <!-- Hardware Nodes List -->
-    <div class="space-y-3">
+    <div class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
       <div
         v-for="hw in visibleHardware"
         :key="hw.id"
@@ -84,7 +80,11 @@ const visibleHardware = computed(() => {
               </span>
               <span>•</span>
               <span class="flex items-center gap-1 text-[#00FF66]">
-                <MemoryStick class="w-3 h-3" /> {{ hw.vram.toNumber() }} GB
+                <MemoryStick class="w-3 h-3" /> {{ formatVram(hw.vram) }}
+              </span>
+              <span>•</span>
+              <span class="flex items-center gap-1 text-[#E2E8F0]">
+                <Activity class="w-3 h-3 text-[#38BDF8]" /> {{ formatBandwidth(hw.memoryBandwidthGBs) }} ({{ hw.memoryType }})
               </span>
             </div>
           </div>

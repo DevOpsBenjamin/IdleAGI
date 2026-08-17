@@ -59,6 +59,9 @@ export function formatRate(value: Decimal | number, unit = 'T/s', precision = 1)
  */
 export function formatFlops(tflops: Decimal | number, precision = 2): string {
   const d = tflops instanceof Decimal ? tflops : new Decimal(tflops)
+  if (d.lt(0.001)) {
+    return `${d.mul(1e6).toFixed(0)} MFLOPS`
+  }
   if (d.lt(1)) {
     return `${d.mul(1000).toFixed(precision)} GFLOPS`
   }
@@ -69,6 +72,37 @@ export function formatFlops(tflops: Decimal | number, precision = 2): string {
     return `${d.div(1000).toFixed(precision)} PFLOPS`
   }
   return `${d.div(1e6).toFixed(precision)} EFLOPS`
+}
+
+/**
+ * Format Memory Capacity (Mo, Go, To, Po)
+ */
+export function formatVram(vramGB: Decimal | number, precision = 1): string {
+  const d = vramGB instanceof Decimal ? vramGB : new Decimal(vramGB)
+  if (d.lt(1)) {
+    return `${d.mul(1024).toFixed(0)} Mo`
+  }
+  if (d.lt(1024)) {
+    return `${d.toFixed(precision)} Go`
+  }
+  if (d.lt(1024 * 1024)) {
+    return `${d.div(1024).toFixed(precision)} To`
+  }
+  return `${d.div(1024 * 1024).toFixed(precision)} Po`
+}
+
+/**
+ * Format Memory Bandwidth (Mo/s, Go/s, To/s)
+ */
+export function formatBandwidth(gbps: Decimal | number, precision = 1): string {
+  const d = gbps instanceof Decimal ? gbps : new Decimal(gbps)
+  if (d.lt(1)) {
+    return `${d.mul(1000).toFixed(0)} Mo/s`
+  }
+  if (d.lt(1000)) {
+    return `${d.toFixed(precision)} Go/s`
+  }
+  return `${d.div(1000).toFixed(precision)} To/s`
 }
 
 /**

@@ -30,7 +30,7 @@ export class ComputeEngine {
   }
 
   /**
-   * Calculate total video memory (VRAM in GB).
+   * Calculate total memory capacity (VRAM/RAM in GB).
    */
   public static calculateVram(hardware: Record<string, HardwareNode>): Decimal {
     let sum = new Decimal(0)
@@ -40,6 +40,29 @@ export class ComputeEngine {
       }
     }
     return sum
+  }
+
+  /**
+   * Calculate total memory bandwidth (GB/s) across all active hardware nodes.
+   */
+  public static calculateTotalMemoryBandwidth(hardware: Record<string, HardwareNode>): Decimal {
+    let sum = new Decimal(0)
+    for (const node of Object.values(hardware)) {
+      if (node.count > 0 && node.memoryBandwidthGBs) {
+        sum = sum.add(node.memoryBandwidthGBs.mul(node.count))
+      }
+    }
+    return sum
+  }
+
+  /**
+   * Memory bandwidth speed multiplier for memory-bound token operations.
+   * Multiplier = 1.0 + 0.20 * log10(max(1, bandwidthGBs))
+   */
+  public static calculateBandwidthSpeedMultiplier(totalBandwidthGBs: Decimal | number): number {
+    const bw = totalBandwidthGBs instanceof Decimal ? totalBandwidthGBs.toNumber() : totalBandwidthGBs
+    if (bw <= 1) return 1.0
+    return 1.0 + 0.20 * Math.log10(bw)
   }
 
   /**

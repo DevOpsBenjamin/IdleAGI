@@ -10,6 +10,8 @@ export interface HardwareNode {
   costMult: number
   tflops: Decimal
   vram: Decimal
+  memoryBandwidthGBs: Decimal
+  memoryType: string
   powerWatts: Decimal
   description?: string
   tier: number
@@ -23,6 +25,8 @@ export interface SerializedHardwareNode {
   costMult: number
   tflops: string
   vram: string
+  memoryBandwidthGBs?: string
+  memoryType?: string
   powerWatts: string
   description?: string
   tier: number

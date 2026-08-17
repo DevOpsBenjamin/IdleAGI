@@ -25,9 +25,13 @@ Ce document constitue le glossaire canonique et le modèle de domaine du jeu inc
 - **Définition** : Puissance de calcul brute totale fournie par le matériel actif (CPU, GPU, TPU, Quantum Cores).
 - **Rôle** : Distribué dynamiquement entre les 3 canaux d'allocation (Inférence, Entraînement, R&D).
 
-### VRAM (Mémoire vidéo)
+### VRAM & RAM (Capacité mémoire)
 - **Définition** : Capacité mémoire physique disponible ($GB$, $TB$, $PB$).
-- **Rôle** : Plafonne la taille maximale du modèle entraînable (nombre de Paramètres) et la fenêtre de contexte maximale.
+- **Rôle** : Plafonne la taille maximale du modèle entraînable (nombre de Paramètres, $1\text{ paramètre FP16} \approx 2\text{ octets}$) et la fenêtre de contexte maximale.
+
+### Memory Bandwidth (Bande Passante Mémoire - $\text{GB/s}$)
+- **Définition** : Débit de transfert brut entre la mémoire (SDRAM, DDR, GDDR, HBM) et les unités de calcul.
+- **Rôle** : Dans les LLMs auto-régressifs, l'inférence est structurellement *Memory-Bound*. La bande passante détermine directement le multiplicateur de vitesse de génération et de traitement de tokens par seconde.
 
 ### Energy & Thermal System (Watts & Chaleur)
 - **Watts** : Consommation électrique totale du hardware en fonctionnement.
