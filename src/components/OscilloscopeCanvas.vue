@@ -177,7 +177,7 @@ function handleResize() {
 
 onMounted(() => {
   handleResize()
-  if (containerRef.value) {
+  if (typeof ResizeObserver !== 'undefined' && containerRef.value) {
     resizeObserver = new ResizeObserver(() => handleResize())
     resizeObserver.observe(containerRef.value)
   }
