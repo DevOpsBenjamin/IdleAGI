@@ -9,6 +9,7 @@ import type {
   OfflineProgressSummary,
 } from './systems'
 import type { PrestigeState, SerializedPrestigeState } from './prestige'
+import type { CognitiveState, SerializedCognitiveState } from './cognitive'
 
 export * from './logs'
 export * from './resources'
@@ -16,6 +17,7 @@ export * from './hardware'
 export * from './upgrades'
 export * from './systems'
 export * from './prestige'
+export * from './cognitive'
 
 export interface GameState {
   version: string
@@ -51,6 +53,9 @@ export interface GameState {
 
   // Prestige & Meta progression
   prestige?: PrestigeState
+
+  // Cognitive Model (Entropy & Alignment)
+  cognitive?: CognitiveState
 }
 
 export interface SerializedGameState {
@@ -72,5 +77,6 @@ export interface SerializedGameState {
   terminalLogs: LogEntry[]
   unlockedFeatures: UnlockedFeatures
   prestige?: SerializedPrestigeState
+  cognitive?: SerializedCognitiveState
 }
 
