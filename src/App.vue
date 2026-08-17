@@ -13,6 +13,7 @@ import HardwareCluster from '@/components/HardwareCluster.vue'
 import SoftwareUpgrades from '@/components/SoftwareUpgrades.vue'
 import TerminalStdout from '@/components/TerminalStdout.vue'
 import OscilloscopeCanvas from '@/components/OscilloscopeCanvas.vue'
+import DatacenterTelemetry from '@/components/DatacenterTelemetry.vue'
 
 const store = useGameStore()
 const { fps, currentTps } = useGameLoop()
@@ -175,8 +176,22 @@ onUnmounted(() => {
           />
         </div>
 
-        <!-- Right Column: Hardware Cluster Rack & Software Upgrades (4 cols) -->
+        <!-- Right Column: Datacenter Telemetry, Hardware Cluster Rack & Software Upgrades (4 cols) -->
         <div class="lg:col-span-4 flex flex-col gap-5">
+          <!-- Datacenter HUD & Thermal Telemetry (Unlocked when hardware is active) -->
+          <Transition name="fade-slide">
+            <DatacenterTelemetry
+              v-if="hasHardware"
+              :thermal-state="store.thermalState"
+              :power-state="store.powerState"
+              :active-host-node="store.activeHostNode"
+              :hardware-list="hardwareArray"
+              :pcie-slots="store.pcieSlots"
+              :raw-compute="store.totalRawCompute"
+              :effective-compute="store.effectiveCompute"
+            />
+          </Transition>
+
           <!-- Hardware Cluster (Unlocked when hardwareSection is true) -->
           <Transition name="fade-slide">
             <HardwareCluster
