@@ -17,6 +17,7 @@ export interface HardwareNode {
   powerWatts: Decimal
   pcieSlotsProvided?: number
   pcieSlotsRequired?: number
+  minHostTier?: number
   description?: string
   tier: number
 }
@@ -35,6 +36,7 @@ export interface SerializedHardwareNode {
   powerWatts: string
   pcieSlotsProvided?: number
   pcieSlotsRequired?: number
+  minHostTier?: number
   description?: string
   tier: number
 }

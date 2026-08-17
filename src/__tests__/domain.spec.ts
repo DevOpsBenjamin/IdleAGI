@@ -52,21 +52,34 @@ describe('ComputeEngine Domain Unit Tests', () => {
     let pcie = ComputeEngine.calculatePcieSlots(hw)
     expect(pcie.totalSlots).toBe(0)
     expect(pcie.freeSlots).toBe(0)
-    expect(ComputeEngine.canInstallGpu(hw, hw.gtx_750ti)).toBe(false)
+    expect(ComputeEngine.canInstallGpu(hw, hw.gtx_750ti).canInstall).toBe(false)
 
-    // Add 1 Gaming PC (2 slots PCIe)
+    // Add 1 Core 2 Quad (Tier 0, 1 slot PCIe)
+    hw.core2_quad.count = 1
+    expect(ComputeEngine.canInstallGpu(hw, hw.gtx_750ti).canInstall).toBe(true)
+    const rtxOnCore2 = ComputeEngine.canInstallGpu(hw, hw.rtx_3060)
+    expect(rtxOnCore2.canInstall).toBe(false)
+    if (!rtxOnCore2.canInstall) {
+      expect(rtxOnCore2.reason).toBe('host_tier_too_low') // RTX 3060 requires Tier 1+ host!
+    }
+
+    // Add 1 Gaming PC (Tier 1, 2 slots PCIe)
     hw.gaming_pc.count = 1
     pcie = ComputeEngine.calculatePcieSlots(hw)
-    expect(pcie.totalSlots).toBe(2)
-    expect(pcie.freeSlots).toBe(2)
-    expect(ComputeEngine.canInstallGpu(hw, hw.gtx_750ti)).toBe(true)
+    expect(pcie.totalSlots).toBe(3) // 1 (Core 2) + 2 (Gaming PC)
+    expect(ComputeEngine.canInstallGpu(hw, hw.rtx_3060).canInstall).toBe(true)
 
-    // Install 2 GPUs
-    hw.gtx_750ti.count = 2
+    // Install 3 GPUs to fill all slots
+    hw.gtx_750ti.count = 1
+    hw.rtx_3060.count = 2
     pcie = ComputeEngine.calculatePcieSlots(hw)
-    expect(pcie.usedSlots).toBe(2)
+    expect(pcie.usedSlots).toBe(3)
     expect(pcie.freeSlots).toBe(0)
-    expect(ComputeEngine.canInstallGpu(hw, hw.rtx_3060)).toBe(false)
+    const saturated = ComputeEngine.canInstallGpu(hw, hw.rtx_3060)
+    expect(saturated.canInstall).toBe(false)
+    if (!saturated.canInstall) {
+      expect(saturated.reason).toBe('no_pcie_slots')
+    }
   })
 
   it('calculates thermal state and throttling correctly', () => {

@@ -7,7 +7,7 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
   // ==========================================
   potato_pc: {
     id: 'potato_pc',
-    name: "Relique du Grenier (Pentium II 450 MHz)",
+    name: "Grille-Pain du Grenier (Pentium II 450 MHz Deschutes)",
     category: 'host',
     count: 0,
     baseCost: new Decimal(10), // $10.00
@@ -18,12 +18,12 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'SDRAM',
     powerWatts: new Decimal(35),
     pcieSlotsProvided: 0,
-    description: "Tour beige jaunie trouvée à la brocante. Disque dur IDE 5400 RPM crémeux et lecteur disquette 3.5\". Une relique pour lancer vos scripts Python.",
+    description: "Tour beige jaunie avec bouton TURBO inactif et lecteur disquette 3.5\". Disque dur IDE 5400 RPM crémeux pour lancer vos scripts Python.",
     tier: 0,
   },
   core2_quad: {
     id: 'core2_quad',
-    name: "Tour Bureautique Déclassée (Core 2 Quad Q6600)",
+    name: "Chauffage d'Appoint (Core 2 Quad Q6600 @ 2.4 GHz)",
     category: 'host',
     count: 0,
     baseCost: new Decimal(45), // $45.00
@@ -34,12 +34,12 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'DDR2',
     powerWatts: new Decimal(65),
     pcieSlotsProvided: 1,      // 1 slot PCIe x16
-    description: "Ancienne station d'entreprise 4 cœurs avec 1 port PCIe x16. Permet d'exécuter le Tokenizer BPE CPU et d'accueillir votre 1er GPU.",
+    description: "Le légendaire radiateur d'entreprise des années 2008. 4 cœurs à 65°C, avec 1 port PCIe x16 pour amorcer le Tokenizer BPE et accueillir votre 1er GPU.",
     tier: 0,
   },
   gaming_pc: {
     id: 'gaming_pc',
-    name: "Tour Gaming Reconditionnée (Core i7 6700K / 16 Go)",
+    name: "Tour Tuning RGB du BonCoin (i7-6700K Skylake Décapsulé)",
     category: 'host',
     count: 0,
     baseCost: new Decimal(220), // $220.00
@@ -50,12 +50,12 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'DDR4',
     powerWatts: new Decimal(120),
     pcieSlotsProvided: 2,      // 2 slots PCIe x16
-    description: "Station hôte solide avec 16 Go de RAM DDR4 et 2 slots PCIe pour brancher deux cartes graphiques en parallèle.",
+    description: "Vitre en plexiglas rayée, néons bleus qui clignotent et 16 Go DDR4. Offre 2 slots PCIe x16 pour empiler des GPU modernes.",
     tier: 1,
   },
   workstation_pro: {
     id: 'workstation_pro',
-    name: "Station Prosumer (Threadripper / 64 Go DDR5)",
+    name: "Centrale Turbine d'Avion (Threadripper 3990X 64 Cœurs)",
     category: 'host',
     count: 0,
     baseCost: new Decimal(1200), // $1,200.00
@@ -66,12 +66,12 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'DDR5',
     powerWatts: new Decimal(300),
     pcieSlotsProvided: 4,       // 4 slots PCIe x16
-    description: "Station de travail haute performance dotée de 4 slots PCIe x16 espacés et 64 Go de RAM pour piloter un rig multi-GPU.",
+    description: "Un monstre prosumer dont les ventilateurs décollent à chaque tick. 4 slots PCIe espacés et 64 Go DDR5 pour piloter un rig multi-GPU.",
     tier: 2,
   },
   datacenter_chassis: {
     id: 'datacenter_chassis',
-    name: "Châssis Serveur Rack 4U (AMD EPYC / 256 Go ECC)",
+    name: "Armoire Climatysée 4U (Double AMD EPYC 9654 192 Cœurs)",
     category: 'host',
     count: 0,
     baseCost: new Decimal(6500), // $6,500.00
@@ -82,7 +82,7 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'DDR5 ECC',
     powerWatts: new Decimal(800),
     pcieSlotsProvided: 8,        // 8 slots PCIe / SXM
-    description: "Châssis rack de datacenter avec double alimentation redondante et 8 baies pour accélérateurs IA haute densité.",
+    description: "Châssis rack de 45 kg branché en triphasé dans une salle blanche à 18°C. 8 baies SXM/PCIe Gen 5 prêtes pour les accélérateurs hyperscale.",
     tier: 3,
   },
 
@@ -102,7 +102,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'GDDR5',
     powerWatts: new Decimal(60),
     pcieSlotsRequired: 1,
-    description: "Carte graphique budget légendaire. Faible consommation et premier accélérateur parallèle pour la tokenisation.",
+    minHostTier: 0,
+    description: "Carte graphique budget légendaire. Faible consommation et premier accélérateur parallèle compatible avec n'importe quelle vieille tour.",
     tier: 1,
   },
   gtx_1060: {
@@ -118,7 +119,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'GDDR5',
     powerWatts: new Decimal(120),
     pcieSlotsRequired: 1,
-    description: "Excellente carte budget pour amorcer l'inférence neuronale locale avec 6 Go de VRAM.",
+    minHostTier: 0,
+    description: "Excellente carte budget pour amorcer l'inférence neuronale locale avec 6 Go de VRAM. Compatible avec les vieilles tours Core 2 Quad.",
     tier: 1,
   },
   rtx_3060: {
@@ -134,7 +136,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'GDDR6',
     powerWatts: new Decimal(170),
     pcieSlotsRequired: 1,
-    description: "Le champion de l'IA amateur avec ses 12 Go de VRAM GDDR6. Rapport VRAM/prix imbattable.",
+    minHostTier: 1,
+    description: "Le champion de l'IA amateur avec ses 12 Go de VRAM GDDR6. Nécessite une Tour Gaming moderne (Tier 1+) avec UEFI et alim solide.",
     tier: 1,
   },
   rtx_3090: {
@@ -150,7 +153,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'GDDR6X',
     powerWatts: new Decimal(350),
     pcieSlotsRequired: 1,
-    description: "24 Go de GDDR6X ultra-rapide (936 Go/s) pour charger des modèles LLM conséquents et entraîner en local.",
+    minHostTier: 1,
+    description: "24 Go de GDDR6X ultra-rapide (936 Go/s) pour modèles denses. Nécessite une tour moderne (Tier 1+) et une alimentation 750W+.",
     tier: 2,
   },
   a100_sxm4: {
@@ -166,7 +170,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'HBM2e',
     powerWatts: new Decimal(400),
     pcieSlotsRequired: 1,
-    description: "Puce Tensor Core professionnelle dotée de 2 To/s de bande passante HBM2e pour gros volume d'inférence.",
+    minHostTier: 2,
+    description: "Puce Tensor Core professionnelle dotée de 2 To/s de bande passante HBM2e. Nécessite une Station Prosumer (Tier 2+) ou châssis rack.",
     tier: 3,
   },
   h100_sxm5: {
@@ -182,7 +187,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     memoryType: 'HBM3',
     powerWatts: new Decimal(700),
     pcieSlotsRequired: 1,
-    description: "Monstre absolu de calcul avec Transformer Engine pour les modèles d'IA les plus avancés au monde.",
+    minHostTier: 3,
+    description: "Monstre absolu de calcul Transformer Engine. Nécessite impérativement un Châssis Serveur Rack 4U Datacenter (Tier 3).",
     tier: 3,
   },
 }
@@ -204,6 +210,7 @@ export function createInitialHardware(): Record<string, HardwareNode> {
       powerWatts: new Decimal(node.powerWatts),
       pcieSlotsProvided: node.pcieSlotsProvided,
       pcieSlotsRequired: node.pcieSlotsRequired,
+      minHostTier: node.minHostTier,
       description: node.description,
       tier: node.tier,
     }
