@@ -489,6 +489,10 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  function clearLogs() {
+    terminalLogs.value = []
+  }
+
   function hardReset() {
     localStorage.removeItem(SAVE_KEY)
     location.reload()
@@ -520,6 +524,7 @@ export const useGameStore = defineStore('game', () => {
     powerState,
     effectiveCompute,
     addLog,
+    clearLogs,
     manualScrape,
     manualTokenize,
     buyHardware,
