@@ -4,4 +4,6 @@ export * from './hardwareStore'
 export * from './upgradesStore'
 export * from './allocationStore'
 export * from './featuresStore'
+export * from './prestigeStore'
 export * from './gameStore'
+

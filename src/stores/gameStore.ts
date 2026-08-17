@@ -1,43 +1,36 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import Decimal from 'break_infinity.js'
-import type {
-  GameState,
-  LogType,
-  OfflineProgressSummary,
-  AllocationPreset,
-} from '@/types'
+import type Decimal from 'break_infinity.js'
+import type { GameState, OfflineProgressSummary, AllocationPreset } from '@/types'
 import { CURRENT_SAVE_VERSION } from '@/utils/serialization'
 import { RAW_TEXT_SNIPPETS } from '@/domain/constants/snippets'
-import {
-  EconomyEngine,
-  MilestoneTracker,
-  TickEngine,
-  OfflineEngine,
-  MAX_OFFLINE_SECONDS,
-  UpgradeEffectEngine,
-  HardwareUnlockEngine,
-} from '@/domain/engine'
+import { EconomyEngine, OfflineEngine, MAX_OFFLINE_SECONDS } from '@/domain/engine'
 import { useTerminalStore } from './terminalStore'
 import { useResourcesStore } from './resourcesStore'
 import { useHardwareStore } from './hardwareStore'
 import { useUpgradesStore } from './upgradesStore'
 import { useAllocationStore } from './allocationStore'
 import { useFeaturesStore } from './featuresStore'
+import { usePrestigeStore } from './prestigeStore'
 import { GameSaveManager } from './helpers/gameSaveManager'
+import { GameStateHydrator, type StoreCollection } from './helpers/gameStateHydrator'
+import { GameActionHandler } from './helpers/gameActionHandler'
 
 export { MAX_OFFLINE_SECONDS, RAW_TEXT_SNIPPETS }
 
+function bridge<T>(getter: () => T, setter: (v: T) => void) {
+  return computed({ get: getter, set: setter })
+}
+
 export const useGameStore = defineStore('game', () => {
-  // Sub-stores composition
   const terminal = useTerminalStore()
   const resources = useResourcesStore()
   const hardwareStore = useHardwareStore()
   const upgradesStore = useUpgradesStore()
   const allocation = useAllocationStore()
   const features = useFeaturesStore()
+  const prestigeStore = usePrestigeStore()
 
-  // Meta state
   const version = ref(CURRENT_SAVE_VERSION)
   const gameStartTime = ref(Date.now())
   const lastTickTimestamp = ref(Date.now())
@@ -46,263 +39,85 @@ export const useGameStore = defineStore('game', () => {
   let saveAccumulator = 0
   let autoBrokerAccumulator = 0
 
-  // ==========================================
-  // COMPUTED ENGINE VALUES
-  // ==========================================
+  const stores: StoreCollection = {
+    terminal,
+    resources,
+    hardwareStore,
+    upgradesStore,
+    allocation,
+    features,
+    prestigeStore,
+    meta: { version, gameStartTime, lastTickTimestamp, lastOfflineReport },
+  }
 
-  const modelQualityMultiplier = computed<number>(() => {
-    return EconomyEngine.calculateModelQualityMultiplier(resources.parameters)
+  // Multipliers & Computeds
+  const modelQualityMultiplier = computed(() => EconomyEngine.calculateModelQualityMultiplier(resources.parameters))
+  const manualScrapePower = computed(() => upgradesStore.manualScrapePower * prestigeStore.talentMultipliers.scrapePowerMultiplier)
+  const rawTextSellPrice = computed(() => upgradesStore.rawTextSellPrice * prestigeStore.talentMultipliers.rawTextPriceMultiplier)
+  const effectiveCompute = computed(() => {
+    return hardwareStore.effectiveCompute
+      .mul(prestigeStore.checkpointMultiplier)
+      .mul(prestigeStore.talentMultipliers.tflopsMultiplier)
   })
 
-  // Shortcuts & getters
-  const manualScrapePower = computed(() => upgradesStore.manualScrapePower)
-  const rawTextSellPrice = computed(() => upgradesStore.rawTextSellPrice)
-  const autoScrapeRate = computed(() => upgradesStore.autoScrapeRate)
-  const totalRawCompute = computed(() => hardwareStore.totalRawCompute)
-  const totalPowerDrawWatts = computed(() => hardwareStore.totalPowerDrawWatts)
-  const totalVramGB = computed(() => hardwareStore.totalVramGB)
-  const totalMemoryBandwidthGBs = computed(() => hardwareStore.totalMemoryBandwidthGBs)
-  const bandwidthSpeedMultiplier = computed(() => hardwareStore.bandwidthSpeedMultiplier)
-  const pcieSlots = computed(() => hardwareStore.pcieSlots)
-  const thermalState = computed(() => hardwareStore.thermalState)
-  const powerState = computed(() => hardwareStore.powerState)
-  const effectiveCompute = computed(() => hardwareStore.effectiveCompute)
-  const hasPotatoPc = computed(() => hardwareStore.hasPotatoPc)
-  const hasWorkstation = computed(() => hardwareStore.hasWorkstation)
-  const currentSnippet = computed(() => resources.currentSnippet)
-
-  // ==========================================
-  // ACTIONS & GAME LOGIC
-  // ==========================================
-
-  function addLog(message: string, type: LogType = 'info') {
-    terminal.addLog(message, type)
-  }
-
-  function clearLogs() {
-    terminal.clearLogs()
-  }
-
-  function checkEarlyGameProgress() {
-    const chars = resources.totalCharsRead.toNumber()
-    const events = MilestoneTracker.checkEarlyGameProgress(
-      chars,
-      features.reachedMilestones,
-      features.unlockedFeatures
-    )
-    for (const evt of events) {
-      terminal.addLog(evt.message, evt.type)
-    }
-
-    const hwEvents = MilestoneTracker.checkHardwareUnlock(
-      resources.funds.current,
-      chars,
-      features.unlockedFeatures,
-      features.reachedMilestones
-    )
-    for (const evt of hwEvents) {
-      terminal.addLog(evt.message, evt.type)
-    }
-  }
-
+  // Core Actions
   function manualScrape(amount?: number) {
-    const power = amount ?? manualScrapePower.value
-    const added = resources.manualScrape(power)
-
-    checkEarlyGameProgress()
-
-    if (added.gt(0) && Math.random() < 0.2) {
-      terminal.addLog(
-        `Lecture & transcription manuelle : +${added.toFixed(0)} caractères transcrits.`,
-        'info'
-      )
-    }
+    GameActionHandler.manualScrape(stores, amount ?? manualScrapePower.value)
   }
 
   function sellRawText(charsToSell = 20, silent = false): boolean {
-    const { success, earned } = resources.sellRawText(charsToSell, rawTextSellPrice.value)
-    if (success) {
-      if (!silent) {
-        terminal.addLog(
-          `Données brutes vendues au courtier : +$${earned.toFixed(2)} (${charsToSell} chars).`,
-          'info'
-        )
-      }
-
-      const hwEvents = MilestoneTracker.checkHardwareUnlock(
-        resources.funds.current,
-        resources.totalCharsRead.toNumber(),
-        features.unlockedFeatures,
-        features.reachedMilestones
-      )
-      for (const evt of hwEvents) {
-        terminal.addLog(evt.message, evt.type)
-      }
-      return true
-    }
-    return false
+    return GameActionHandler.sellRawText(stores, charsToSell, rawTextSellPrice.value, silent)
   }
 
   function sellAllRawText(): boolean {
-    const { success, earned, charsSold } = resources.sellAllRawText(rawTextSellPrice.value)
-    if (success) {
-      terminal.addLog(
-        `Lot complet de données brutes vendu : +$${earned.toFixed(2)} (${charsSold} chars).`,
-        'info'
-      )
-      return true
-    }
-    return false
+    return GameActionHandler.sellAllRawText(stores, rawTextSellPrice.value)
   }
 
   function getHardwareCost(id: string): Decimal {
-    return hardwareStore.getHardwareCost(id)
+    return hardwareStore.getHardwareCost(id).mul(prestigeStore.talentMultipliers.hardwareDiscountMultiplier)
   }
 
   function buyHardware(id: string): boolean {
-    const purchasedUpgrades = new Set(
-      Object.values(upgradesStore.upgrades)
-        .filter((u) => u.purchased)
-        .map((u) => u.id)
-    )
-    const result = hardwareStore.buyHardware(id, resources.funds.current, purchasedUpgrades)
-    if (result.success && result.node) {
-      resources.funds.current = resources.funds.current.sub(result.cost)
-      terminal.addLog(
-        `Achat matériel effectué : ${result.node.name} pour $${result.cost.toFixed(2)}.`,
-        'success'
-      )
-
-      HardwareUnlockEngine.handlePurchase(id, result.node, {
-        unlockFeature: (feat) => features.unlockFeature(feat),
-        setPhase: (p) => features.setPhase(p),
-        setMaxRawText: (v) => { resources.rawText.max = Decimal.max(resources.rawText.max, v) },
-        setMaxTokens: (v) => { resources.tokens.max = Decimal.max(resources.tokens.max, v) },
-        setMaxGridCapacity: (w) => { hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, w) },
-        setMaxCoolingCapacity: (w) => { hardwareStore.coolingCapacityWatts = Decimal.max(hardwareStore.coolingCapacityWatts, w) },
-        milestones: features.reachedMilestones,
-        addLog: (msg, type) => terminal.addLog(msg, type),
-      })
-
-      return true
-    }
-
-    if (result.reason === 'missing_ram_upgrade') {
-      terminal.addLog(
-        'Impossible d’acquérir cette tour : vous devez d’abord installer tous les kits de RAM requis sur votre machine actuelle !',
-        'warn'
-      )
-    } else if (result.reason === 'max_count_reached') {
-      terminal.addLog('Cette machine est déjà installée et active !', 'warn')
-    } else if (result.reason === 'host_tier_too_low') {
-      const node = hardwareStore.hardware[id]
-      const minTier = node?.minHostTier ?? 1
-      terminal.addLog(
-        `Impossible d’installer ce GPU : nécessite une station hôte de Tier ${minTier}+ avec un slot PCIe libre !`,
-        'warn'
-      )
-    } else if (result.reason === 'no_pcie_slots') {
-      terminal.addLog(
-        'Impossible d’installer ce GPU : aucun slot PCIe disponible ! Achetez ou améliorez une station hôte pour obtenir des slots supplémentaires.',
-        'warn'
-      )
-    }
-
-    return false
+    return GameActionHandler.buyHardware(stores, id)
   }
 
   function buyUpgrade(id: string): boolean {
-    const result = upgradesStore.buyUpgrade(
-      id,
-      resources.funds.current,
-      resources.researchPoints.current,
-      features.unlockedFeatures
-    )
+    return GameActionHandler.buyUpgrade(stores, id)
+  }
 
-    if (result.success && result.upgrade) {
-      if (result.currency === 'funds') {
-        resources.funds.current = resources.funds.current.sub(result.cost)
-        terminal.addLog(
-          `Module activé : ${result.upgrade.name} pour $${result.cost.toFixed(2)}.`,
-          'success'
-        )
-      } else {
-        resources.researchPoints.current = resources.researchPoints.current.sub(result.cost)
-        terminal.addLog(`Recherche complétée : ${result.upgrade.name}.`, 'success')
-      }
+  function updateAllocations(newAllocations: { inferencePercent: number; trainingPercent: number; researchPercent: number }) {
+    allocation.updateAllocations(newAllocations, features.unlockedFeatures.trainingAllocation, features.unlockedFeatures.researchAllocation)
+  }
 
-      UpgradeEffectEngine.apply(id, {
-        unlockFeature: (feat) => features.unlockFeature(feat),
-        setMaxRawText: (v) => { resources.rawText.max = Decimal.max(resources.rawText.max, v) },
-        setMaxTokens: (v) => { resources.tokens.max = Decimal.max(resources.tokens.max, v) },
-        addCoolingCapacity: (w) => { hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(w) },
-        addGridCapacity: (w) => { hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(w) },
-      })
+  function setAllocationPreset(preset: AllocationPreset) {
+    const logMsg = allocation.setAllocationPreset(preset, features.unlockedFeatures.trainingAllocation, features.unlockedFeatures.researchAllocation)
+    if (logMsg) terminal.addLog(logMsg, 'info')
+  }
 
+  function buyTalent(talentId: string): boolean {
+    const res = prestigeStore.buyTalent(talentId)
+    if (res.success) {
+      terminal.addLog(`Talent d'architecture débloqué : ${prestigeStore.talents[talentId]?.name} (-${prestigeStore.talents[talentId]?.cost} AP).`, 'success')
       return true
     }
     return false
   }
 
-  function updateAllocations(newAllocations: {
-    inferencePercent: number
-    trainingPercent: number
-    researchPercent: number
-  }) {
-    allocation.updateAllocations(
-      newAllocations,
-      features.unlockedFeatures.trainingAllocation,
-      features.unlockedFeatures.researchAllocation
-    )
-  }
-
-  function setAllocationPreset(preset: AllocationPreset) {
-    const logMsg = allocation.setAllocationPreset(
-      preset,
-      features.unlockedFeatures.trainingAllocation,
-      features.unlockedFeatures.researchAllocation
-    )
-    if (logMsg) {
-      terminal.addLog(logMsg, 'info')
+  function triggerPrestige(): boolean {
+    const res = prestigeStore.claimPrestige(resources.parameters)
+    if (res.success) {
+      GameStateHydrator.performSoftReset(stores)
+      saveToLocalStorage()
+      return true
     }
+    return false
   }
 
   function processTick(dt: number) {
-    const tickResult = TickEngine.processTick(
-      {
-        rawText: resources.rawText,
-        tokens: resources.tokens,
-        funds: resources.funds,
-        parameters: resources.parameters,
-        researchPoints: resources.researchPoints,
-        upgrades: upgradesStore.upgrades,
-        allocations: allocation.allocations,
-        unlockedFeatures: features.unlockedFeatures,
-        milestones: features.reachedMilestones,
-        effectiveCompute: effectiveCompute.value,
-        modelQualityMultiplier: modelQualityMultiplier.value,
-        bandwidthSpeedMultiplier: bandwidthSpeedMultiplier.value,
-        isThrottling: hardwareStore.thermalState.isThrottling,
-        isOverloaded: hardwareStore.powerState.isOverloaded,
-        totalTokensServed: resources.totalTokensServed,
-        autoBrokerAccumulator,
-        onSellRawTextQuiet: (amount: number) => sellRawText(amount, true),
-        onAddLog: (msg: string, type?: LogType) => terminal.addLog(msg, type ?? 'info'),
-      },
-      dt
-    )
-
-    autoBrokerAccumulator = tickResult.newAutoBrokerAccumulator
-    resources.totalTokensServed = tickResult.updatedTotalTokensServed
-    resources.parameters = tickResult.updatedParameters
-
-    if (features.unlockedFeatures.trainingAllocation && features.currentPhase < 3) {
-      features.setPhase(3)
-    }
-
+    const res = GameActionHandler.processTick(stores, dt, effectiveCompute.value, modelQualityMultiplier.value, autoBrokerAccumulator)
+    autoBrokerAccumulator = res.newAutoBrokerAccumulator
     lastTickTimestamp.value = Date.now()
 
-    // Autosave interval
     saveAccumulator += dt
     if (saveAccumulator >= 5) {
       saveAccumulator = 0
@@ -324,41 +139,14 @@ export const useGameStore = defineStore('game', () => {
 
     if (report) {
       lastOfflineReport.value = report
-      terminal.addLog(
-        `Progression hors-ligne traitée : ${Math.floor(report.simulatedSeconds / 60)} min simulées (+${report.fundsGained.toFixed(2)}$).`,
-        'info'
-      )
+      terminal.addLog(`Progression hors-ligne traitée : ${Math.floor(report.simulatedSeconds / 60)} min simulées (+${report.fundsGained.toFixed(2)}$).`, 'info')
     }
-
     lastTickTimestamp.value = now
     saveToLocalStorage()
   }
 
-  function dismissOfflineReport() {
-    lastOfflineReport.value = null
-  }
-
   function getFullState(): GameState {
-    return {
-      version: version.value,
-      lastTickTimestamp: lastTickTimestamp.value,
-      gameStartTime: gameStartTime.value,
-      currentPhase: features.currentPhase,
-      totalCharsRead: resources.totalCharsRead,
-      rawText: resources.rawText,
-      tokens: resources.tokens,
-      funds: resources.funds,
-      parameters: resources.parameters,
-      researchPoints: resources.researchPoints,
-      hardware: hardwareStore.hardware,
-      upgrades: upgradesStore.upgrades,
-      allocations: allocation.allocations,
-      gridCapacityWatts: hardwareStore.gridCapacityWatts,
-      coolingCapacityWatts: hardwareStore.coolingCapacityWatts,
-      terminalLogs: terminal.terminalLogs,
-      unlockedFeatures: features.unlockedFeatures,
-      lastOfflineReport: lastOfflineReport.value,
-    }
+    return GameStateHydrator.extractFullState(stores)
   }
 
   function saveToLocalStorage() {
@@ -368,131 +156,60 @@ export const useGameStore = defineStore('game', () => {
   function loadFromLocalStorage(): boolean {
     const loaded = GameSaveManager.load(getFullState())
     if (!loaded) return false
-
-    if (loaded.rawText) resources.rawText = loaded.rawText
-    if (loaded.tokens) resources.tokens = loaded.tokens
-    if (loaded.funds) resources.funds = loaded.funds
-    if (loaded.parameters) resources.parameters = loaded.parameters
-    if (loaded.researchPoints) resources.researchPoints = loaded.researchPoints
-    if (loaded.hardware) hardwareStore.hardware = loaded.hardware
-    if (loaded.upgrades) upgradesStore.upgrades = loaded.upgrades
-    if (loaded.allocations) allocation.allocations = loaded.allocations
-    if (loaded.gridCapacityWatts) hardwareStore.gridCapacityWatts = loaded.gridCapacityWatts
-    if (loaded.coolingCapacityWatts) hardwareStore.coolingCapacityWatts = loaded.coolingCapacityWatts
-    if (loaded.terminalLogs) terminal.setLogs(loaded.terminalLogs)
-    if (loaded.unlockedFeatures) features.unlockedFeatures = loaded.unlockedFeatures
-    if (loaded.lastTickTimestamp) lastTickTimestamp.value = loaded.lastTickTimestamp
-    if (loaded.gameStartTime) gameStartTime.value = loaded.gameStartTime
-    if (loaded.currentPhase !== undefined) features.currentPhase = loaded.currentPhase
-    if (loaded.totalCharsRead) resources.totalCharsRead = loaded.totalCharsRead
-
+    GameStateHydrator.hydrateStores(loaded, stores)
     calculateOfflineProgress()
     return true
   }
 
-  function hardReset() {
-    GameSaveManager.hardReset()
-  }
-
-  // Initial load
   loadFromLocalStorage()
 
   return {
-    // Meta & System
     version,
     gameStartTime,
     lastTickTimestamp,
     lastOfflineReport,
-    // Features & Milestones
-    currentPhase: computed({
-      get: () => features.currentPhase,
-      set: (val: number) => { features.currentPhase = val },
-    }),
-    unlockedFeatures: computed({
-      get: () => features.unlockedFeatures,
-      set: (val) => { features.unlockedFeatures = val },
-    }),
+    currentPhase: bridge(() => features.currentPhase, (v) => { features.currentPhase = v }),
+    unlockedFeatures: bridge(() => features.unlockedFeatures, (v) => { features.unlockedFeatures = v }),
     reachedMilestones: computed(() => features.reachedMilestones),
-    // Resources
-    rawText: computed({
-      get: () => resources.rawText,
-      set: (val) => { resources.rawText = val },
-    }),
-    tokens: computed({
-      get: () => resources.tokens,
-      set: (val) => { resources.tokens = val },
-    }),
-    funds: computed({
-      get: () => resources.funds,
-      set: (val) => { resources.funds = val },
-    }),
-    parameters: computed({
-      get: () => resources.parameters,
-      set: (val) => { resources.parameters = val },
-    }),
-    researchPoints: computed({
-      get: () => resources.researchPoints,
-      set: (val) => { resources.researchPoints = val },
-    }),
-    totalCharsRead: computed({
-      get: () => resources.totalCharsRead,
-      set: (val) => { resources.totalCharsRead = val },
-    }),
-    totalTokensServed: computed({
-      get: () => resources.totalTokensServed,
-      set: (val) => { resources.totalTokensServed = val },
-    }),
-    currentSnippetIndex: computed({
-      get: () => resources.currentSnippetIndex,
-      set: (val: number) => { resources.currentSnippetIndex = val },
-    }),
-    currentSnippet,
-    // Hardware & Physics
-    hardware: computed({
-      get: () => hardwareStore.hardware,
-      set: (val) => { hardwareStore.hardware = val },
-    }),
-    gridCapacityWatts: computed({
-      get: () => hardwareStore.gridCapacityWatts,
-      set: (val) => { hardwareStore.gridCapacityWatts = val },
-    }),
-    coolingCapacityWatts: computed({
-      get: () => hardwareStore.coolingCapacityWatts,
-      set: (val) => { hardwareStore.coolingCapacityWatts = val },
-    }),
-    totalRawCompute,
-    totalPowerDrawWatts,
-    totalVramGB,
-    totalMemoryBandwidthGBs,
-    bandwidthSpeedMultiplier,
-    pcieSlots,
-    thermalState,
-    powerState,
+    rawText: bridge(() => resources.rawText, (v) => { resources.rawText = v }),
+    tokens: bridge(() => resources.tokens, (v) => { resources.tokens = v }),
+    funds: bridge(() => resources.funds, (v) => { resources.funds = v }),
+    parameters: bridge(() => resources.parameters, (v) => { resources.parameters = v }),
+    researchPoints: bridge(() => resources.researchPoints, (v) => { resources.researchPoints = v }),
+    totalCharsRead: bridge(() => resources.totalCharsRead, (v) => { resources.totalCharsRead = v }),
+    totalTokensServed: bridge(() => resources.totalTokensServed, (v) => { resources.totalTokensServed = v }),
+    currentSnippetIndex: bridge(() => resources.currentSnippetIndex, (v) => { resources.currentSnippetIndex = v }),
+    currentSnippet: computed(() => resources.currentSnippet),
+    hardware: bridge(() => hardwareStore.hardware, (v) => { hardwareStore.hardware = v }),
+    gridCapacityWatts: bridge(() => hardwareStore.gridCapacityWatts, (v) => { hardwareStore.gridCapacityWatts = v }),
+    coolingCapacityWatts: bridge(() => hardwareStore.coolingCapacityWatts, (v) => { hardwareStore.coolingCapacityWatts = v }),
+    totalRawCompute: computed(() => hardwareStore.totalRawCompute),
+    totalPowerDrawWatts: computed(() => hardwareStore.totalPowerDrawWatts),
+    totalVramGB: computed(() => hardwareStore.totalVramGB),
+    totalMemoryBandwidthGBs: computed(() => hardwareStore.totalMemoryBandwidthGBs),
+    bandwidthSpeedMultiplier: computed(() => hardwareStore.bandwidthSpeedMultiplier),
+    pcieSlots: computed(() => hardwareStore.pcieSlots),
+    thermalState: computed(() => hardwareStore.thermalState),
+    powerState: computed(() => hardwareStore.powerState),
     effectiveCompute,
-    hasPotatoPc,
-    hasWorkstation,
+    hasPotatoPc: computed(() => hardwareStore.hasPotatoPc),
+    hasWorkstation: computed(() => hardwareStore.hasWorkstation),
     activeHostNode: computed(() => hardwareStore.activeHostNode),
     nextHostNode: computed(() => hardwareStore.nextHostNode),
-    // Upgrades
-    upgrades: computed({
-      get: () => upgradesStore.upgrades,
-      set: (val) => { upgradesStore.upgrades = val },
-    }),
+    upgrades: bridge(() => upgradesStore.upgrades, (v) => { upgradesStore.upgrades = v }),
     manualScrapePower,
     rawTextSellPrice,
-    autoScrapeRate,
-    // Allocations
-    allocations: computed({
-      get: () => allocation.allocations,
-      set: (val) => { allocation.allocations = val },
-    }),
-    // Logs
+    autoScrapeRate: computed(() => upgradesStore.autoScrapeRate),
+    allocations: bridge(() => allocation.allocations, (v) => { allocation.allocations = v }),
     terminalLogs: computed(() => terminal.terminalLogs),
-    // Multipliers & Computeds
     modelQualityMultiplier,
-    // Actions
-    addLog,
-    clearLogs,
+    checkpointMultiplier: computed(() => prestigeStore.checkpointMultiplier),
+    talentMultipliers: computed(() => prestigeStore.talentMultipliers),
+    canPrestige: computed(() => prestigeStore.canPrestige(resources.parameters)),
+    pendingAP: computed(() => prestigeStore.calculatePendingAP(resources.parameters)),
+    prestige: prestigeStore,
+    addLog: terminal.addLog,
+    clearLogs: terminal.clearLogs,
     manualScrape,
     sellRawText,
     sellAllRawText,
@@ -501,12 +218,15 @@ export const useGameStore = defineStore('game', () => {
     getHardwareCost,
     updateAllocations,
     setAllocationPreset,
+    buyTalent,
+    triggerPrestige,
+    softReset: triggerPrestige,
     processTick,
     calculateOfflineProgress,
-    dismissOfflineReport,
+    dismissOfflineReport: () => { lastOfflineReport.value = null },
     getFullState,
     saveToLocalStorage,
     loadFromLocalStorage,
-    hardReset,
+    hardReset: () => GameSaveManager.hardReset(),
   }
 })

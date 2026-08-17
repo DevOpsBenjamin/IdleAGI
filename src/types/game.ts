@@ -8,12 +8,14 @@ import type {
   UnlockedFeatures,
   OfflineProgressSummary,
 } from './systems'
+import type { PrestigeState, SerializedPrestigeState } from './prestige'
 
 export * from './logs'
 export * from './resources'
 export * from './hardware'
 export * from './upgrades'
 export * from './systems'
+export * from './prestige'
 
 export interface GameState {
   version: string
@@ -46,6 +48,9 @@ export interface GameState {
 
   // Offline progression report
   lastOfflineReport: OfflineProgressSummary | null
+
+  // Prestige & Meta progression
+  prestige?: PrestigeState
 }
 
 export interface SerializedGameState {
@@ -66,4 +71,6 @@ export interface SerializedGameState {
   coolingCapacityWatts: string
   terminalLogs: LogEntry[]
   unlockedFeatures: UnlockedFeatures
+  prestige?: SerializedPrestigeState
 }
+

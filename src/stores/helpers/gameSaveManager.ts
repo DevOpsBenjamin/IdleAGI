@@ -6,7 +6,12 @@ import {
 import type { GameState } from '@/types'
 
 export class GameSaveManager {
+  private static isAvailable(): boolean {
+    return typeof localStorage !== 'undefined' && localStorage !== null
+  }
+
   public static save(state: GameState): void {
+    if (!this.isAvailable()) return
     try {
       const json = serializeGameState(state)
       localStorage.setItem(SAVE_KEY, json)
@@ -16,6 +21,7 @@ export class GameSaveManager {
   }
 
   public static load(defaultState: GameState): Partial<GameState> | null {
+    if (!this.isAvailable()) return null
     try {
       const json = localStorage.getItem(SAVE_KEY)
       if (!json) return null
@@ -28,7 +34,11 @@ export class GameSaveManager {
   }
 
   public static hardReset(): void {
-    localStorage.removeItem(SAVE_KEY)
-    location.reload()
+    if (this.isAvailable()) {
+      localStorage.removeItem(SAVE_KEY)
+    }
+    if (typeof location !== 'undefined') {
+      location.reload()
+    }
   }
 }
