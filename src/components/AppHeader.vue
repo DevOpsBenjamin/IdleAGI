@@ -14,11 +14,15 @@ const props = defineProps<{
   fundsRate: Decimal
   dataBrokerUnlocked: boolean
   hasHardware: boolean
+  architecturePoints?: number
+  totalArchitecturePoints?: number
+  hasPrestigeUnlocked?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'save'): void
   (e: 'reset'): void
+  (e: 'open-talent-tree'): void
 }>()
 
 const savedRecently = ref(false)
@@ -152,8 +156,20 @@ const phaseBadgeClass = computed(() => {
       </div>
     </div>
 
-    <!-- Action Buttons (Save & Reset) -->
+    <!-- Action Buttons (Talent Tree, Save & Reset) -->
     <div class="flex items-center gap-2">
+      <!-- Architecture Talent Tree Badge / Button -->
+      <button
+        v-if="hasPrestigeUnlocked || (totalArchitecturePoints ?? 0) > 0 || currentPhase >= 3"
+        @click="emit('open-talent-tree')"
+        class="px-2.5 py-1.5 rounded-lg bg-[#38BDF8]/10 hover:bg-[#38BDF8]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 shadow-[0_0_10px_rgba(56,189,248,0.15)]"
+        title="Ouvrir l'Arbre de Talents d'Architecture"
+      >
+        <Zap class="w-3.5 h-3.5 text-[#38BDF8] animate-pulse" />
+        <span>{{ architecturePoints ?? 0 }} AP</span>
+        <span class="hidden sm:inline text-[10px] text-[#38BDF8]/80 font-normal">[Talents]</span>
+      </button>
+
       <button
         @click="triggerSave"
         class="px-3 py-1.5 rounded bg-[#161B22] hover:bg-[#21262D] text-[#8B949E] hover:text-[#00FF66] border border-[#21262D] text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer"

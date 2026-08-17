@@ -1,5 +1,5 @@
 import type Decimal from 'break_infinity.js'
-import type { TalentNode } from '@/types/prestige'
+import type { TalentNode, TalentBranch, TalentNodeStatus } from '@/types/prestige'
 
 export const PRESTIGE_TIER_1_PARAMS_THRESHOLD = 1_000_000
 export const AP_CHECKPOINT_BONUS_PER_POINT = 0.05 // +5% TFLOPS per AP
@@ -11,6 +11,9 @@ export interface TalentMultipliers {
   hardwareDiscountMultiplier: number
   coolingEfficiencyMultiplier: number
   tokenGenerationMultiplier: number
+  gridCapacityMultiplier: number
+  bufferCapacityMultiplier: number
+  modelQualityMultiplier: number
 }
 
 export class PrestigeEngine {
@@ -52,6 +55,9 @@ export class PrestigeEngine {
       hardwareDiscountMultiplier: 1.0,
       coolingEfficiencyMultiplier: 1.0,
       tokenGenerationMultiplier: 1.0,
+      gridCapacityMultiplier: 1.0,
+      bufferCapacityMultiplier: 1.0,
+      modelQualityMultiplier: 1.0,
     }
 
     for (const node of Object.values(talents)) {
@@ -79,10 +85,48 @@ export class PrestigeEngine {
         case 'token_generation_mult':
           mults.tokenGenerationMultiplier += node.effect.value
           break
+        case 'grid_capacity_mult':
+          mults.gridCapacityMultiplier += node.effect.value
+          break
+        case 'buffer_capacity_mult':
+          mults.bufferCapacityMultiplier += node.effect.value
+          break
+        case 'model_quality_mult':
+          mults.modelQualityMultiplier += node.effect.value
+          break
       }
     }
 
     return mults
+  }
+
+  /**
+   * Evaluates the visual and purchase status of a talent node.
+   */
+  public static getNodeStatus(
+    nodeId: string,
+    talents: Record<string, TalentNode>,
+    availableAP: number
+  ): TalentNodeStatus {
+    const node = talents[nodeId]
+    if (!node) return 'locked'
+
+    if (node.purchased) {
+      return 'purchased'
+    }
+
+    if (node.requires && node.requires.length > 0) {
+      const hasMissingPrereq = node.requires.some((reqId) => !talents[reqId]?.purchased)
+      if (hasMissingPrereq) {
+        return 'locked'
+      }
+    }
+
+    if (availableAP >= node.cost) {
+      return 'available'
+    }
+
+    return 'insufficient_ap'
   }
 
   /**
@@ -93,24 +137,36 @@ export class PrestigeEngine {
     talents: Record<string, TalentNode>,
     availableAP: number
   ): { canBuy: boolean; reason?: 'already_purchased' | 'insufficient_ap' | 'missing_prerequisite' } {
-    const node = talents[nodeId]
-    if (!node) return { canBuy: false }
-
-    if (node.purchased) {
+    const status = this.getNodeStatus(nodeId, talents, availableAP)
+    if (status === 'purchased') {
       return { canBuy: false, reason: 'already_purchased' }
     }
-
-    if (availableAP < node.cost) {
+    if (status === 'locked') {
+      return { canBuy: false, reason: 'missing_prerequisite' }
+    }
+    if (status === 'insufficient_ap') {
       return { canBuy: false, reason: 'insufficient_ap' }
     }
-
-    if (node.requires && node.requires.length > 0) {
-      const missing = node.requires.some((reqId) => !talents[reqId]?.purchased)
-      if (missing) {
-        return { canBuy: false, reason: 'missing_prerequisite' }
-      }
-    }
-
     return { canBuy: true }
+  }
+
+  /**
+   * Groups talent nodes by branch.
+   */
+  public static getTalentsByBranch(
+    talents: Record<string, TalentNode>,
+    branch: TalentBranch
+  ): TalentNode[] {
+    return Object.values(talents).filter((n) => n.branch === branch)
+  }
+
+  /**
+   * Groups talent nodes by tier level.
+   */
+  public static getTalentsByTier(
+    talents: Record<string, TalentNode>,
+    tier: number
+  ): TalentNode[] {
+    return Object.values(talents).filter((n) => n.tier === tier)
   }
 }

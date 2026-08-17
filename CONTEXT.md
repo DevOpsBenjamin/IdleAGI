@@ -89,6 +89,10 @@ La puissance effective de calcul ($\text{EffectiveCompute}$) est distribuée ent
   - *Devises volatiles effacées* : Raw Text (0), Tokens (0), Funds (\$0), Paramètres non-figés (0), Hardware possédé (retour à 0 hôte/GPU), Upgrades logicielles actives, Grille électrique et Refroidissement réinitialisés aux valeurs de départ.
   - *Éléments permanents conservés* : Points d'Architecture totaux et non dépensés, Nœuds débloqués de l'Arbre d'Architecture, Statistiques de vie (nombre de prestiges, temps total, record de paramètres), Visibilité permanente de l'onglet Arbre d'Architecture.
 - **Cycle de Relance** : Le joueur redémarre en Phase 0 mais accéléré exponentiellement par les multiplicateurs de l'Arbre de Talents (vitesse de transcription, remise hardware, efficacité de tokenisation).
+- **Arbre de Talents d'Architecture (Branches de Spécialisation)** :
+  - *Branche Tokenisation & Ingestion* : BPE Fast-Track (+50% transcription/scraping), Syntactic Vector Indexing (+100% débit tokens), High-Frequency Ingestion (+50% prix texte), Deep Context Compression (x2 stockage buffers).
+  - *Branche Électro-Thermique & Hardware* : OEM Direct Sourcing (-15% coût hardware), Direct-Die Heat Pipes (+25% refroidissement), Smart Grid (+25% capacité électrique), Cryo-Superconducteurs (+50% refroidissement et zéro throttling).
+  - *Branche Calcul & Matrice* : GEMM Matrix Acceleration (+20% TFLOPS), FlashAttention-2 (+35% TFLOPS), Speculative Decoding (+50% valeur API), MoE Sparse Gating (+100% TFLOPS).
 
 ### Tier 2 : Changement de Paradigme (Hard Reset local ~2-3h)
 - **Action** : Transition vers une nouvelle architecture fondamentale (Transformer classique $\to$ Mixture of Experts (MoE) $\to$ Neuromorphique $\to$ Quantum AI).
