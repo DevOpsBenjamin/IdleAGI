@@ -7,7 +7,9 @@ import AppFooter from '@/components/AppFooter.vue'
 import OfflineModal from '@/components/OfflineModal.vue'
 import IngestionPanel from '@/components/IngestionPanel.vue'
 import ModelTelemetry from '@/components/ModelTelemetry.vue'
+import AllocationPanel from '@/components/AllocationPanel.vue'
 import HardwareCluster from '@/components/HardwareCluster.vue'
+import SoftwareUpgrades from '@/components/SoftwareUpgrades.vue'
 import TerminalStdout from '@/components/TerminalStdout.vue'
 import OscilloscopeCanvas from '@/components/OscilloscopeCanvas.vue'
 
@@ -15,6 +17,7 @@ const store = useGameStore()
 const { fps, currentTps } = useGameLoop()
 
 const hardwareArray = computed(() => Object.values(store.hardware))
+const upgradesArray = computed(() => Object.values(store.upgrades))
 
 // Keyboard shortcuts for active game loop ergonomics
 function handleKeyDown(e: KeyboardEvent) {
@@ -30,6 +33,9 @@ function handleKeyDown(e: KeyboardEvent) {
   } else if (e.key === 't' || e.key === 'T') {
     e.preventDefault()
     store.manualTokenize(1)
+  } else if (e.key === 'm' || e.key === 'M') {
+    e.preventDefault()
+    store.manualTokenizeMax()
   }
 }
 
@@ -68,7 +74,7 @@ onUnmounted(() => {
     <!-- Main Cyber-Terminal Grid -->
     <main class="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-7xl mx-auto w-full z-10">
       
-      <!-- Left Column: Data Ingestion & Model Telemetry (4 cols) -->
+      <!-- Left Column: Data Ingestion & Model Telemetry & Allocations (4 cols) -->
       <div class="lg:col-span-4 flex flex-col gap-5">
         <IngestionPanel
           :raw-text-current="store.rawText.current"
@@ -78,8 +84,10 @@ onUnmounted(() => {
           :tokens-max="store.tokens.max"
           :tokens-rate="store.tokens.ratePerSec"
           :auto-scraping-unlocked="store.unlockedFeatures.autoScraping"
+          :manual-scrape-power="store.manualScrapePower"
           @manual-scrape="store.manualScrape()"
-          @manual-tokenize="store.manualTokenize"
+          @manual-tokenize="(amt) => store.manualTokenize(amt)"
+          @manual-tokenize-max="store.manualTokenizeMax()"
         />
 
         <ModelTelemetry
@@ -88,10 +96,16 @@ onUnmounted(() => {
           :effective-compute="store.effectiveCompute"
           :thermal-efficiency="store.thermalState.efficiency"
         />
+
+        <AllocationPanel
+          :allocations="store.allocations"
+          @update-allocations="(val) => store.updateAllocations(val)"
+          @set-preset="(p) => store.setAllocationPreset(p)"
+        />
       </div>
 
-      <!-- Center Column: Telemetry Oscilloscope & STDOUT Terminal (5 cols) -->
-      <div class="lg:col-span-5 flex flex-col gap-5">
+      <!-- Center Column: Telemetry Oscilloscope & STDOUT Terminal (4 cols) -->
+      <div class="lg:col-span-4 flex flex-col gap-5">
         <!-- Live Real-Time Flow Oscilloscope -->
         <OscilloscopeCanvas
           :token-rate="store.tokens.ratePerSec.toNumber()"
@@ -110,13 +124,20 @@ onUnmounted(() => {
         />
       </div>
 
-      <!-- Right Column: Hardware Cluster Rack (3 cols) -->
-      <div class="lg:col-span-3 flex flex-col gap-5">
+      <!-- Right Column: Hardware Cluster Rack & Software Upgrades (4 cols) -->
+      <div class="lg:col-span-4 flex flex-col gap-5">
         <HardwareCluster
           :hardware-list="hardwareArray"
           :funds-current="store.funds.current"
           :get-hardware-cost="(id) => store.getHardwareCost(id)"
           @buy-hardware="(id) => store.buyHardware(id)"
+        />
+
+        <SoftwareUpgrades
+          :upgrades-list="upgradesArray"
+          :funds-current="store.funds.current"
+          :research-points-current="store.researchPoints.current"
+          @buy-upgrade="(id) => store.buyUpgrade(id)"
         />
       </div>
 
