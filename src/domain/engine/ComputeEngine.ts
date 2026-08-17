@@ -187,13 +187,53 @@ export class ComputeEngine {
   }
 
   /**
-   * Compute thermodynamic state and thermal throttling efficiency.
+   * Calculate heat generated from total electrical power draw (Q = P * 0.90).
+   */
+  public static calculateHeatGenerated(totalPowerWatts: Decimal): Decimal {
+    return totalPowerWatts.mul(0.9)
+  }
+
+  /**
+   * Calculate simulated operating temperature in Celsius.
+   */
+  public static calculateTemperatureCelsius(
+    heatGeneratedWatts: Decimal,
+    coolingCapacityWatts: Decimal,
+    efficiency: number
+  ): number {
+    if (heatGeneratedWatts.lte(0)) {
+      return 22.0
+    }
+
+    if (heatGeneratedWatts.lte(coolingCapacityWatts)) {
+      const ratio = coolingCapacityWatts.gt(0)
+        ? heatGeneratedWatts.div(coolingCapacityWatts).toNumber()
+        : 0
+      const temp = 22.0 + 10.0 + 45.0 * ratio
+      return Math.round(temp * 10) / 10
+    }
+
+    const temp = 77.0 + 28.0 * (1.0 - efficiency)
+    return Math.min(105.0, Math.round(temp * 10) / 10)
+  }
+
+  /**
+   * Determine qualified thermal status from temperature.
+   */
+  public static calculateThermalStatus(temperatureCelsius: number): 'nominal' | 'warm' | 'throttling' {
+    if (temperatureCelsius < 70.0) return 'nominal'
+    if (temperatureCelsius < 80.0) return 'warm'
+    return 'throttling'
+  }
+
+  /**
+   * Compute thermodynamic state, thermal throttling efficiency, and temperature.
    */
   public static calculateThermalState(
     totalPowerWatts: Decimal,
     coolingCapacityWatts: Decimal
   ): ThermalState {
-    const heat = totalPowerWatts.mul(0.9)
+    const heat = this.calculateHeatGenerated(totalPowerWatts)
     const cooling = coolingCapacityWatts
     let efficiency = 1.0
 
@@ -202,11 +242,16 @@ export class ComputeEngine {
     }
 
     const clampedEfficiency = Math.max(0.1, Math.min(1.0, efficiency))
+    const temperature = this.calculateTemperatureCelsius(heat, cooling, clampedEfficiency)
+    const status = this.calculateThermalStatus(temperature)
+
     return {
       heatGeneratedWatts: heat,
       coolingCapacityWatts: cooling,
       efficiency: clampedEfficiency,
       isThrottling: clampedEfficiency < 1.0,
+      temperatureCelsius: temperature,
+      status,
     }
   }
 

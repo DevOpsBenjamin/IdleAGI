@@ -282,8 +282,20 @@ export const useGameStore = defineStore('game', () => {
     } else if (id === 'ram_ddr5_256gb') {
       resources.rawText.max = Decimal.max(resources.rawText.max, 1000000)
       resources.tokens.max = Decimal.max(resources.tokens.max, 1000000)
+    } else if (id === 'cooling_case_fans_120mm') {
+      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(70)
+    } else if (id === 'cooling_tower_heatsink') {
+      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(180)
     } else if (id === 'cooling_optimization_v1') {
       hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(200)
+    } else if (id === 'cooling_aio_watercooling_360') {
+      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(450)
+    } else if (id === 'cooling_custom_loop_d5') {
+      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(1200)
+    } else if (id === 'cooling_inrow_datacenter_ac') {
+      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(4000)
+    } else if (id === 'cooling_immersion_cryo') {
+      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(15000)
     }
   }
 
@@ -350,6 +362,7 @@ export const useGameStore = defineStore('game', () => {
         effectiveCompute: effectiveCompute.value,
         modelQualityMultiplier: modelQualityMultiplier.value,
         bandwidthSpeedMultiplier: bandwidthSpeedMultiplier.value,
+        isThrottling: hardwareStore.thermalState.isThrottling,
         totalTokensServed: resources.totalTokensServed,
         autoBrokerAccumulator,
         onSellRawTextQuiet: (amount: number) => sellRawText(amount, true),

@@ -35,12 +35,17 @@ Ce document constitue le glossaire canonique et le modèle de domaine du jeu inc
 - **Définition** : Débit de transfert brut entre la mémoire (SDRAM, DDR, GDDR, HBM) et les unités de calcul.
 - **Rôle** : Dans les LLMs auto-régressifs, l'inférence est structurellement *Memory-Bound*. La bande passante détermine directement le multiplicateur de vitesse de génération et de traitement de tokens par seconde.
 
-### Energy & Thermal System (Watts & Chaleur)
-- **Watts** : Consommation électrique totale du hardware en fonctionnement.
-- **Cooling Capacity** : Capacité de dissipation thermique (ventilateurs, watercooling, cryogénie).
-- **Thermal Throttling** : Goulot d'étranglement appliqué si la chaleur générée dépasse le seuil de refroidissement :
-  $$\text{Efficiency} = \min\left(1.0, \frac{\text{CoolingCapacity}}{\text{HeatGenerated}}\right)$$
-  $$\text{EffectiveCompute} = \text{RawCompute} \times \text{Efficiency}$$
+### Energy & Thermal System (Watts, Chaleur & Dissipation Active)
+- **Watts ($P_{\text{draw}}$)** : Consommation électrique totale du hardware en fonctionnement.
+- **Heat Generated ($Q_{\text{heat}}$)** : Chaleur dégagée par effet Joule ($Q_{\text{heat}} = P_{\text{draw}} \times 0.90$).
+- **Cooling Capacity ($W_{\text{cooling}}$)** : Capacité de dissipation thermique active et passive (ventilateurs 120mm, ventirad cuivre, watercooling AIO, boucle custom D5, climatisation in-row datacenter, immersion cryogénique).
+- **Thermal Throttling & Efficacité ($\eta$)** : Goulot d'étranglement appliqué si la chaleur dégagée dépasse le seuil de refroidissement :
+  $$\text{Efficiency} = \min\left(1.0, \frac{W_{\text{cooling}}}{Q_{\text{heat}}}\right) \quad (\text{plancher } 0.10)$$
+  $$\text{EffectiveCompute} = \text{RawCompute} \times \text{Efficiency} \times \text{PowerGridMultiplier}$$
+- **Température Opérationnelle Simulée ($T^\circ\text{C}$)** :
+  - Régime nominal ($Q_{\text{heat}} \le W_{\text{cooling}}$) : $T = 22 + 10 + 45 \times (Q_{\text{heat}} / W_{\text{cooling}}) \implies [32^\circ\text{C} - 77^\circ\text{C}]$.
+  - Régime de surchauffe ($Q_{\text{heat}} > W_{\text{cooling}}$) : $T = 77 + 28 \times (1 - \text{Efficiency}) \implies [78^\circ\text{C} - 105^\circ\text{C}]$.
+  - Statuts thermiques : `nominal` ($< 70^\circ\text{C}$), `warm` ($70-79^\circ\text{C}$), `throttling` ($\ge 80^\circ\text{C}$).
 
 ### Funds (Cash / $)
 - **Définition** : Liquidités générées par la vente d'inférence (requêtes API servies) ou subventions de recherche.

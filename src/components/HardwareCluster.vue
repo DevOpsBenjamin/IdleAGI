@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { HardDrive, Plus, Zap, Cpu, MemoryStick, Activity, Layers, Server, Check, AlertCircle } from 'lucide-vue-next'
+import { HardDrive, Plus, Zap, Cpu, MemoryStick, Activity, Layers, Server, Check, AlertCircle, Flame, Wind } from 'lucide-vue-next'
 import { formatMoney, formatFlops, formatWatts, formatVram, formatBandwidth } from '@/utils/format'
-import type { HardwareNode, SoftwareUpgrade } from '@/types/game'
+import type { HardwareNode, SoftwareUpgrade, ThermalState } from '@/types/game'
 import type Decimal from 'break_infinity.js'
 import { ComputeEngine, type PcieSlotsState } from '@/domain/engine/ComputeEngine'
 
 const props = defineProps<{
   hardwareList: HardwareNode[]
   ramUpgradesList?: SoftwareUpgrade[]
+  coolingUpgradesList?: SoftwareUpgrade[]
+  thermalState?: ThermalState
   fundsCurrent: Decimal
   currentPhase: number
   pcieSlots?: PcieSlotsState
@@ -23,7 +25,7 @@ const emit = defineEmits<{
   (e: 'buy-upgrade', id: string): void
 }>()
 
-const activeTab = ref<'host' | 'ram' | 'gpu'>('host')
+const activeTab = ref<'host' | 'ram' | 'cooling' | 'gpu'>('host')
 
 const hardwareRecord = computed(() => {
   const map: Record<string, HardwareNode> = {}
@@ -78,13 +80,9 @@ const visibleRamUpgrades = computed(() => {
   const currentTier = currentHost.value?.tier ?? -1
 
   return props.ramUpgradesList.filter((up) => {
-    // If already purchased, always keep visible
     if (up.purchased) return true
-
-    // If no host owned yet, show nothing
     if (!currentHost.value) return false
 
-    // Gating by active host platform
     if (currentTier === 0) {
       return (
         up.id === 'ram_sdram_256mb' ||
@@ -108,16 +106,46 @@ function canAffordUpgrade(up: SoftwareUpgrade): boolean {
 }
 
 // ==========================================
-// 3. GPU ACCELERATORS TAB COMPUTEDS
+// 3. COOLING SOLUTIONS TAB COMPUTEDS
+// ==========================================
+const visibleCoolingUpgrades = computed(() => {
+  if (!props.coolingUpgradesList) return []
+  const currentTier = currentHost.value?.tier ?? -1
+
+  return props.coolingUpgradesList.filter((up) => {
+    if (up.purchased) return true
+    if (!currentHost.value) return false
+
+    if (up.requiredFeature === 'scriptsSection') {
+      return props.currentPhase >= 1
+    }
+    if (up.requiredFeature === 'tokenizerUnlocked') {
+      return props.currentPhase >= 2
+    }
+    if (up.requiredFeature === 'trainingAllocation') {
+      return props.currentPhase >= 3 || currentTier >= 2
+    }
+    return true
+  })
+})
+
+const thermalLoadPercent = computed(() => {
+  if (!props.thermalState) return 0
+  const heat = props.thermalState.heatGeneratedWatts.toNumber()
+  const cooling = props.thermalState.coolingCapacityWatts.toNumber()
+  if (cooling <= 0) return 100
+  return Math.min(150, Math.round((heat / cooling) * 100))
+})
+
+// ==========================================
+// 4. GPU ACCELERATORS TAB COMPUTEDS
 // ==========================================
 const visibleGpus = computed(() => {
   const currentTier = currentHost.value?.tier ?? -1
 
   return props.hardwareList.filter((hw) => {
     if (hw.category !== 'gpu') return false
-    // If owned, always show
     if (hw.count > 0) return true
-    // Only show GPUs compatible with current or immediately accessible host
     const minTier = hw.minHostTier ?? 0
     return minTier <= Math.max(0, currentTier)
   })
@@ -154,24 +182,33 @@ function getGpuButtonLabel(hw: HardwareNode): string {
         </div>
         <div>
           <h3 class="text-xs font-bold text-[#F0F6FC] uppercase tracking-wider font-mono">
-            3. Matériel, RAM & Accélérateurs
+            3. Matériel, Refroidissement & Accélérateurs
           </h3>
           <p class="text-[10px] text-[#8B949E] font-mono">
-            Station hôte active, barrettes mémoires et cartes GPU
+            Hôtes, RAM, dissipation thermique et cartes GPU
           </p>
         </div>
       </div>
 
-      <!-- PCIe Slots Overview Badge -->
-      <div v-if="pcieSlots" class="flex items-center gap-1.5 px-2 py-1 rounded bg-[#161B22] border border-[#21262D] text-[10px] font-mono">
-        <Layers class="w-3 h-3 text-[#38BDF8]" />
-        <span class="text-[#8B949E]">PCIe :</span>
-        <span :class="pcieSlots.freeSlots > 0 ? 'text-[#00FF66] font-bold' : pcieSlots.totalSlots > 0 ? 'text-[#FFB800] font-bold' : 'text-[#8B949E]'">
-          {{ pcieSlots.usedSlots }} / {{ pcieSlots.totalSlots }}
-        </span>
-        <span v-if="pcieSlots.totalSlots > 0" class="text-[9px] text-[#8B949E]">
-          ({{ pcieSlots.freeSlots }} libre{{ pcieSlots.freeSlots > 1 ? 's' : '' }})
-        </span>
+      <!-- PCIe Slots & Thermal Badges -->
+      <div class="flex items-center gap-2">
+        <div v-if="thermalState" class="flex items-center gap-1 px-2 py-1 rounded bg-[#161B22] border border-[#21262D] text-[10px] font-mono">
+          <Flame
+            class="w-3 h-3 transition-colors"
+            :class="thermalState.isThrottling ? 'text-[#EF4444] animate-pulse' : thermalState.status === 'warm' ? 'text-[#FFB800]' : 'text-[#38BDF8]'"
+          />
+          <span :class="thermalState.isThrottling ? 'text-[#EF4444] font-bold' : 'text-[#8B949E]'">
+            {{ thermalState.temperatureCelsius.toFixed(1) }}°C
+          </span>
+        </div>
+
+        <div v-if="pcieSlots" class="flex items-center gap-1.5 px-2 py-1 rounded bg-[#161B22] border border-[#21262D] text-[10px] font-mono">
+          <Layers class="w-3 h-3 text-[#38BDF8]" />
+          <span class="text-[#8B949E]">PCIe :</span>
+          <span :class="pcieSlots.freeSlots > 0 ? 'text-[#00FF66] font-bold' : pcieSlots.totalSlots > 0 ? 'text-[#FFB800] font-bold' : 'text-[#8B949E]'">
+            {{ pcieSlots.usedSlots }} / {{ pcieSlots.totalSlots }}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -183,7 +220,7 @@ function getGpuButtonLabel(hw: HardwareNode): string {
         class="flex-1 py-1 rounded flex items-center justify-center gap-1 transition-all cursor-pointer"
       >
         <Server class="w-3 h-3" />
-        Station Hôte
+        Hôte
       </button>
       <button
         @click="activeTab = 'ram'"
@@ -191,7 +228,19 @@ function getGpuButtonLabel(hw: HardwareNode): string {
         class="flex-1 py-1 rounded flex items-center justify-center gap-1 transition-all cursor-pointer"
       >
         <MemoryStick class="w-3 h-3" />
-        Barrettes RAM
+        RAM
+      </button>
+      <button
+        @click="activeTab = 'cooling'"
+        :class="activeTab === 'cooling' ? 'bg-[#21262D] text-[#38BDF8] font-bold shadow-sm' : thermalState?.isThrottling ? 'text-[#EF4444] animate-pulse font-bold' : 'text-[#8B949E] hover:text-[#38BDF8]'"
+        class="flex-1 py-1 rounded flex items-center justify-center gap-1 transition-all cursor-pointer relative"
+      >
+        <Wind class="w-3 h-3" />
+        Refroidissement
+        <span
+          v-if="thermalState?.isThrottling"
+          class="w-1.5 h-1.5 rounded-full bg-[#EF4444] absolute -top-0.5 -right-0.5"
+        ></span>
       </button>
       <button
         @click="activeTab = 'gpu'"
@@ -199,13 +248,12 @@ function getGpuButtonLabel(hw: HardwareNode): string {
         class="flex-1 py-1 rounded flex items-center justify-center gap-1 transition-all cursor-pointer"
       >
         <Zap class="w-3 h-3" />
-        GPU Dédiés
+        GPU
       </button>
     </div>
 
     <!-- TAB 1: HOST STATION PROGRESSION -->
     <div v-if="activeTab === 'host'" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-      <!-- 1. Active Owned Host Card -->
       <div
         v-if="currentHost"
         class="bg-[#161B22]/90 border border-[#38BDF8]/40 rounded-lg p-3.5 flex flex-col gap-2.5 shadow-sm"
@@ -247,7 +295,7 @@ function getGpuButtonLabel(hw: HardwareNode): string {
         </p>
       </div>
 
-      <!-- 2. Next Target Host Card -->
+      <!-- Next Target Host Card -->
       <div
         v-if="nextHost"
         class="bg-[#161B22]/60 border border-[#21262D] hover:border-[#38BDF8]/40 transition-all rounded-lg p-3.5 flex flex-col gap-2.5 shadow-sm"
@@ -292,7 +340,7 @@ function getGpuButtonLabel(hw: HardwareNode): string {
           <div>
             <span class="font-bold">Prérequis RAM non satisfait :</span>
             <p class="text-[#8B949E] text-[9px] mt-0.5">
-              Installez d'abord les extensions requises : <span class="text-[#F0F6FC] font-bold">{{ getMissingRamUpgradeNames(nextHost).join(', ') }}</span> dans l'onglet <strong>Barrettes RAM</strong>.
+              Installez d'abord les extensions requises : <span class="text-[#F0F6FC] font-bold">{{ getMissingRamUpgradeNames(nextHost).join(', ') }}</span> dans l'onglet <strong>RAM</strong>.
             </p>
           </div>
         </div>
@@ -326,7 +374,6 @@ function getGpuButtonLabel(hw: HardwareNode): string {
         </div>
       </div>
 
-      <!-- Max Host Station Reached -->
       <div v-if="!nextHost && currentHost" class="text-center p-4 bg-[#161B22]/40 rounded-lg border border-[#21262D] text-xs font-mono text-[#8B949E]">
         🏆 Félicitations ! Votre cluster fonctionne sur l'infrastructure serveur ultime.
       </div>
@@ -386,9 +433,126 @@ function getGpuButtonLabel(hw: HardwareNode): string {
       </div>
     </div>
 
-    <!-- TAB 3: GPU ACCELERATORS -->
+    <!-- TAB 3: COOLING SOLUTIONS -->
+    <div v-else-if="activeTab === 'cooling'" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+      <!-- Thermodynamic Live Telemetry Box -->
+      <div
+        v-if="thermalState"
+        class="bg-[#161B22]/90 border rounded-lg p-3.5 flex flex-col gap-2.5 shadow-sm transition-all"
+        :class="thermalState.isThrottling ? 'border-[#EF4444]/60 bg-[#EF4444]/5' : thermalState.status === 'warm' ? 'border-[#FFB800]/40' : 'border-[#38BDF8]/30'"
+      >
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <Flame
+              class="w-4 h-4 transition-colors"
+              :class="thermalState.isThrottling ? 'text-[#EF4444] animate-pulse' : thermalState.status === 'warm' ? 'text-[#FFB800]' : 'text-[#38BDF8]'"
+            />
+            <span class="text-xs font-bold text-[#F0F6FC] font-mono uppercase">
+              Bilan Thermodynamique Actif
+            </span>
+          </div>
+
+          <span
+            class="text-[9px] font-mono font-bold px-2 py-0.5 rounded border uppercase flex items-center gap-1"
+            :class="thermalState.isThrottling ? 'bg-[#EF4444]/20 text-[#EF4444] border-[#EF4444]/40 animate-pulse' : thermalState.status === 'warm' ? 'bg-[#FFB800]/20 text-[#FFB800] border-[#FFB800]/40' : 'bg-[#00FF66]/10 text-[#00FF66] border-[#00FF66]/30'"
+          >
+            {{ thermalState.isThrottling ? `Throttling (-${Math.round((1 - thermalState.efficiency) * 100)}%)` : thermalState.status === 'warm' ? 'Chaud (100%)' : 'Nominal (100%)' }}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-[10px] font-mono pt-1">
+          <div class="flex flex-col bg-[#0D1117] p-2 rounded border border-[#21262D]">
+            <span class="text-[#8B949E]">Chaleur (Q = 0.9·P)</span>
+            <span class="font-bold text-[#FFB800] text-xs mt-0.5">
+              {{ formatWatts(thermalState.heatGeneratedWatts) }}
+            </span>
+          </div>
+          <div class="flex flex-col bg-[#0D1117] p-2 rounded border border-[#21262D]">
+            <span class="text-[#8B949E]">Dissipation Active</span>
+            <span class="font-bold text-[#38BDF8] text-xs mt-0.5">
+              {{ formatWatts(thermalState.coolingCapacityWatts) }}
+            </span>
+          </div>
+          <div class="flex flex-col bg-[#0D1117] p-2 rounded border border-[#21262D]">
+            <span class="text-[#8B949E]">Température Cœur</span>
+            <span
+              class="font-bold text-xs mt-0.5"
+              :class="thermalState.isThrottling ? 'text-[#EF4444]' : thermalState.status === 'warm' ? 'text-[#FFB800]' : 'text-[#00FF66]'"
+            >
+              {{ thermalState.temperatureCelsius.toFixed(1) }} °C
+            </span>
+          </div>
+        </div>
+
+        <!-- Thermal Load Progress Bar -->
+        <div class="flex flex-col gap-1 pt-1">
+          <div class="flex justify-between text-[9px] text-[#8B949E] font-mono">
+            <span>Charge Thermique Cluster</span>
+            <span :class="thermalLoadPercent > 100 ? 'text-[#EF4444] font-bold' : 'text-[#8B949E]'">
+              {{ thermalLoadPercent }}%
+            </span>
+          </div>
+          <div class="h-1.5 w-full bg-[#0D1117] rounded-full overflow-hidden border border-[#21262D]">
+            <div
+              class="h-full transition-all duration-300 rounded-full"
+              :class="thermalLoadPercent > 100 ? 'bg-[#EF4444]' : thermalLoadPercent > 80 ? 'bg-[#FFB800]' : 'bg-[#38BDF8]'"
+              :style="{ width: `${Math.min(100, thermalLoadPercent)}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Cooling Units List -->
+      <div
+        v-for="up in visibleCoolingUpgrades"
+        :key="up.id"
+        :class="[
+          'border rounded-lg p-3 flex flex-col gap-2 transition-all shadow-sm',
+          up.purchased
+            ? 'bg-[#161B22]/40 border-[#21262D]/60 opacity-70'
+            : 'bg-[#161B22]/80 border-[#21262D] hover:border-[#38BDF8]/40'
+        ]"
+      >
+        <div class="flex justify-between items-start gap-2">
+          <div class="flex items-center gap-1.5">
+            <Wind class="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+            <span class="text-xs font-bold text-[#F0F6FC] font-mono">
+              {{ up.name }}
+            </span>
+          </div>
+
+          <span
+            v-if="up.purchased"
+            class="text-[9px] font-mono px-2 py-0.5 rounded bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/30 flex items-center gap-1 shrink-0"
+          >
+            <Check class="w-3 h-3" /> Installé
+          </span>
+          <span
+            v-else
+            class="text-xs font-mono font-bold text-[#00FF66] shrink-0"
+          >
+            {{ formatMoney(up.cost) }}
+          </span>
+        </div>
+
+        <p class="text-[10px] text-[#8B949E] leading-relaxed">
+          {{ up.description }}
+        </p>
+
+        <div v-if="!up.purchased" class="flex justify-end pt-1">
+          <button
+            @click="emit('buy-upgrade', up.id)"
+            :disabled="!canAffordUpgrade(up)"
+            class="w-full py-1.5 px-3 rounded bg-[#21262D] hover:bg-[#30363D] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed text-[#F0F6FC] hover:text-[#38BDF8] text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-[#30363D]"
+          >
+            Installer le module de dissipation
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: GPU ACCELERATORS -->
     <div v-else class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-      <!-- No PCIe Slot Info Box -->
       <div
         v-if="!currentHost || (currentHost.pcieSlotsProvided ?? 0) <= 0"
         class="p-4 rounded-lg bg-[#161B22]/60 border border-[#21262D] text-center text-xs font-mono text-[#8B949E] flex flex-col items-center gap-2"

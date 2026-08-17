@@ -20,6 +20,7 @@ const { fps, currentTps } = useGameLoop()
 const hardwareArray = computed(() => Object.values(store.hardware))
 const upgradesArray = computed(() => Object.values(store.upgrades))
 const ramUpgradesArray = computed(() => Object.values(store.upgrades).filter((u) => u.category === 'hardware'))
+const coolingUpgradesArray = computed(() => Object.values(store.upgrades).filter((u) => u.category === 'cooling'))
 const purchasedUpgradeIds = computed(() => Object.values(store.upgrades).filter((u) => u.purchased).map((u) => u.id))
 const hasHardware = computed(() => store.hasPotatoPc || store.hasWorkstation || store.totalRawCompute.gt(0))
 const hasCpu = computed(() => store.hasWorkstation)
@@ -181,6 +182,8 @@ onUnmounted(() => {
               v-if="store.unlockedFeatures.hardwareSection"
               :hardware-list="hardwareArray"
               :ram-upgrades-list="ramUpgradesArray"
+              :cooling-upgrades-list="coolingUpgradesArray"
+              :thermal-state="store.thermalState"
               :funds-current="store.funds.current"
               :current-phase="store.currentPhase"
               :pcie-slots="store.pcieSlots"

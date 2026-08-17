@@ -141,4 +141,22 @@ export class MilestoneTracker {
 
     return events
   }
+
+  /**
+   * Check thermal throttling milestone alert.
+   */
+  public static checkThermalMilestones(
+    isThrottling: boolean,
+    milestones: MilestoneState
+  ): MilestoneEvent[] {
+    const events: MilestoneEvent[] = []
+    if (isThrottling && !milestones.firstThrottling) {
+      milestones.firstThrottling = true
+      events.push({
+        message: 'ALERTE THERMIQUE : Surchauffe matérielle détectée ! Les puces entrent en throttling et perdent en efficacité. Installez des systèmes de refroidissement dans le panneau Matériel.',
+        type: 'warn',
+      })
+    }
+    return events
+  }
 }
