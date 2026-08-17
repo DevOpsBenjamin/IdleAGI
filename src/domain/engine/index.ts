@@ -6,3 +6,5 @@ export * from './OfflineEngine'
 export * from './ScenarioRunner'
 export * from './UpgradeEffectEngine'
 export * from './HardwareUnlockEngine'
+export * from './PrestigeEngine'
+

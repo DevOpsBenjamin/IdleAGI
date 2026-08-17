@@ -15,8 +15,8 @@ export const useFeaturesStore = defineStore('features', () => {
     unlockedFeatures.value[feature] = true
   }
 
-  function setPhase(phase: number) {
-    if (phase > currentPhase.value) {
+  function setPhase(phase: number, force = false) {
+    if (force || phase > currentPhase.value) {
       currentPhase.value = phase
     }
   }

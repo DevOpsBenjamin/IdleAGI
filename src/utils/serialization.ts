@@ -8,7 +8,11 @@ import type {
   SerializedHardwareNode,
   SoftwareUpgrade,
   SerializedSoftwareUpgrade,
+  PrestigeState,
+  SerializedPrestigeState,
+  TalentNode,
 } from '@/types'
+import { TALENT_TREE_NODES } from '@/domain/constants/talents'
 
 export const SAVE_KEY = 'idleagi_singularity_save'
 export const CURRENT_SAVE_VERSION = '0.1.0'
@@ -111,6 +115,39 @@ export function deserializeSoftwareUpgrade(
   }
 }
 
+export function serializePrestigeState(prestige: PrestigeState): SerializedPrestigeState {
+  return {
+    totalArchitecturePoints: prestige.totalArchitecturePoints,
+    architecturePoints: prestige.architecturePoints,
+    prestigeCount: prestige.prestigeCount,
+    maxParametersReached: prestige.maxParametersReached.toString(),
+    unlockedTalentIds: Object.values(prestige.talents)
+      .filter((t) => t.purchased)
+      .map((t) => t.id),
+  }
+}
+
+export function deserializePrestigeState(
+  raw: Partial<SerializedPrestigeState> | undefined,
+  fallbackTalents: Record<string, TalentNode>
+): PrestigeState {
+  const talents: Record<string, TalentNode> = JSON.parse(JSON.stringify(fallbackTalents))
+  if (raw?.unlockedTalentIds && Array.isArray(raw.unlockedTalentIds)) {
+    for (const id of raw.unlockedTalentIds) {
+      if (talents[id]) {
+        talents[id].purchased = true
+      }
+    }
+  }
+  return {
+    totalArchitecturePoints: raw?.totalArchitecturePoints ?? 0,
+    architecturePoints: raw?.architecturePoints ?? 0,
+    prestigeCount: raw?.prestigeCount ?? 0,
+    maxParametersReached: new Decimal(raw?.maxParametersReached ?? 0),
+    talents,
+  }
+}
+
 export function serializeGameState(state: GameState): string {
   const serialized: SerializedGameState = {
     version: CURRENT_SAVE_VERSION,
@@ -140,6 +177,7 @@ export function serializeGameState(state: GameState): string {
     coolingCapacityWatts: state.coolingCapacityWatts.toString(),
     terminalLogs: (state.terminalLogs || []).slice(-100), // Max 100 logs persisted
     unlockedFeatures: { ...state.unlockedFeatures },
+    prestige: state.prestige ? serializePrestigeState(state.prestige) : undefined,
   }
 
   return JSON.stringify(serialized)
@@ -204,6 +242,12 @@ export function deserializeGameState(
         prestigeT2: raw.unlockedFeatures?.prestigeT2 ?? false,
         prestigeT3: raw.unlockedFeatures?.prestigeT3 ?? false,
       },
+      prestige: raw.prestige
+        ? deserializePrestigeState(
+            raw.prestige,
+            initialState.prestige?.talents || TALENT_TREE_NODES
+          )
+        : undefined,
     }
   } catch (err) {
     console.error('[Serialization] Failed to parse savegame:', err)

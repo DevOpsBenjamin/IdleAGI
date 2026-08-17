@@ -1,0 +1,77 @@
+import type { TalentNode } from '@/types/prestige'
+
+export const TALENT_TREE_NODES: Record<string, TalentNode> = {
+  opt_bpe_fast_track: {
+    id: 'opt_bpe_fast_track',
+    name: 'BPE Byte-Pair Fast-Track',
+    description: 'Optimise les tables de correspondances de sous-mots. Vitesse de transcription +50%.',
+    category: 'transcription',
+    tier: 1,
+    cost: 1,
+    purchased: false,
+    effect: {
+      type: 'scrape_power_mult',
+      value: 0.5,
+    },
+    icon: '⚡',
+  },
+  opt_matrix_acceleration: {
+    id: 'opt_matrix_acceleration',
+    name: 'GEMM Matrix Acceleration',
+    description: 'Kernel optimisé pour multiplications matricielles. Vitesse de calcul brute +20% TFLOPS.',
+    category: 'compute',
+    tier: 1,
+    cost: 1,
+    purchased: false,
+    effect: {
+      type: 'tflops_mult',
+      value: 0.2,
+    },
+    icon: '🧠',
+  },
+  opt_hardware_rebate: {
+    id: 'opt_hardware_rebate',
+    name: 'OEM Direct Sourcing',
+    description: 'Accords avec les grossistes de semi-conducteurs. Réduit le coût du matériel de 15%.',
+    category: 'hardware',
+    tier: 1,
+    cost: 2,
+    purchased: false,
+    requires: ['opt_bpe_fast_track'],
+    effect: {
+      type: 'hardware_cost_discount',
+      value: 0.15,
+    },
+    icon: '🏷️',
+  },
+  opt_cryo_conduction: {
+    id: 'opt_cryo_conduction',
+    name: 'Direct-Die Heat Pipes',
+    description: 'Caloducs en graphène sur les puces. Capacité et efficacité de refroidissement +25%.',
+    category: 'thermodynamics',
+    tier: 1,
+    cost: 2,
+    purchased: false,
+    requires: ['opt_matrix_acceleration'],
+    effect: {
+      type: 'cooling_efficiency_mult',
+      value: 0.25,
+    },
+    icon: '❄️',
+  },
+  opt_market_pricing: {
+    id: 'opt_market_pricing',
+    name: 'High-Frequency Ingestion',
+    description: 'Monétisation agressive des flux de données. Prix de vente des données brutes +30%.',
+    category: 'economics',
+    tier: 1,
+    cost: 2,
+    purchased: false,
+    requires: ['opt_bpe_fast_track'],
+    effect: {
+      type: 'raw_text_price_mult',
+      value: 0.3,
+    },
+    icon: '📈',
+  },
+}
