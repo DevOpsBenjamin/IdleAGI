@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import { useGameLoop } from '@/composables/useGameLoop'
 import AppHeader from '@/components/AppHeader.vue'
@@ -22,9 +22,9 @@ const upgradesArray = computed(() => Object.values(store.upgrades))
 const hasHardware = computed(() => store.hasPotatoPc || store.hasWorkstation || store.totalRawCompute.gt(0))
 const hasCpu = computed(() => store.hasWorkstation)
 
-// Keyboard shortcuts for active game loop ergonomics
-let lastScrapeTimestamp = 0
+const humanReaderRef = ref<InstanceType<typeof HumanReaderPanel> | null>(null)
 
+// Keyboard shortcuts for active game loop ergonomics
 function handleKeyDown(e: KeyboardEvent) {
   // Do not intercept if user is typing in an input
   const activeEl = document.activeElement
@@ -35,10 +35,11 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.code === 'Space') {
     e.preventDefault()
     if (e.repeat) return // Prevent holding space key spam
-    const now = performance.now()
-    if (now - lastScrapeTimestamp < 90) return // Cooldown: ~11 clicks/sec max human speed
-    lastScrapeTimestamp = now
-    store.manualScrape()
+    if (humanReaderRef.value) {
+      humanReaderRef.value.triggerScrape()
+    } else {
+      store.manualScrape()
+    }
   } else if (e.key === 'v' || e.key === 'V') {
     e.preventDefault()
     store.sellAllRawText()
@@ -87,6 +88,7 @@ onUnmounted(() => {
         <div class="lg:col-span-4 flex flex-col gap-5">
           <!-- 1. Human Scribe & Manual Transcription Panel (Always active) -->
           <HumanReaderPanel
+            ref="humanReaderRef"
             :raw-text-current="store.rawText.current"
             :raw-text-max="store.rawText.max"
             :raw-text-rate="store.rawText.ratePerSec"

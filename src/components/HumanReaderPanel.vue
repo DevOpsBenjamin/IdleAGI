@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { BookOpen, Sparkles, DollarSign, Cpu, UserCheck, HardDrive } from 'lucide-vue-next'
 import { formatNumber, formatMoney } from '@/utils/format'
 import type Decimal from 'break_infinity.js'
@@ -24,20 +24,31 @@ const emit = defineEmits<{
   (e: 'sell-all-raw-text'): void
 }>()
 
-const isReadingActive = ref(false)
-let lastClickTimestamp = 0
+const isCooldownActive = ref(false)
+const COOLDOWN_MS = 120
+let cooldownTimeoutId: number | undefined
 
-function handleReadClick() {
-  const now = performance.now()
-  if (now - lastClickTimestamp < 90) return // Cooldown: ~11 clicks/sec max
-  lastClickTimestamp = now
+function triggerScrape(): boolean {
+  if (isCooldownActive.value) return false
 
-  isReadingActive.value = true
+  isCooldownActive.value = true
   emit('manual-scrape')
-  setTimeout(() => {
-    isReadingActive.value = false
-  }, 120)
+
+  if (cooldownTimeoutId) clearTimeout(cooldownTimeoutId)
+  cooldownTimeoutId = window.setTimeout(() => {
+    isCooldownActive.value = false
+  }, COOLDOWN_MS)
+
+  return true
 }
+
+onUnmounted(() => {
+  if (cooldownTimeoutId) clearTimeout(cooldownTimeoutId)
+})
+
+defineExpose({
+  triggerScrape,
+})
 
 const rawPercent = computed(() => {
   if (props.rawTextMax.lte(0)) return 0
@@ -103,7 +114,7 @@ const brokerDiscoveryProgress = computed(() => {
 
       <div
         class="p-2.5 rounded bg-[#161B22]/60 border border-[#21262D]/60 font-mono text-xs text-[#E2E8F0] leading-relaxed transition-all duration-150 relative min-h-[58px]"
-        :class="{ 'border-[#38BDF8]/60 bg-[#38BDF8]/5 text-[#38BDF8]': isReadingActive }"
+        :class="{ 'border-[#38BDF8]/60 bg-[#38BDF8]/5 text-[#38BDF8]': isCooldownActive }"
       >
         <p class="italic text-[11px] select-none">
           "{{ currentSnippet }}"
@@ -139,16 +150,25 @@ const brokerDiscoveryProgress = computed(() => {
         <span v-else class="text-[#8B949E]/70">Scripts inactifs</span>
       </div>
 
-      <!-- Primary Action Button: Manual Read & Scrape -->
+      <!-- Primary Action Button: Manual Read & Scrape with Cooldown Animation -->
       <button
-        @click="handleReadClick"
-        class="w-full mt-1 py-2.5 px-3 rounded bg-[#161B22] hover:bg-[#21262D] text-[#38BDF8] border border-[#38BDF8]/40 hover:border-[#38BDF8] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm"
+        @click="triggerScrape"
+        :disabled="isCooldownActive"
+        class="w-full mt-1 py-2.5 px-3 rounded bg-[#161B22] hover:bg-[#21262D] text-[#38BDF8] border border-[#38BDF8]/40 hover:border-[#38BDF8] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm relative overflow-hidden select-none"
       >
-        <span class="flex items-center gap-2">
-          <Sparkles class="w-4 h-4 text-[#38BDF8]" :class="{ 'animate-spin': isReadingActive }" />
+        <!-- Dynamic Cooldown Progress Fill Bar -->
+        <div
+          v-if="isCooldownActive"
+          class="absolute inset-0 bg-[#38BDF8]/20 pointer-events-none origin-left"
+          :style="{ animation: `scrapeProgress ${COOLDOWN_MS}ms linear forwards` }"
+        ></div>
+
+        <!-- Button Content -->
+        <span class="flex items-center gap-2 relative z-10">
+          <Sparkles class="w-4 h-4 text-[#38BDF8]" :class="{ 'animate-spin': isCooldownActive }" />
           LIRE & TRANSCRIRE (+{{ manualScrapePower }} Chars)
         </span>
-        <span class="text-[9px] px-2 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D]">
+        <span class="text-[9px] px-2 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D] relative z-10">
           [Espace]
         </span>
       </button>
@@ -222,3 +242,19 @@ const brokerDiscoveryProgress = computed(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+@keyframes scrapeProgress {
+  0% {
+    width: 0%;
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    width: 100%;
+    opacity: 0.1;
+  }
+}
+</style>
