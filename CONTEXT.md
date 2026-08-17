@@ -109,3 +109,24 @@ La puissance effective de calcul ($\text{EffectiveCompute}$) est distribuée ent
 ### Simulation & Tests Fonctionnels Fast-Forward (`ScenarioRunner`)
 - **Définition** : Moteur déterministe headless d'accélération temporelle permettant d'exécuter des scénarios complets de progression (Phase 0 à Datacenter Hyperscale) en quelques millisecondes de temps CPU réel.
 - **Rôle** : Validation continue de la chaîne d'achats ordonnés, de l'absence de blocages économiques et des seuils physiques thermodynamiques et électriques.
+
+---
+
+## 5. Ergonomie PWA, Interface Mobile-First & Tests Dual-Viewport
+
+### Interface Mobile-First & PWA Offline-First
+- **Conception Mobile-First** : Le simulateur est pensé pour être pleinement jouable et ergonomique sur smartphone en mode PWA autonome (`display: standalone`, `viewport-fit=cover`, gestion des safe-area insets, suppression du délai de tap via `touch-action: manipulation`).
+- **Cibles Tactiles Ergonomiques** : Tous les boutons interactifs (Scraping, Vente de texte, Achat de matériel, Déblocage d'upgrades, Presets d'allocation) respectent une zone tactile minimale ($\ge 44-48\text{px}$) avec retour visuel immédiat (`active:scale-95`).
+
+### Navigation Responsive Dual-Mode
+- **Mode Mobile / Tablette (`< 1024px`)** : Navigation fluide via une barre d'onglets inférieure fixe à 4 vues spécialisées :
+  1. *Ingestion & Modèle* : Scribe manuel, buffer de texte, pipeline Tokenizer BPE, télémétrie de poids et panneau de tri-allocation.
+  2. *Datacenter & Hardware* : Télémétrie thermique/électrique, baie de calcul en rack et slots PCIe.
+  3. *R&D & Upgrades* : Compétences de lecture humaine, scripts Python et optimisations logicielles.
+  4. *Terminal & Logs* : STDOUT live, oscilloscope des flux et prompt cyber interactif.
+  - *Badges & Alertes Réactives* : Indicateurs visuels sur les onglets (nombre d'upgrades abordables en temps réel, point d'alerte thermique/électrique critique).
+- **Mode Bureau (`\ge 1024px`)** : Tableau de bord cyber complet en grille 3 colonnes panoramique affichant simultanément l'ensemble des modules sans masquage d'onglets.
+
+### Tests Fonctionnels E2E Dual-Viewport
+- **FT Bureau (`desktopGameplayFunctional.spec.ts`)** : Simulation et validation de la grille 3 colonnes (1280x800), des raccourcis clavier (`Space`, `V`), des clics de souris et de la progression multi-phases.
+- **FT Mobile (`mobileGameplayFunctional.spec.ts`)** : Simulation et validation sur viewport smartphone (390x844), basculement des onglets de navigation mobile, clics tactiles sur l'ensemble des boutons et validation de la boucle de jeu de bout en bout.

@@ -14,9 +14,12 @@ import SoftwareUpgrades from '@/components/SoftwareUpgrades.vue'
 import TerminalStdout from '@/components/TerminalStdout.vue'
 import OscilloscopeCanvas from '@/components/OscilloscopeCanvas.vue'
 import DatacenterTelemetry from '@/components/DatacenterTelemetry.vue'
+import MobileNavigation, { type MobileTab } from '@/components/MobileNavigation.vue'
 
 const store = useGameStore()
 const { fps, currentTps } = useGameLoop()
+
+const activeMobileTab = ref<MobileTab>('ingestion')
 
 const hardwareArray = computed(() => Object.values(store.hardware))
 const upgradesArray = computed(() => Object.values(store.upgrades))
@@ -26,6 +29,35 @@ const powerUpgradesArray = computed(() => Object.values(store.upgrades).filter((
 const purchasedUpgradeIds = computed(() => Object.values(store.upgrades).filter((u) => u.purchased).map((u) => u.id))
 const hasHardware = computed(() => store.hasPotatoPc || store.hasWorkstation || store.totalRawCompute.gt(0))
 const hasCpu = computed(() => store.hasWorkstation)
+
+const affordableUpgradesCount = computed(() => {
+  let count = 0
+  for (const up of upgradesArray.value) {
+    if (!up.purchased) {
+      if (up.currency === 'funds' && store.funds.current.gte(up.cost)) {
+        if (
+          up.category === 'human' ||
+          (up.requiredFeature === 'dataBroker' && store.unlockedFeatures.dataBroker) ||
+          (up.requiredFeature === 'scriptsSection' && store.unlockedFeatures.scriptsSection) ||
+          (up.requiredFeature === 'tokenizerUnlocked' && store.unlockedFeatures.tokenizerUnlocked) ||
+          (up.requiredFeature === 'trainingAllocation' && store.currentPhase >= 3) ||
+          !up.requiredFeature
+        ) {
+          count++
+        }
+      }
+    }
+  }
+  return count
+})
+
+const hasThermalOrPowerWarning = computed(() => {
+  return store.thermalState.isThrottling || store.powerState.isOverloaded
+})
+
+const unreadErrorsCount = computed(() => {
+  return store.terminalLogs.filter((l) => l.type === 'error' || l.type === 'warn').length
+})
 
 const humanReaderRef = ref<InstanceType<typeof HumanReaderPanel> | null>(null)
 
@@ -87,10 +119,16 @@ onUnmounted(() => {
     />
 
     <!-- Main Scrollable Content Area -->
-    <main class="flex-1 overflow-y-auto p-4 md:p-6 min-h-0 z-10">
+    <main class="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 pb-24 lg:pb-6 min-h-0 z-10">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-7xl mx-auto w-full">
-        <!-- Left Column: Human Reader & Ingestion Pipeline & Model Telemetry (4 cols) -->
-        <div class="lg:col-span-4 flex flex-col gap-5">
+        <!-- Left Column: Human Reader & Ingestion Pipeline & Model Telemetry (4 cols on lg, active when tab is 'ingestion' on mobile) -->
+        <div
+          :class="
+            activeMobileTab === 'ingestion'
+              ? 'flex flex-col gap-5 lg:col-span-4'
+              : 'hidden lg:flex flex-col gap-5 lg:col-span-4'
+          "
+        >
           <!-- 1. Human Scribe & Manual Transcription Panel (Always active) -->
           <HumanReaderPanel
             ref="humanReaderRef"
@@ -153,8 +191,14 @@ onUnmounted(() => {
           </Transition>
         </div>
 
-        <!-- Center Column: Telemetry Oscilloscope & STDOUT Terminal (4 cols) -->
-        <div class="lg:col-span-4 flex flex-col gap-5">
+        <!-- Center Column: Telemetry Oscilloscope & STDOUT Terminal (4 cols on lg, active when tab is 'terminal' on mobile) -->
+        <div
+          :class="
+            activeMobileTab === 'terminal'
+              ? 'flex flex-col gap-5 lg:col-span-4'
+              : 'hidden lg:flex flex-col gap-5 lg:col-span-4'
+          "
+        >
           <!-- Live Real-Time Flow Oscilloscope (Unlocked in Phase 2) -->
           <Transition name="fade-slide">
             <OscilloscopeCanvas
@@ -176,12 +220,19 @@ onUnmounted(() => {
           />
         </div>
 
-        <!-- Right Column: Datacenter Telemetry, Hardware Cluster Rack & Software Upgrades (4 cols) -->
-        <div class="lg:col-span-4 flex flex-col gap-5">
-          <!-- Datacenter HUD & Thermal Telemetry (Unlocked when hardware is active) -->
+        <!-- Right Column: Datacenter Telemetry, Hardware Cluster Rack & Software Upgrades (4 cols on lg, active when tab is 'datacenter' or 'upgrades' on mobile) -->
+        <div
+          :class="
+            activeMobileTab === 'datacenter' || activeMobileTab === 'upgrades'
+              ? 'flex flex-col gap-5 lg:col-span-4'
+              : 'hidden lg:flex flex-col gap-5 lg:col-span-4'
+          "
+        >
+          <!-- Datacenter HUD & Thermal Telemetry (Unlocked when hardware is active, hidden if mobile and active tab is upgrades) -->
           <Transition name="fade-slide">
             <DatacenterTelemetry
               v-if="hasHardware"
+              :class="{ 'hidden lg:block': activeMobileTab === 'upgrades' }"
               :thermal-state="store.thermalState"
               :power-state="store.powerState"
               :active-host-node="store.activeHostNode"
@@ -192,10 +243,11 @@ onUnmounted(() => {
             />
           </Transition>
 
-          <!-- Hardware Cluster (Unlocked when hardwareSection is true) -->
+          <!-- Hardware Cluster (Unlocked when hardwareSection is true, hidden if mobile and active tab is upgrades) -->
           <Transition name="fade-slide">
             <HardwareCluster
               v-if="store.unlockedFeatures.hardwareSection"
+              :class="{ 'hidden lg:block': activeMobileTab === 'upgrades' }"
               :hardware-list="hardwareArray"
               :ram-upgrades-list="ramUpgradesArray"
               :cooling-upgrades-list="coolingUpgradesArray"
@@ -214,8 +266,31 @@ onUnmounted(() => {
             />
           </Transition>
 
-          <!-- Software Upgrades / Human Skills & Python Scripts (Always visible, filtered by phase) -->
+          <!-- Informational prompt when in Datacenter tab on mobile without hardware -->
+          <div
+            v-if="!store.unlockedFeatures.hardwareSection && activeMobileTab === 'datacenter'"
+            class="lg:hidden bg-[#0D1117] border border-[#21262D] rounded-lg p-5 flex flex-col items-center justify-center gap-3 text-center"
+          >
+            <div class="p-3 rounded-full bg-[#161B22] border border-[#21262D] text-[#8B949E]">
+              <span class="text-xl">🖥️</span>
+            </div>
+            <div>
+              <h4 class="text-xs font-bold text-[#F0F6FC] font-mono">Datacenter non initialisé</h4>
+              <p class="text-[11px] text-[#8B949E] font-mono mt-1">
+                Transcrivez du texte dans l'onglet Ingestion et économisez $10.00 pour acquérir votre premier PC.
+              </p>
+            </div>
+            <button
+              @click="activeMobileTab = 'ingestion'"
+              class="mt-1 px-4 py-2 rounded bg-[#38BDF8]/10 hover:bg-[#38BDF8]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-xs font-bold font-mono cursor-pointer active:scale-95"
+            >
+              Aller au panneau Ingestion & Scribe
+            </button>
+          </div>
+
+          <!-- Software Upgrades / Human Skills & Python Scripts (Always visible on desktop, hidden on mobile if tab is datacenter) -->
           <SoftwareUpgrades
+            :class="{ 'hidden lg:block': activeMobileTab === 'datacenter' }"
             :upgrades-list="upgradesArray"
             :funds-current="store.funds.current"
             :research-points-current="store.researchPoints.current"
@@ -229,8 +304,20 @@ onUnmounted(() => {
       </div>
     </main>
 
-    <!-- Footer System Status (Fixed / Persistent at bottom) -->
+    <!-- Mobile Bottom Navigation Bar (Visible only on mobile/tablet screens < lg) -->
+    <MobileNavigation
+      :active-tab="activeMobileTab"
+      :affordable-upgrades-count="affordableUpgradesCount"
+      :has-thermal-or-power-warning="hasThermalOrPowerWarning"
+      :unread-errors-count="unreadErrorsCount"
+      :tokenizer-unlocked="store.unlockedFeatures.tokenizerUnlocked"
+      :has-hardware="hasHardware"
+      @select-tab="(tab) => (activeMobileTab = tab)"
+    />
+
+    <!-- Footer System Status (Fixed / Persistent at bottom on desktop) -->
     <AppFooter
+      class="hidden lg:flex"
       :fps="fps"
       :tps="currentTps"
       :thermal-state="store.thermalState"
