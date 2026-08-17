@@ -60,6 +60,31 @@ export function deserializeHardwareNode(raw: any, fallback: HardwareNode): Hardw
   }
 }
 
+export function serializeSoftwareUpgrade(upgrade: any) {
+  return {
+    id: upgrade.id,
+    name: upgrade.name,
+    description: upgrade.description,
+    cost: upgrade.cost.toString(),
+    currency: upgrade.currency,
+    purchased: Boolean(upgrade.purchased),
+    category: upgrade.category,
+  }
+}
+
+export function deserializeSoftwareUpgrade(raw: any, fallback: any) {
+  if (!raw) return fallback
+  return {
+    id: raw.id ?? fallback.id,
+    name: raw.name ?? fallback.name,
+    description: raw.description ?? fallback.description,
+    cost: new Decimal(raw.cost ?? fallback.cost),
+    currency: raw.currency ?? fallback.currency,
+    purchased: Boolean(raw.purchased ?? fallback.purchased),
+    category: raw.category ?? fallback.category,
+  }
+}
+
 export function serializeGameState(state: GameState): string {
   const serialized: SerializedGameState = {
     version: CURRENT_SAVE_VERSION,
@@ -74,6 +99,12 @@ export function serializeGameState(state: GameState): string {
       Object.entries(state.hardware).map(([key, node]) => [
         key,
         serializeHardwareNode(node),
+      ])
+    ),
+    upgrades: Object.fromEntries(
+      Object.entries(state.upgrades || {}).map(([key, up]) => [
+        key,
+        serializeSoftwareUpgrade(up),
       ])
     ),
     allocations: { ...state.allocations },
@@ -100,6 +131,12 @@ export function deserializeGameState(
       deserializedHardware[key] = deserializeHardwareNode(rawNode, fallbackNode)
     }
 
+    const deserializedUpgrades: Record<string, any> = {}
+    for (const [key, fallbackUpgrade] of Object.entries(initialState.upgrades || {})) {
+      const rawUpgrade = raw.upgrades ? raw.upgrades[key] : null
+      deserializedUpgrades[key] = deserializeSoftwareUpgrade(rawUpgrade, fallbackUpgrade)
+    }
+
     return {
       version: raw.version ?? CURRENT_SAVE_VERSION,
       lastTickTimestamp: raw.lastTickTimestamp ?? Date.now(),
@@ -110,6 +147,7 @@ export function deserializeGameState(
       parameters: new Decimal(raw.parameters ?? 0),
       researchPoints: deserializeResource(raw.researchPoints, 0, 10000),
       hardware: deserializedHardware,
+      upgrades: deserializedUpgrades,
       allocations: {
         inferencePercent: raw.allocations?.inferencePercent ?? 50,
         trainingPercent: raw.allocations?.trainingPercent ?? 30,

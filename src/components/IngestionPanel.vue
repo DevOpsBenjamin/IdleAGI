@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Layers, Sparkles, Play, ArrowRight } from 'lucide-vue-next'
+import { Layers, Sparkles, Play, ArrowRight, Zap } from 'lucide-vue-next'
 import { formatNumber } from '@/utils/format'
 import type Decimal from 'break_infinity.js'
 
@@ -12,11 +12,13 @@ const props = defineProps<{
   tokensMax: Decimal
   tokensRate: Decimal
   autoScrapingUnlocked: boolean
+  manualScrapePower?: number
 }>()
 
 const emit = defineEmits<{
   (e: 'manual-scrape'): void
   (e: 'manual-tokenize', amount: number): void
+  (e: 'manual-tokenize-max'): void
 }>()
 
 const rawPercent = computed(() => {
@@ -32,6 +34,8 @@ const tokenPercent = computed(() => {
 const canTokenize = computed(() => {
   return props.rawTextCurrent.gte(4) && props.tokensCurrent.lt(props.tokensMax)
 })
+
+const scrapePowerDisplay = computed(() => props.manualScrapePower ?? 10)
 </script>
 
 <template>
@@ -73,7 +77,7 @@ const canTokenize = computed(() => {
 
       <div class="flex justify-between items-center text-[10px] font-mono text-[#8B949E]">
         <span>Capacité : {{ rawPercent.toFixed(1) }}%</span>
-        <span v-if="autoScrapingUnlocked" class="text-[#38BDF8]">
+        <span v-if="autoScrapingUnlocked || rawTextRate.gt(0)" class="text-[#38BDF8]">
           Auto : +{{ formatNumber(rawTextRate) }}/s
         </span>
         <span v-else class="text-[#8B949E]/70">Auto-scraping inactif</span>
@@ -82,10 +86,15 @@ const canTokenize = computed(() => {
       <!-- Action Button -->
       <button
         @click="emit('manual-scrape')"
-        class="w-full mt-1 py-2 px-3 rounded bg-[#161B22] hover:bg-[#21262D] text-[#38BDF8] border border-[#38BDF8]/30 hover:border-[#38BDF8] transition-all text-xs font-bold font-mono flex items-center justify-center gap-2 cursor-pointer active:scale-98 shadow-sm"
+        class="w-full mt-1 py-2 px-3 rounded bg-[#161B22] hover:bg-[#21262D] text-[#38BDF8] border border-[#38BDF8]/30 hover:border-[#38BDF8] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm"
       >
-        <Sparkles class="w-3.5 h-3.5 text-[#38BDF8]" />
-        SCRAPER RAW DATA (+10 Chars)
+        <span class="flex items-center gap-2">
+          <Sparkles class="w-3.5 h-3.5 text-[#38BDF8]" />
+          SCRAPER RAW DATA (+{{ scrapePowerDisplay }} Chars)
+        </span>
+        <span class="text-[9px] px-1.5 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D]">
+          [Espace]
+        </span>
       </button>
     </div>
 
@@ -121,15 +130,36 @@ const canTokenize = computed(() => {
         <span class="text-[#00FF66]">Flux net : {{ formatNumber(tokensRate) }}/s</span>
       </div>
 
-      <!-- Tokenize Action Button -->
-      <button
-        @click="emit('manual-tokenize', 1)"
-        :disabled="!canTokenize"
-        class="w-full mt-1 py-2 px-3 rounded bg-[#161B22] hover:bg-[#21262D] disabled:opacity-40 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 hover:border-[#00FF66] transition-all text-xs font-bold font-mono flex items-center justify-center gap-2 cursor-pointer active:scale-98 shadow-sm"
-      >
-        <Play class="w-3.5 h-3.5 text-[#00FF66]" />
-        TOKENISER 1 BATCH (4 Chars &rarr; 1 $T$)
-      </button>
+      <!-- Tokenize Action Buttons -->
+      <div class="grid grid-cols-2 gap-2 mt-1">
+        <button
+          @click="emit('manual-tokenize', 1)"
+          :disabled="!canTokenize"
+          class="py-2 px-2.5 rounded bg-[#161B22] hover:bg-[#21262D] disabled:opacity-40 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 hover:border-[#00FF66] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm"
+        >
+          <span class="flex items-center gap-1.5 text-[11px]">
+            <Play class="w-3 h-3 text-[#00FF66]" />
+            1 BATCH
+          </span>
+          <span class="text-[9px] px-1 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D]">
+            [T]
+          </span>
+        </button>
+
+        <button
+          @click="emit('manual-tokenize-max')"
+          :disabled="!canTokenize"
+          class="py-2 px-2.5 rounded bg-[#161B22] hover:bg-[#21262D] disabled:opacity-40 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 hover:border-[#00FF66] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm"
+        >
+          <span class="flex items-center gap-1.5 text-[11px]">
+            <Zap class="w-3 h-3 text-[#00FF66]" />
+            MAX
+          </span>
+          <span class="text-[9px] px-1 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D]">
+            [M]
+          </span>
+        </button>
+      </div>
     </div>
   </div>
 </template>

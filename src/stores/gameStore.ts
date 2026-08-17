@@ -4,6 +4,7 @@ import Decimal from 'break_infinity.js'
 import type {
   GameState,
   HardwareNode,
+  SoftwareUpgrade,
   LogEntry,
   LogType,
   OfflineProgressSummary,
@@ -16,6 +17,7 @@ import {
   serializeGameState,
   deserializeGameState,
 } from '@/utils/serialization'
+import { formatNumber } from '@/utils/format'
 
 export const MAX_OFFLINE_SECONDS = 86400 // 24 heures
 
@@ -58,6 +60,72 @@ const INITIAL_HARDWARE: Record<string, HardwareNode> = {
   },
 }
 
+const INITIAL_UPGRADES: Record<string, SoftwareUpgrade> = {
+  multi_thread_scraper: {
+    id: 'multi_thread_scraper',
+    name: 'Scraper Multi-threadé',
+    description: 'Optimise les requêtes de scraping manuel pour aspirer 30 caractères par action (+200%).',
+    cost: new Decimal(30),
+    currency: 'funds',
+    purchased: false,
+    category: 'scraping',
+  },
+  crawler_daemon_v1: {
+    id: 'crawler_daemon_v1',
+    name: 'Daemon Crawler v1.0',
+    description: 'Active un crawler de fond générant un flux passif continu de Raw Text (+20 chars/s).',
+    cost: new Decimal(60),
+    currency: 'funds',
+    purchased: false,
+    category: 'scraping',
+  },
+  ram_buffer_expansion_1: {
+    id: 'ram_buffer_expansion_1',
+    name: 'Extension Buffer RAM (16GB)',
+    description: 'Étend le cache mémoire : capacité Raw Text portée à 5 000 chars et Tokens à 2 500 $T$.',
+    cost: new Decimal(80),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
+  },
+  fast_bpe_tokenizer: {
+    id: 'fast_bpe_tokenizer',
+    name: 'BPE Tokenizer Vectorisé',
+    description: 'Optimise la vectorisation BPE en mémoire, doublant la vitesse de tokenisation automatique.',
+    cost: new Decimal(160),
+    currency: 'funds',
+    purchased: false,
+    category: 'tokenizer',
+  },
+  cooling_optimization_v1: {
+    id: 'cooling_optimization_v1',
+    name: 'Dissipateur Cuivre Haut Débit',
+    description: 'Améliore la dissipation thermique passive (+200W de Cooling Capacity).',
+    cost: new Decimal(120),
+    currency: 'funds',
+    purchased: false,
+    category: 'hardware',
+  },
+  api_tier_pricing: {
+    id: 'api_tier_pricing',
+    name: 'Pricing API Tier Pro',
+    description: "Augmente la rémunération par token d'inférence servi ($0.10 au lieu de $0.05 par token).",
+    cost: new Decimal(250),
+    currency: 'funds',
+    purchased: false,
+    category: 'monetization',
+  },
+  crawler_daemon_v2: {
+    id: 'crawler_daemon_v2',
+    name: 'Cluster Crawler Parallèle v2.0',
+    description: "Distribue le scraping web à grande échelle (+60 chars/s supplémentaires d'auto-scraping).",
+    cost: new Decimal(400),
+    currency: 'funds',
+    purchased: false,
+    category: 'scraping',
+  },
+}
+
 export const useGameStore = defineStore('game', () => {
   const version = ref(CURRENT_SAVE_VERSION)
   const gameStartTime = ref(Date.now())
@@ -92,12 +160,17 @@ export const useGameStore = defineStore('game', () => {
 
   // Hardware
   const hardware = ref<Record<string, HardwareNode>>(JSON.parse(JSON.stringify(INITIAL_HARDWARE)))
-  // Reinstanciate Decimals in hardware
   for (const node of Object.values(hardware.value)) {
     node.baseCost = new Decimal(node.baseCost)
     node.tflops = new Decimal(node.tflops)
     node.vram = new Decimal(node.vram)
     node.powerWatts = new Decimal(node.powerWatts)
+  }
+
+  // Upgrades
+  const upgrades = ref<Record<string, SoftwareUpgrade>>(JSON.parse(JSON.stringify(INITIAL_UPGRADES)))
+  for (const up of Object.values(upgrades.value)) {
+    up.cost = new Decimal(up.cost)
   }
 
   // Allocations (%)
@@ -121,7 +194,7 @@ export const useGameStore = defineStore('game', () => {
     },
   ])
 
-  // Unlocks
+  // Unlocks & Flags
   const unlockedFeatures = ref<GameState['unlockedFeatures']>({
     dashboardView: true,
     autoScraping: false,
@@ -132,6 +205,14 @@ export const useGameStore = defineStore('game', () => {
     prestigeT3: false,
   })
 
+  // Tracked milestones for STDOUT events
+  const reachedMilestones = ref<Record<string, boolean>>({
+    firstGpu: false,
+    first1000Params: false,
+    first10000Params: false,
+    first1000Funds: false,
+  })
+
   // Offline progress report
   const lastOfflineReport = ref<OfflineProgressSummary | null>(null)
 
@@ -140,6 +221,21 @@ export const useGameStore = defineStore('game', () => {
   // ==========================================
   // COMPUTED ENGINE VALUES
   // ==========================================
+
+  const manualScrapePower = computed<number>(() => {
+    return upgrades.value.multi_thread_scraper?.purchased ? 30 : 10
+  })
+
+  const autoScrapeRate = computed<number>(() => {
+    let rate = 0
+    if (upgrades.value.crawler_daemon_v1?.purchased || unlockedFeatures.value.autoScraping) {
+      rate += 20
+    }
+    if (upgrades.value.crawler_daemon_v2?.purchased) {
+      rate += 60
+    }
+    return rate
+  })
 
   const totalRawCompute = computed<Decimal>(() => {
     let sum = new Decimal(0)
@@ -216,11 +312,12 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  function manualScrape(amount = 10) {
+  function manualScrape(amount?: number) {
+    const scrapeAmount = amount ?? manualScrapePower.value
     const before = rawText.value.current
     rawText.value.current = Decimal.min(
       rawText.value.max,
-      rawText.value.current.add(amount)
+      rawText.value.current.add(scrapeAmount)
     )
     const added = rawText.value.current.sub(before)
     if (added.gt(0) && Math.random() < 0.1) {
@@ -233,7 +330,7 @@ export const useGameStore = defineStore('game', () => {
     const neededChars = new Decimal(tokensToMake * charsPerToken)
 
     if (rawText.value.current.gte(neededChars)) {
-      const maxPossibleTokens = rawText.value.max.minus(tokens.value.current)
+      const maxPossibleTokens = tokens.value.max.minus(tokens.value.current)
       const actualTokens = Decimal.min(tokensToMake, maxPossibleTokens)
 
       if (actualTokens.gt(0)) {
@@ -246,13 +343,26 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  function manualTokenizeMax() {
+    const charsPerToken = 4
+    const maxTokensFromChars = rawText.value.current.div(charsPerToken).floor()
+    const spaceInTokens = tokens.value.max.sub(tokens.value.current)
+    const tokensToMake = Decimal.min(maxTokensFromChars, spaceInTokens)
+
+    if (tokensToMake.gt(0)) {
+      rawText.value.current = rawText.value.current.sub(tokensToMake.mul(charsPerToken))
+      tokens.value.current = tokens.value.current.add(tokensToMake)
+      addLog(`Tokenisation batch max : +${formatNumber(tokensToMake)} $T$ générés.`, 'info')
+    }
+  }
+
   function getHardwareCost(id: string): Decimal {
     const item = hardware.value[id]
     if (!item) return new Decimal(Infinity)
     return item.baseCost.mul(Math.pow(item.costMult, item.count))
   }
 
-  function buyHardware(id: string) {
+  function buyHardware(id: string): boolean {
     const item = hardware.value[id]
     if (!item) return false
 
@@ -261,9 +371,50 @@ export const useGameStore = defineStore('game', () => {
       funds.value.current = funds.value.current.sub(cost)
       item.count += 1
       addLog(`Achat effectué : ${item.name} (#${item.count}) pour $${cost.toFixed(2)}.`, 'success')
+
+      if (id === 'gtx_gpu' && !reachedMilestones.value.firstGpu) {
+        reachedMilestones.value.firstGpu = true
+        addLog('GPU déployé avec succès. Accélération de tokenisation débloquée !', 'event')
+      }
       return true
     }
     return false
+  }
+
+  function buyUpgrade(id: string): boolean {
+    const up = upgrades.value[id]
+    if (!up || up.purchased) return false
+
+    const cost = up.cost
+    if (up.currency === 'funds') {
+      if (funds.value.current.gte(cost)) {
+        funds.value.current = funds.value.current.sub(cost)
+        up.purchased = true
+        applyUpgradeEffects(id)
+        addLog(`Module logiciel activé : ${up.name} pour $${cost.toFixed(2)}.`, 'success')
+        return true
+      }
+    } else if (up.currency === 'researchPoints') {
+      if (researchPoints.value.current.gte(cost)) {
+        researchPoints.value.current = researchPoints.value.current.sub(cost)
+        up.purchased = true
+        applyUpgradeEffects(id)
+        addLog(`Recherche complétée : ${up.name}.`, 'success')
+        return true
+      }
+    }
+    return false
+  }
+
+  function applyUpgradeEffects(id: string) {
+    if (id === 'crawler_daemon_v1') {
+      unlockedFeatures.value.autoScraping = true
+    } else if (id === 'ram_buffer_expansion_1') {
+      rawText.value.max = new Decimal(5000)
+      tokens.value.max = new Decimal(2500)
+    } else if (id === 'cooling_optimization_v1') {
+      coolingCapacityWatts.value = coolingCapacityWatts.value.add(200)
+    }
   }
 
   function updateAllocations(newAllocations: {
@@ -280,20 +431,35 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  function setAllocationPreset(preset: 'balanced' | 'cash' | 'train') {
+    if (preset === 'balanced') {
+      updateAllocations({ inferencePercent: 50, trainingPercent: 30, researchPercent: 20 })
+      addLog('Allocation réglée sur Mode Équilibré (50% Inf / 30% Train / 20% R&D).', 'info')
+    } else if (preset === 'cash') {
+      updateAllocations({ inferencePercent: 80, trainingPercent: 10, researchPercent: 10 })
+      addLog('Allocation réglée sur Monétisation Maximale (80% Inf / 10% Train / 10% R&D).', 'info')
+    } else if (preset === 'train') {
+      updateAllocations({ inferencePercent: 10, trainingPercent: 70, researchPercent: 20 })
+      addLog('Allocation réglée sur Entraînement Intensif (10% Inf / 70% Train / 20% R&D).', 'info')
+    }
+  }
+
   // Engine Tick (50ms interval)
   function processTick(dt: number) {
-    // 1. Scraping automatique (si débloqué ou passif de base du CPU)
-    const baseAutoScrapePerSec = unlockedFeatures.value.autoScraping ? 20 : 0
+    // 1. Scraping automatique (selon modules actifs)
+    const baseAutoScrapePerSec = autoScrapeRate.value
     if (baseAutoScrapePerSec > 0) {
       const charsGained = new Decimal(baseAutoScrapePerSec * dt)
       rawText.value.current = Decimal.min(rawText.value.max, rawText.value.current.add(charsGained))
       rawText.value.ratePerSec = new Decimal(baseAutoScrapePerSec)
+    } else {
+      rawText.value.ratePerSec = new Decimal(0)
     }
 
     // 2. Tokenisation automatique via le Compute disponible
-    // 1 TFLOPS peut tokeniser jusqu'à 50 tokens/s s'il y a du Raw Text disponible
     const compute = effectiveCompute.value
-    const tokenizingCapacity = compute.mul(50).mul(dt) // tokens pouvant être traités ce tick
+    const bpeMultiplier = upgrades.value.fast_bpe_tokenizer?.purchased ? 2.0 : 1.0
+    const tokenizingCapacity = compute.mul(50 * bpeMultiplier).mul(dt)
     const charsAvailable = rawText.value.current
     const tokensPossibleFromText = charsAvailable.div(4)
     const tokensToCreate = Decimal.min(tokenizingCapacity, tokensPossibleFromText)
@@ -313,15 +479,15 @@ export const useGameStore = defineStore('game', () => {
     const resRatio = allocations.value.researchPercent / 100
 
     // A. Inférence : Consomme des Tokens pour générer des Funds ($)
-    // 1 TFLOPS alloué à l'inférence traite 20 tokens/s -> $0.05 par token servi
     const infCompute = compute.mul(infRatio)
     const maxTokensToServe = infCompute.mul(20).mul(dt)
     const tokensServed = Decimal.min(maxTokensToServe, tokens.value.current)
 
     let fundsGained = new Decimal(0)
+    const pricePerToken = upgrades.value.api_tier_pricing?.purchased ? 0.10 : 0.05
     if (tokensServed.gt(0)) {
       tokens.value.current = tokens.value.current.sub(tokensServed)
-      fundsGained = tokensServed.mul(0.05)
+      fundsGained = tokensServed.mul(pricePerToken)
       funds.value.current = funds.value.current.add(fundsGained)
       funds.value.ratePerSec = dt > 0 ? fundsGained.div(dt) : new Decimal(0)
     } else {
@@ -329,7 +495,6 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // B. Entraînement : Consomme des Tokens et du Compute pour augmenter les Paramètres
-    // 1 TFLOPS d'entraînement consomme 10 tokens/s et génère 1000 paramètres/s
     const trainCompute = compute.mul(trainRatio)
     const maxTokensToTrain = trainCompute.mul(10).mul(dt)
     const tokensTrained = Decimal.min(maxTokensToTrain, tokens.value.current)
@@ -354,6 +519,20 @@ export const useGameStore = defineStore('game', () => {
     // Débit net de tokens/s calculé pour les graphiques/oscilloscope
     const netTokensPerSec = tokensToCreate.sub(tokensServed).sub(tokensTrained).div(dt > 0 ? dt : 1)
     tokens.value.ratePerSec = netTokensPerSec
+
+    // Milestones check
+    if (!reachedMilestones.value.first1000Params && parameters.value.gte(1000)) {
+      reachedMilestones.value.first1000Params = true
+      addLog('Palier atteint : 1 000 Paramètres intégrés au modèle de neurones.', 'event')
+    }
+    if (!reachedMilestones.value.first10000Params && parameters.value.gte(10000)) {
+      reachedMilestones.value.first10000Params = true
+      addLog('Capacités émergentes : 10 000 Paramètres. Le modèle commence à générer du sens cohérent.', 'event')
+    }
+    if (!reachedMilestones.value.first1000Funds && funds.value.current.gte(1000)) {
+      reachedMilestones.value.first1000Funds = true
+      addLog('Cap financier franchi : 1 000 $ accumulés dans la trésorerie.', 'success')
+    }
 
     lastTickTimestamp.value = Date.now()
 
@@ -439,6 +618,7 @@ export const useGameStore = defineStore('game', () => {
       parameters: parameters.value,
       researchPoints: researchPoints.value,
       hardware: hardware.value,
+      upgrades: upgrades.value,
       allocations: allocations.value,
       gridCapacityWatts: gridCapacityWatts.value,
       coolingCapacityWatts: coolingCapacityWatts.value,
@@ -473,6 +653,7 @@ export const useGameStore = defineStore('game', () => {
       if (loaded.parameters) parameters.value = loaded.parameters
       if (loaded.researchPoints) researchPoints.value = loaded.researchPoints
       if (loaded.hardware) hardware.value = loaded.hardware
+      if (loaded.upgrades) upgrades.value = loaded.upgrades
       if (loaded.allocations) allocations.value = loaded.allocations
       if (loaded.gridCapacityWatts) gridCapacityWatts.value = loaded.gridCapacityWatts
       if (loaded.coolingCapacityWatts) coolingCapacityWatts.value = loaded.coolingCapacityWatts
@@ -480,6 +661,12 @@ export const useGameStore = defineStore('game', () => {
       if (loaded.unlockedFeatures) unlockedFeatures.value = loaded.unlockedFeatures
       if (loaded.lastTickTimestamp) lastTickTimestamp.value = loaded.lastTickTimestamp
       if (loaded.gameStartTime) gameStartTime.value = loaded.gameStartTime
+
+      // Ensure upgrades effects are active
+      if (upgrades.value.ram_buffer_expansion_1?.purchased) {
+        rawText.value.max = new Decimal(5000)
+        tokens.value.max = new Decimal(2500)
+      }
 
       calculateOfflineProgress()
       return true
@@ -511,12 +698,15 @@ export const useGameStore = defineStore('game', () => {
     parameters,
     researchPoints,
     hardware,
+    upgrades,
     allocations,
     gridCapacityWatts,
     coolingCapacityWatts,
     terminalLogs,
     unlockedFeatures,
     lastOfflineReport,
+    manualScrapePower,
+    autoScrapeRate,
     totalRawCompute,
     totalPowerDrawWatts,
     totalVramGB,
@@ -527,12 +717,16 @@ export const useGameStore = defineStore('game', () => {
     clearLogs,
     manualScrape,
     manualTokenize,
+    manualTokenizeMax,
     buyHardware,
+    buyUpgrade,
     getHardwareCost,
     updateAllocations,
+    setAllocationPreset,
     processTick,
     calculateOfflineProgress,
     dismissOfflineReport,
+    getFullState,
     saveToLocalStorage,
     loadFromLocalStorage,
     hardReset,

@@ -28,6 +28,16 @@ export interface HardwareNode {
   tier: number
 }
 
+export interface SoftwareUpgrade {
+  id: string
+  name: string
+  description: string
+  cost: Decimal
+  currency: 'funds' | 'researchPoints'
+  purchased: boolean
+  category: 'scraping' | 'tokenizer' | 'monetization' | 'hardware'
+}
+
 export interface AllocationState {
   inferencePercent: number // 0 à 100
   trainingPercent: number  // 0 à 100
@@ -83,6 +93,7 @@ export interface GameState {
   
   // Matériel & Allocation
   hardware: Record<string, HardwareNode>
+  upgrades: Record<string, SoftwareUpgrade>
   allocations: AllocationState
   
   // Systèmes physiques
@@ -119,6 +130,16 @@ export interface SerializedHardwareNode {
   tier: number
 }
 
+export interface SerializedSoftwareUpgrade {
+  id: string
+  name: string
+  description: string
+  cost: string
+  currency: 'funds' | 'researchPoints'
+  purchased: boolean
+  category: 'scraping' | 'tokenizer' | 'monetization' | 'hardware'
+}
+
 export interface SerializedGameState {
   version: string
   lastTickTimestamp: number
@@ -129,6 +150,7 @@ export interface SerializedGameState {
   parameters: string
   researchPoints: SerializedResource
   hardware: Record<string, SerializedHardwareNode>
+  upgrades?: Record<string, SerializedSoftwareUpgrade>
   allocations: AllocationState
   gridCapacityWatts: string
   coolingCapacityWatts: string
