@@ -7,23 +7,24 @@ import type {
   OfflineProgressSummary,
   AllocationPreset,
 } from '@/types'
-import {
-  SAVE_KEY,
-  CURRENT_SAVE_VERSION,
-  serializeGameState,
-  deserializeGameState,
-} from '@/utils/serialization'
+import { CURRENT_SAVE_VERSION } from '@/utils/serialization'
 import { RAW_TEXT_SNIPPETS } from '@/domain/constants/snippets'
-import { EconomyEngine } from '@/domain/engine/EconomyEngine'
-import { MilestoneTracker } from '@/domain/engine/MilestoneTracker'
-import { TickEngine } from '@/domain/engine/TickEngine'
-import { OfflineEngine, MAX_OFFLINE_SECONDS } from '@/domain/engine/OfflineEngine'
+import {
+  EconomyEngine,
+  MilestoneTracker,
+  TickEngine,
+  OfflineEngine,
+  MAX_OFFLINE_SECONDS,
+  UpgradeEffectEngine,
+  HardwareUnlockEngine,
+} from '@/domain/engine'
 import { useTerminalStore } from './terminalStore'
 import { useResourcesStore } from './resourcesStore'
 import { useHardwareStore } from './hardwareStore'
 import { useUpgradesStore } from './upgradesStore'
 import { useAllocationStore } from './allocationStore'
 import { useFeaturesStore } from './featuresStore'
+import { GameSaveManager } from './helpers/gameSaveManager'
 
 export { MAX_OFFLINE_SECONDS, RAW_TEXT_SNIPPETS }
 
@@ -172,70 +173,16 @@ export const useGameStore = defineStore('game', () => {
         'success'
       )
 
-      // Phase 1 trigger: First Potato PC
-      if (id === 'potato_pc' && result.node.count === 1) {
-        features.unlockFeature('scriptsSection')
-        features.unlockFeature('hardwareSection')
-        features.unlockFeature('autoScraping')
-        resources.rawText.max = Decimal.max(resources.rawText.max, 500)
-        hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, 150)
-        hardwareStore.coolingCapacityWatts = Decimal.max(hardwareStore.coolingCapacityWatts, 100)
-        features.setPhase(1)
-
-        if (!features.reachedMilestones.firstPotatoPc) {
-          features.reachedMilestones.firstPotatoPc = true
-          terminal.addLog(
-            'Relique allumée ! Le disque dur IDE 5400 RPM crépite et le ventilateur hurle. Vous pouvez maintenant exécuter vos premiers scripts Python.',
-            'event'
-          )
-        }
-      }
-
-      // Phase 2 trigger: First Workstation CPU or GPU
-      if ((id === 'core2_quad' || id === 'gtx_750ti' || id === 'used_cpu') && result.node.count === 1) {
-        features.unlockFeature('tokenizerUnlocked')
-        features.unlockFeature('oscilloscope')
-        resources.rawText.max = Decimal.max(resources.rawText.max, 2000)
-        resources.tokens.max = Decimal.max(resources.tokens.max, 1000)
-        hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, 500)
-        hardwareStore.coolingCapacityWatts = Decimal.max(hardwareStore.coolingCapacityWatts, 300)
-        features.setPhase(2)
-
-        if (!features.reachedMilestones.firstCpu) {
-          features.reachedMilestones.firstCpu = true
-          terminal.addLog(
-            'Station Tour en ligne ! Tokenizer BPE activé : conversion automatique du Raw Text en Tokens ($T$) et requêtes d’inférence démarrées.',
-            'event'
-          )
-        }
-      }
-
-      if (id === 'gaming_pc' && result.node.count === 1) {
-        hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, 650)
-      }
-
-      if (id === 'workstation_pro' && result.node.count === 1) {
-        hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, 1500)
-      }
-
-      if (id === 'datacenter_chassis' && result.node.count === 1) {
-        hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, 8000)
-      }
-
-      if ((id === 'rtx_3060' || id === 'gtx_750ti' || id === 'gtx_1060' || id === 'gtx_gpu') && !features.reachedMilestones.firstGpu) {
-        features.reachedMilestones.firstGpu = true
-        terminal.addLog(
-          'GPU dédié déployé avec succès. Accélération massive de la bande passante mémoire et tokenisation !',
-          'event'
-        )
-      }
-
-      if (id === 'a100_sxm4' || id === 'a100_blade') {
-        terminal.addLog(
-          'Lame Datacenter NVIDIA A100 en ligne ! Mémoire HBM2e 2 To/s connectée.',
-          'success'
-        )
-      }
+      HardwareUnlockEngine.handlePurchase(id, result.node, {
+        unlockFeature: (feat) => features.unlockFeature(feat),
+        setPhase: (p) => features.setPhase(p),
+        setMaxRawText: (v) => { resources.rawText.max = Decimal.max(resources.rawText.max, v) },
+        setMaxTokens: (v) => { resources.tokens.max = Decimal.max(resources.tokens.max, v) },
+        setMaxGridCapacity: (w) => { hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, w) },
+        setMaxCoolingCapacity: (w) => { hardwareStore.coolingCapacityWatts = Decimal.max(hardwareStore.coolingCapacityWatts, w) },
+        milestones: features.reachedMilestones,
+        addLog: (msg, type) => terminal.addLog(msg, type),
+      })
 
       return true
     }
@@ -246,10 +193,7 @@ export const useGameStore = defineStore('game', () => {
         'warn'
       )
     } else if (result.reason === 'max_count_reached') {
-      terminal.addLog(
-        'Cette machine est déjà installée et active !',
-        'warn'
-      )
+      terminal.addLog('Cette machine est déjà installée et active !', 'warn')
     } else if (result.reason === 'host_tier_too_low') {
       const node = hardwareStore.hardware[id]
       const minTier = node?.minHostTier ?? 1
@@ -265,60 +209,6 @@ export const useGameStore = defineStore('game', () => {
     }
 
     return false
-  }
-
-  function applyUpgradeEffects(id: string) {
-    if (id === 'script_simple_scraper' || id === 'crawler_daemon_v2') {
-      features.unlockFeature('autoScraping')
-    } else if (id === 'script_cron_autobroker') {
-      features.unlockFeature('autoBroker')
-    } else if (id === 'ram_sdram_256mb') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 1500)
-    } else if (id === 'script_ram_expansion_512') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 2500)
-    } else if (id === 'ram_ddr2_8gb') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 6000)
-      resources.tokens.max = Decimal.max(resources.tokens.max, 3000)
-    } else if (id === 'ram_ddr3_16gb') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 15000)
-      resources.tokens.max = Decimal.max(resources.tokens.max, 8000)
-    } else if (id === 'ram_ddr4_32gb') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 40000)
-      resources.tokens.max = Decimal.max(resources.tokens.max, 25000)
-    } else if (id === 'ram_ddr4_64gb') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 100000)
-      resources.tokens.max = Decimal.max(resources.tokens.max, 75000)
-    } else if (id === 'ram_ddr5_128gb') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 300000)
-      resources.tokens.max = Decimal.max(resources.tokens.max, 250000)
-    } else if (id === 'ram_ddr5_256gb') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 1000000)
-      resources.tokens.max = Decimal.max(resources.tokens.max, 1000000)
-    } else if (id === 'cooling_case_fans_120mm') {
-      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(70)
-    } else if (id === 'cooling_tower_heatsink') {
-      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(180)
-    } else if (id === 'cooling_optimization_v1') {
-      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(200)
-    } else if (id === 'cooling_aio_watercooling_360') {
-      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(450)
-    } else if (id === 'cooling_custom_loop_d5') {
-      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(1200)
-    } else if (id === 'cooling_inrow_datacenter_ac') {
-      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(4000)
-    } else if (id === 'cooling_immersion_cryo') {
-      hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(15000)
-    } else if (id === 'power_psu_500w') {
-      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(400)
-    } else if (id === 'power_psu_850w_gold') {
-      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(750)
-    } else if (id === 'power_dedicated_circuit_16a') {
-      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(2500)
-    } else if (id === 'power_triphase_industrial') {
-      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(8000)
-    } else if (id === 'power_substation_transformer') {
-      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(35000)
-    }
   }
 
   function buyUpgrade(id: string): boolean {
@@ -340,7 +230,15 @@ export const useGameStore = defineStore('game', () => {
         resources.researchPoints.current = resources.researchPoints.current.sub(result.cost)
         terminal.addLog(`Recherche complétée : ${result.upgrade.name}.`, 'success')
       }
-      applyUpgradeEffects(id)
+
+      UpgradeEffectEngine.apply(id, {
+        unlockFeature: (feat) => features.unlockFeature(feat),
+        setMaxRawText: (v) => { resources.rawText.max = Decimal.max(resources.rawText.max, v) },
+        setMaxTokens: (v) => { resources.tokens.max = Decimal.max(resources.tokens.max, v) },
+        addCoolingCapacity: (w) => { hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(w) },
+        addGridCapacity: (w) => { hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(w) },
+      })
+
       return true
     }
     return false
@@ -464,52 +362,36 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function saveToLocalStorage() {
-    try {
-      const state = getFullState()
-      const json = serializeGameState(state)
-      localStorage.setItem(SAVE_KEY, json)
-    } catch (err) {
-      console.error('[Save] Erreur lors de la sauvegarde :', err)
-    }
+    GameSaveManager.save(getFullState())
   }
 
   function loadFromLocalStorage(): boolean {
-    try {
-      const json = localStorage.getItem(SAVE_KEY)
-      if (!json) return false
+    const loaded = GameSaveManager.load(getFullState())
+    if (!loaded) return false
 
-      const dummyState = getFullState()
-      const loaded = deserializeGameState(json, dummyState)
-      if (!loaded) return false
+    if (loaded.rawText) resources.rawText = loaded.rawText
+    if (loaded.tokens) resources.tokens = loaded.tokens
+    if (loaded.funds) resources.funds = loaded.funds
+    if (loaded.parameters) resources.parameters = loaded.parameters
+    if (loaded.researchPoints) resources.researchPoints = loaded.researchPoints
+    if (loaded.hardware) hardwareStore.hardware = loaded.hardware
+    if (loaded.upgrades) upgradesStore.upgrades = loaded.upgrades
+    if (loaded.allocations) allocation.allocations = loaded.allocations
+    if (loaded.gridCapacityWatts) hardwareStore.gridCapacityWatts = loaded.gridCapacityWatts
+    if (loaded.coolingCapacityWatts) hardwareStore.coolingCapacityWatts = loaded.coolingCapacityWatts
+    if (loaded.terminalLogs) terminal.setLogs(loaded.terminalLogs)
+    if (loaded.unlockedFeatures) features.unlockedFeatures = loaded.unlockedFeatures
+    if (loaded.lastTickTimestamp) lastTickTimestamp.value = loaded.lastTickTimestamp
+    if (loaded.gameStartTime) gameStartTime.value = loaded.gameStartTime
+    if (loaded.currentPhase !== undefined) features.currentPhase = loaded.currentPhase
+    if (loaded.totalCharsRead) resources.totalCharsRead = loaded.totalCharsRead
 
-      if (loaded.rawText) resources.rawText = loaded.rawText
-      if (loaded.tokens) resources.tokens = loaded.tokens
-      if (loaded.funds) resources.funds = loaded.funds
-      if (loaded.parameters) resources.parameters = loaded.parameters
-      if (loaded.researchPoints) resources.researchPoints = loaded.researchPoints
-      if (loaded.hardware) hardwareStore.hardware = loaded.hardware
-      if (loaded.upgrades) upgradesStore.upgrades = loaded.upgrades
-      if (loaded.allocations) allocation.allocations = loaded.allocations
-      if (loaded.gridCapacityWatts) hardwareStore.gridCapacityWatts = loaded.gridCapacityWatts
-      if (loaded.coolingCapacityWatts) hardwareStore.coolingCapacityWatts = loaded.coolingCapacityWatts
-      if (loaded.terminalLogs) terminal.setLogs(loaded.terminalLogs)
-      if (loaded.unlockedFeatures) features.unlockedFeatures = loaded.unlockedFeatures
-      if (loaded.lastTickTimestamp) lastTickTimestamp.value = loaded.lastTickTimestamp
-      if (loaded.gameStartTime) gameStartTime.value = loaded.gameStartTime
-      if (loaded.currentPhase !== undefined) features.currentPhase = loaded.currentPhase
-      if (loaded.totalCharsRead) resources.totalCharsRead = loaded.totalCharsRead
-
-      calculateOfflineProgress()
-      return true
-    } catch (err) {
-      console.error('[Load] Erreur lors du chargement de la sauvegarde :', err)
-      return false
-    }
+    calculateOfflineProgress()
+    return true
   }
 
   function hardReset() {
-    localStorage.removeItem(SAVE_KEY)
-    location.reload()
+    GameSaveManager.hardReset()
   }
 
   // Initial load

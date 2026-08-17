@@ -6,6 +6,8 @@ import {
   MilestoneTracker,
   OfflineEngine,
   MAX_OFFLINE_SECONDS,
+  UpgradeEffectEngine,
+  HardwareUnlockEngine,
 } from '@/domain'
 import { createInitialHardware } from '@/domain/constants/hardware'
 import { createInitialUpgrades } from '@/domain/constants/upgrades'
@@ -322,5 +324,77 @@ describe('OfflineEngine Domain Unit Tests', () => {
     expect(report?.cappedAt24h).toBe(true)
     expect(report?.simulatedSeconds).toBe(MAX_OFFLINE_SECONDS)
     expect(stepsExecuted).toBe(MAX_OFFLINE_SECONDS)
+  })
+})
+
+describe('UpgradeEffectEngine Domain Unit Tests', () => {
+  it('correctly applies feature unlocks, buffer expansions and physical capacities', () => {
+    const unlocked: string[] = []
+    let rawTextMax = 200
+    let tokensMax = 100
+    let coolingWatts = 50
+    let gridWatts = 100
+
+    const ctx = {
+      unlockFeature: (f: string) => unlocked.push(f),
+      setMaxRawText: (v: Decimal | number) => { rawTextMax = typeof v === 'number' ? v : v.toNumber() },
+      setMaxTokens: (v: Decimal | number) => { tokensMax = typeof v === 'number' ? v : v.toNumber() },
+      addCoolingCapacity: (w: Decimal | number) => { coolingWatts += typeof w === 'number' ? w : w.toNumber() },
+      addGridCapacity: (w: Decimal | number) => { gridWatts += typeof w === 'number' ? w : w.toNumber() },
+    }
+
+    // Auto-scraping script
+    UpgradeEffectEngine.apply('script_simple_scraper', ctx as any)
+    expect(unlocked).toContain('autoScraping')
+
+    // RAM upgrade
+    UpgradeEffectEngine.apply('ram_ddr2_8gb', ctx as any)
+    expect(rawTextMax).toBe(6000)
+    expect(tokensMax).toBe(3000)
+
+    // Cooling upgrade
+    UpgradeEffectEngine.apply('cooling_case_fans_120mm', ctx as any)
+    expect(coolingWatts).toBe(120)
+
+    // Power grid upgrade
+    UpgradeEffectEngine.apply('power_psu_500w', ctx as any)
+    expect(gridWatts).toBe(500)
+  })
+})
+
+describe('HardwareUnlockEngine Domain Unit Tests', () => {
+  it('promotes phase and triggers milestones on hardware purchase', () => {
+    const unlocked: string[] = []
+    let phase = 0
+    let rawMax = 200
+    let tokenMax = 100
+    let gridMax = 100
+    let coolingMax = 50
+    const logs: Array<{ msg: string; type: string }> = []
+    const milestones = createInitialMilestones()
+
+    const ctx = {
+      unlockFeature: (f: string) => unlocked.push(f),
+      setPhase: (p: number) => { phase = p },
+      setMaxRawText: (v: Decimal | number) => { rawMax = typeof v === 'number' ? v : v.toNumber() },
+      setMaxTokens: (v: Decimal | number) => { tokenMax = typeof v === 'number' ? v : v.toNumber() },
+      setMaxGridCapacity: (w: Decimal | number) => { gridMax = typeof w === 'number' ? w : w.toNumber() },
+      setMaxCoolingCapacity: (w: Decimal | number) => { coolingMax = typeof w === 'number' ? w : w.toNumber() },
+      milestones,
+      addLog: (msg: string, type: string) => logs.push({ msg, type }),
+    }
+
+    const potatoNode = { count: 1 } as any
+    HardwareUnlockEngine.handlePurchase('potato_pc', potatoNode, ctx as any)
+
+    expect(phase).toBe(1)
+    expect(unlocked).toContain('scriptsSection')
+    expect(unlocked).toContain('hardwareSection')
+    expect(rawMax).toBe(500)
+    expect(tokenMax).toBe(100)
+    expect(gridMax).toBe(150)
+    expect(coolingMax).toBe(100)
+    expect(milestones.firstPotatoPc).toBe(true)
+    expect(logs.some((l) => l.type === 'event')).toBe(true)
   })
 })
