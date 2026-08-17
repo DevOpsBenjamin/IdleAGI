@@ -28,7 +28,7 @@ describe('GameStore Core Gameplay (Sprint 1)', () => {
 
   it('initializes with default values and 1 used CPU', () => {
     const store = useGameStore()
-    expect(store.funds.current.toNumber()).toBe(50)
+    expect(store.funds.current.toNumber()).toBe(0)
     expect(store.rawText.current.toNumber()).toBe(0)
     expect(store.tokens.current.toNumber()).toBe(0)
     expect(store.hardware.used_cpu.count).toBe(1)
@@ -75,7 +75,11 @@ describe('GameStore Core Gameplay (Sprint 1)', () => {
     const cost1 = store.getHardwareCost('used_cpu')
     expect(cost1.toNumber()).toBeCloseTo(28.75)
 
-    // Store has $50
+    // Cannot afford with $0
+    expect(store.buyHardware('used_cpu')).toBe(false)
+
+    // Give $50 funds
+    store.funds.current = new Decimal(50)
     const bought = store.buyHardware('used_cpu')
     expect(bought).toBe(true)
     expect(store.hardware.used_cpu.count).toBe(2)
@@ -96,6 +100,11 @@ describe('GameStore Core Gameplay (Sprint 1)', () => {
     expect(store.upgrades.multi_thread_scraper.purchased).toBe(false)
     expect(store.manualScrapePower).toBe(10)
 
+    // Cannot afford with $0
+    expect(store.buyUpgrade('multi_thread_scraper')).toBe(false)
+
+    // Give $30 funds
+    store.funds.current = new Decimal(30)
     const boughtScraper = store.buyUpgrade('multi_thread_scraper')
     expect(boughtScraper).toBe(true)
     expect(store.upgrades.multi_thread_scraper.purchased).toBe(true)
