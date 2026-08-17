@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-mono: 'JetBrains Mono', monospace;
+    --color-bg-deep: #07090E;
+    --color-bg-surface: #0D1117;
+    --color-bg-surface-elevated: #161B22;
+    --color-border-subtle: #21262D;
+    --color-accent-green: #00FF66;
+    --color-accent-amber: #FFB800;
+    --color-accent-blue: #38BDF8;
+    --color-accent-red: #F43F5E;
+    --color-text-primary: #F0F6FC;
+    --color-text-secondary: #8B949E;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: var(--color-bg-deep);
+    color: var(--color-text-primary);
+  }
+
+  code, pre, .font-mono {
+    font-family: var(--font-mono);
+  }
+}
+
+/* Custom Cyber Utilities */
+.cyber-glow-green {
+  box-shadow: 0 0 15px rgba(0, 255, 102, 0.15);
+}
+
+.cyber-glow-blue {
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+}
+
+.cyber-glow-amber {
+  box-shadow: 0 0 15px rgba(255, 184, 0, 0.15);
+}
+
+/* Terminal Scanline overlay */
+.scanlines {
+  background: linear-gradient(
+    rgba(18, 16, 16, 0) 50%, 
+    rgba(0, 0, 0, 0.25) 50%
+  ), linear-gradient(
+    90deg,
+    rgba(255, 0, 0, 0.02),
+    rgba(0, 255, 0, 0.01),
+    rgba(0, 0, 255, 0.02)
+  );
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
