@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import Decimal from 'break_infinity.js'
-import type { SoftwareUpgrade, CurrencyType } from '@/types'
+import type { SoftwareUpgrade, CurrencyType, UnlockedFeatures } from '@/types'
 import { createInitialUpgrades } from '@/domain/constants/upgrades'
 import { EconomyEngine } from '@/domain/engine/EconomyEngine'
 
@@ -23,11 +23,20 @@ export const useUpgradesStore = defineStore('upgrades', () => {
   function buyUpgrade(
     id: string,
     availableFunds: Decimal,
-    availableResearch: Decimal
+    availableResearch: Decimal,
+    unlockedFeatures?: Partial<UnlockedFeatures>
   ): { success: boolean; cost: Decimal; currency: CurrencyType; upgrade?: SoftwareUpgrade } {
     const up = upgrades.value[id]
     if (!up || up.purchased) {
       return { success: false, cost: new Decimal(0), currency: 'funds' }
+    }
+
+    if (
+      up.requiredFeature &&
+      unlockedFeatures &&
+      !unlockedFeatures[up.requiredFeature as keyof UnlockedFeatures]
+    ) {
+      return { success: false, cost: new Decimal(0), currency: up.currency, upgrade: up }
     }
 
     const cost = up.cost

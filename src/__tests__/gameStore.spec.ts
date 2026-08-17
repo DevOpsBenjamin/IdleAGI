@@ -104,11 +104,20 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(bought2).toBe(true)
     expect(store.manualScrapePower).toBe(25)
 
-    // Buy broker negotiation ($2.50)
+    // Buy broker negotiation ($2.50) requires data broker contact first
     store.funds.current = new Decimal(2.50)
+    const boughtBrokerLocked = store.buyUpgrade('broker_negotiation')
+    expect(boughtBrokerLocked).toBe(false) // Data broker not discovered yet!
+
+    store.unlockedFeatures.dataBroker = true
     const boughtBroker = store.buyUpgrade('broker_negotiation')
     expect(boughtBroker).toBe(true)
     expect(store.rawTextSellPrice).toBe(0.08)
+
+    // Cannot buy Python script without computer
+    store.funds.current = new Decimal(5.00)
+    const boughtScriptWithoutPc = store.buyUpgrade('script_simple_scraper')
+    expect(boughtScriptWithoutPc).toBe(false)
   })
 
   it('Phase 1 (Potato PC & Scripts): Buying Potato PC ($10) unlocks hardware, scripts, and passive auto-broker', () => {
