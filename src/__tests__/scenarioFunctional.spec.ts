@@ -373,4 +373,84 @@ describe('End-to-End Functional Test: Full Fast-Forward Gameplay Progression Sce
     expect(boughtIllegalGpu).toBe(false)
     expect(runner.buyHardwareWhenAffordable('h100_sxm5', 1)).toBe(false)
   })
+
+  it('Prestige Tier 1 Fast-Forward Loop: Accumulates 4M parameters -> Soft Reset (+2 AP) -> Unlocks Talents -> Accelerated Second Run', () => {
+    const store = useGameStore()
+    const runner = new ScenarioRunner(store)
+
+    // 1. Initial State: Phase 0, 0 AP
+    expect(store.currentPhase).toBe(0)
+    expect(store.prestige.totalArchitecturePoints).toBe(0)
+
+    // Setup state to reach Phase 3 and train to 4M parameters
+    store.unlockedFeatures.dataBroker = true
+    store.unlockedFeatures.hardwareSection = true
+    store.unlockedFeatures.scriptsSection = true
+    store.unlockedFeatures.tokenizerUnlocked = true
+    store.unlockedFeatures.trainingAllocation = true
+    store.currentPhase = 3
+
+    // Install Workstation + High-End GPUs for fast training
+    store.hardware.workstation_pro.count = 1
+    store.hardware.a100_sxm4.count = 1
+    store.upgrades.cooling_inrow_datacenter_ac.purchased = true
+    store.upgrades.power_triphase_industrial.purchased = true
+    store.rawText.max = new Decimal(100000)
+    store.rawText.current = new Decimal(50000)
+    store.tokens.max = new Decimal(50000)
+    store.tokens.current = new Decimal(40000)
+
+    // Train to 4,000,000 parameters (100% Training)
+    store.updateAllocations({
+      inferencePercent: 0,
+      trainingPercent: 100,
+      researchPercent: 0,
+    })
+
+    runner.advanceUntil((s) => s.parameters.gte(4_000_000), 500, 0.5)
+    expect(store.parameters.toNumber()).toBeGreaterThanOrEqual(4_000_000)
+    expect(store.canPrestige).toBe(true)
+    expect(store.pendingAP).toBe(2)
+
+    // 2. Trigger Tier 1 Soft Reset (Prestige)
+    const prestigeOk = store.triggerPrestige()
+    expect(prestigeOk).toBe(true)
+
+    // Assert Volatile state is reset to Phase 0
+    expect(store.currentPhase).toBe(0)
+    expect(store.rawText.current.toNumber()).toBe(0)
+    expect(store.tokens.current.toNumber()).toBe(0)
+    expect(store.funds.current.toNumber()).toBe(0)
+    expect(store.parameters.toNumber()).toBe(0)
+    expect(store.hardware.workstation_pro.count).toBe(0)
+    expect(store.hardware.a100_sxm4.count).toBe(0)
+
+    // Assert Persistent prestige state is retained
+    expect(store.prestige.architecturePoints).toBe(2)
+    expect(store.prestige.totalArchitecturePoints).toBe(2)
+    expect(store.prestige.prestigeCount).toBe(1)
+    expect(store.checkpointMultiplier).toBeCloseTo(1.10) // +10% compute from 2 AP
+    expect(store.unlockedFeatures.prestigeT1).toBe(true)
+
+    // 3. Spend AP in the Architecture Talent Tree
+    // Buy Tier 1 Ingestion (opt_bpe_fast_track: +50% manual scrape, cost 1 AP)
+    const bpeBought = store.buyTalent('opt_bpe_fast_track')
+    expect(bpeBought).toBe(true)
+    expect(store.prestige.architecturePoints).toBe(1)
+    expect(store.manualScrapePower).toBe(15) // base 10 * 1.5 = 15
+
+    // Buy Tier 1 Infrastructure (opt_hardware_rebate: -15% hardware cost, cost 1 AP)
+    const rebateBought = store.buyTalent('opt_hardware_rebate')
+    expect(rebateBought).toBe(true)
+    expect(store.prestige.architecturePoints).toBe(0)
+
+    // 4. Second Run Bootstrap (Accelerated!)
+    // Potato PC cost is now $8.50 instead of $10.00
+    expect(store.getHardwareCost('potato_pc').toNumber()).toBeCloseTo(8.50)
+
+    // Fast manual scraping: 1 click gives 15 chars instead of 10
+    store.manualScrape()
+    expect(store.totalCharsRead.toNumber()).toBe(15)
+    expect(store.rawText.current.toNumber()).toBe(15)
+  })
 })

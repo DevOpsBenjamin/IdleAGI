@@ -77,6 +77,38 @@ describe('Prestige Engine & PrestigeStore Unit Tests', () => {
       expect(store.architecturePoints).toBe(7) // cost was 2
       expect(store.talentMultipliers.tokenGenerationMultiplier).toBeCloseTo(2.0)
     })
+
+    it('correctly calculates all 12 talent node multipliers when unlocked', () => {
+      const store = usePrestigeStore()
+      store.architecturePoints = 100
+
+      // Unlock all 12 nodes in order of dependencies
+      store.buyTalent('opt_bpe_fast_track')
+      store.buyTalent('opt_syntactic_indexing')
+      store.buyTalent('opt_market_pricing')
+      store.buyTalent('opt_semantic_compression')
+
+      store.buyTalent('opt_hardware_rebate')
+      store.buyTalent('opt_cryo_conduction')
+      store.buyTalent('opt_smart_grid')
+      store.buyTalent('opt_liquid_nitrogen')
+
+      store.buyTalent('opt_matrix_acceleration')
+      store.buyTalent('opt_flash_attention')
+      store.buyTalent('opt_speculative_decoding')
+      store.buyTalent('opt_moe_sparse_gating')
+
+      const mults = store.talentMultipliers
+      expect(mults.scrapePowerMultiplier).toBeCloseTo(1.5) // +50%
+      expect(mults.tokenGenerationMultiplier).toBeCloseTo(2.0) // +100%
+      expect(mults.rawTextPriceMultiplier).toBeCloseTo(1.5) // +50%
+      expect(mults.bufferCapacityMultiplier).toBeCloseTo(2.0) // +100%
+      expect(mults.hardwareDiscountMultiplier).toBeCloseTo(0.85) // -15%
+      expect(mults.coolingEfficiencyMultiplier).toBeCloseTo(1.75) // +25% + +50% = +75%
+      expect(mults.gridCapacityMultiplier).toBeCloseTo(1.25) // +25%
+      expect(mults.tflopsMultiplier).toBeCloseTo(2.55) // +20% + 35% + 100% = +155% -> 2.55x
+      expect(mults.modelQualityMultiplier).toBeCloseTo(1.5) // +50%
+    })
   })
 
   describe('GameStore Soft Reset & Prestige Integration', () => {
@@ -110,6 +142,40 @@ describe('Prestige Engine & PrestigeStore Unit Tests', () => {
       expect(game.prestige.prestigeCount).toBe(1)
       expect(game.checkpointMultiplier).toBeCloseTo(1.10)
       expect(game.unlockedFeatures.prestigeT1).toBe(true)
+    })
+
+    it('dynamically doubles buffer capacities when Deep Context Compression talent is unlocked', () => {
+      const game = useGameStore()
+      game.prestige.architecturePoints = 10
+
+      expect(game.rawText.max.toNumber()).toBe(200)
+      expect(game.tokens.max.toNumber()).toBe(100)
+
+      // Buy prerequisites and semantic compression
+      game.buyTalent('opt_bpe_fast_track')
+      game.buyTalent('opt_syntactic_indexing')
+      const bought = game.buyTalent('opt_semantic_compression')
+      expect(bought).toBe(true)
+
+      // Buffer capacities should now be 2x
+      expect(game.rawText.max.toNumber()).toBe(400)
+      expect(game.tokens.max.toNumber()).toBe(200)
+    })
+
+    it('applies hardware discount and electro-thermal boosts across stores', () => {
+      const game = useGameStore()
+      game.prestige.architecturePoints = 10
+
+      // Buy hardware rebate and smart grid
+      game.buyTalent('opt_hardware_rebate')
+      game.buyTalent('opt_smart_grid')
+
+      // Potato PC base cost is $10.00 -> discounted to $8.50
+      const cost = game.getHardwareCost('potato_pc')
+      expect(cost.toNumber()).toBeCloseTo(8.50)
+
+      // Power state grid capacity should reflect +25%
+      expect(game.powerState.gridCapacityWatts.toNumber()).toBeCloseTo(125) // 100W * 1.25
     })
   })
 })

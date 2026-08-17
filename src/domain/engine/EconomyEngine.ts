@@ -23,23 +23,29 @@ export class EconomyEngine {
   /**
    * Automatic scraping rate in characters per second from python scripts & crawler daemons.
    */
-  public static calculateAutoScrapeRate(upgrades: Record<string, SoftwareUpgrade>): number {
+  public static calculateAutoScrapeRate(
+    upgrades: Record<string, SoftwareUpgrade>,
+    scrapeMultiplier = 1.0
+  ): number {
     let rate = 0
     if (upgrades.script_simple_scraper?.purchased) rate += 5
     if (upgrades.script_regex_cleaner?.purchased) rate += 10
     if (upgrades.script_multi_curl?.purchased) rate += 20
     if (upgrades.crawler_daemon_v2?.purchased) rate += 60
-    return rate
+    return rate * scrapeMultiplier
   }
 
   /**
-   * Multiplier on API token value based on neural model parameter size.
-   * Model quality: 1.0 + 0.25 * log10(parameters)
+   * Multiplier on API token value based on neural model parameter size and speculative decoding talents.
+   * Model quality: (1.0 + 0.25 * log10(parameters)) * talentQualityMultiplier
    */
-  public static calculateModelQualityMultiplier(parameters: Decimal | number): number {
+  public static calculateModelQualityMultiplier(
+    parameters: Decimal | number,
+    talentQualityMultiplier = 1.0
+  ): number {
     const p = parameters instanceof Decimal ? parameters.toNumber() : parameters
-    if (p <= 0) return 1.0
-    return 1.0 + 0.25 * Math.log10(Math.max(1, p))
+    if (p <= 0) return 1.0 * talentQualityMultiplier
+    return (1.0 + 0.25 * Math.log10(Math.max(1, p))) * talentQualityMultiplier
   }
 
   /**
@@ -60,14 +66,15 @@ export class EconomyEngine {
   }
 
   /**
-   * Maximum tokens that can be vectorized from raw text given compute and dt.
+   * Maximum tokens that can be vectorized from raw text given compute, dt, and talent multiplier.
    */
   public static calculateTokenizingCapacity(
     compute: Decimal,
     upgrades: Record<string, SoftwareUpgrade>,
-    dt: number
+    dt: number,
+    tokenGenerationMultiplier = 1.0
   ): Decimal {
     const bpeMultiplier = upgrades.fast_bpe_tokenizer?.purchased ? 2.0 : 1.0
-    return compute.mul(50 * bpeMultiplier).mul(dt)
+    return compute.mul(50 * bpeMultiplier * tokenGenerationMultiplier).mul(dt)
   }
 }

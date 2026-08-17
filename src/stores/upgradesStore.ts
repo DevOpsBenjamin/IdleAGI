@@ -4,8 +4,10 @@ import Decimal from 'break_infinity.js'
 import type { SoftwareUpgrade, CurrencyType, UnlockedFeatures } from '@/types'
 import { createInitialUpgrades } from '@/domain/constants/upgrades'
 import { EconomyEngine } from '@/domain/engine/EconomyEngine'
+import { usePrestigeStore } from './prestigeStore'
 
 export const useUpgradesStore = defineStore('upgrades', () => {
+  const prestigeStore = usePrestigeStore()
   const upgrades = ref<Record<string, SoftwareUpgrade>>(createInitialUpgrades())
 
   const manualScrapePower = computed<number>(() => {
@@ -17,7 +19,10 @@ export const useUpgradesStore = defineStore('upgrades', () => {
   })
 
   const autoScrapeRate = computed<number>(() => {
-    return EconomyEngine.calculateAutoScrapeRate(upgrades.value)
+    return EconomyEngine.calculateAutoScrapeRate(
+      upgrades.value,
+      prestigeStore.talentMultipliers.scrapePowerMultiplier
+    )
   })
 
   function buyUpgrade(

@@ -29,11 +29,19 @@ export interface ScenarioGameStore {
   hardware: Record<string, HardwareNode>
   upgrades: Record<string, SoftwareUpgrade>
   unlockedFeatures: Record<string, boolean>
+  checkpointMultiplier?: number
+  prestige?: {
+    architecturePoints: number
+    totalArchitecturePoints: number
+    prestigeCount: number
+  }
   manualScrape(amount?: number): void
   sellRawText(chars?: number, silent?: boolean): boolean
   sellAllRawText(): boolean
   buyHardware(id: string): boolean
   buyUpgrade(id: string): boolean
+  buyTalent?(id: string): boolean
+  triggerPrestige?(): boolean
   updateAllocations(alloc: AllocationState): void
   setAllocationPreset(preset: AllocationPreset): void
   processTick(dt: number): void
@@ -66,6 +74,10 @@ export class ScenarioRunner {
       hardware: this.store.hardware,
       upgrades: this.store.upgrades,
       unlockedFeatures: this.store.unlockedFeatures,
+      architecturePoints: this.store.prestige?.architecturePoints,
+      totalArchitecturePoints: this.store.prestige?.totalArchitecturePoints,
+      prestigeCount: this.store.prestige?.prestigeCount,
+      checkpointMultiplier: this.store.checkpointMultiplier,
     }
   }
 
@@ -213,6 +225,12 @@ export class ScenarioRunner {
 
       case 'buy_upgrade':
         return this.store.buyUpgrade(action.upgradeId)
+
+      case 'buy_talent':
+        return this.store.buyTalent ? this.store.buyTalent(action.talentId) : false
+
+      case 'trigger_prestige':
+        return this.store.triggerPrestige ? this.store.triggerPrestige() : false
 
       case 'set_allocations':
         this.store.updateAllocations(action.allocations)

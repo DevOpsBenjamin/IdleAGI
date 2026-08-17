@@ -51,7 +51,12 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // Multipliers & Computeds
-  const modelQualityMultiplier = computed(() => EconomyEngine.calculateModelQualityMultiplier(resources.parameters))
+  const modelQualityMultiplier = computed(() =>
+    EconomyEngine.calculateModelQualityMultiplier(
+      resources.parameters,
+      prestigeStore.talentMultipliers.modelQualityMultiplier
+    )
+  )
   const manualScrapePower = computed(() => upgradesStore.manualScrapePower * prestigeStore.talentMultipliers.scrapePowerMultiplier)
   const rawTextSellPrice = computed(() => upgradesStore.rawTextSellPrice * prestigeStore.talentMultipliers.rawTextPriceMultiplier)
   const effectiveCompute = computed(() => {
@@ -97,7 +102,11 @@ export const useGameStore = defineStore('game', () => {
   function buyTalent(talentId: string): boolean {
     const res = prestigeStore.buyTalent(talentId)
     if (res.success) {
+      if (talentId === 'opt_semantic_compression') {
+        resources.recalculateBufferCapacities(prestigeStore.talentMultipliers.bufferCapacityMultiplier)
+      }
       terminal.addLog(`Talent d'architecture débloqué : ${prestigeStore.talents[talentId]?.name} (-${prestigeStore.talents[talentId]?.cost} AP).`, 'success')
+      saveToLocalStorage()
       return true
     }
     return false

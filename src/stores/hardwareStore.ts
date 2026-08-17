@@ -4,8 +4,10 @@ import Decimal from 'break_infinity.js'
 import type { HardwareNode, ThermalState, PowerState } from '@/types'
 import { createInitialHardware } from '@/domain/constants/hardware'
 import { ComputeEngine, type PcieSlotsState } from '@/domain/engine/ComputeEngine'
+import { usePrestigeStore } from './prestigeStore'
 
 export const useHardwareStore = defineStore('hardware', () => {
+  const prestigeStore = usePrestigeStore()
   const hardware = ref<Record<string, HardwareNode>>(createInitialHardware())
   const gridCapacityWatts = ref<Decimal>(new Decimal(100))
   const coolingCapacityWatts = ref<Decimal>(new Decimal(50))
@@ -37,14 +39,16 @@ export const useHardwareStore = defineStore('hardware', () => {
   const thermalState = computed<ThermalState>(() => {
     return ComputeEngine.calculateThermalState(
       totalPowerDrawWatts.value,
-      coolingCapacityWatts.value
+      coolingCapacityWatts.value,
+      prestigeStore.talentMultipliers.coolingEfficiencyMultiplier
     )
   })
 
   const powerState = computed<PowerState>(() => {
     return ComputeEngine.calculatePowerState(
       totalPowerDrawWatts.value,
-      gridCapacityWatts.value
+      gridCapacityWatts.value,
+      prestigeStore.talentMultipliers.gridCapacityMultiplier
     )
   })
 
@@ -97,17 +101,19 @@ export const useHardwareStore = defineStore('hardware', () => {
   function buyHardware(
     id: string,
     availableFunds: Decimal,
-    purchasedUpgradeIds: Set<string> | string[] = new Set()
+    purchasedUpgradeIds: Set<string> | string[] = new Set(),
+    costDiscountMultiplier = prestigeStore.talentMultipliers.hardwareDiscountMultiplier
   ): { success: boolean; cost: Decimal; node?: HardwareNode; reason?: string } {
     const node = hardware.value[id]
     if (!node) return { success: false, cost: new Decimal(Infinity) }
 
-    const cost = getHardwareCost(id)
+    const cost = getHardwareCost(id).mul(costDiscountMultiplier)
     const check = ComputeEngine.canBuyHardware(
       hardware.value,
       node,
       availableFunds,
-      purchasedUpgradeIds
+      purchasedUpgradeIds,
+      costDiscountMultiplier
     )
 
     if (!check.canBuy) {
