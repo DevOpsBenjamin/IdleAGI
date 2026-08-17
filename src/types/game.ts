@@ -61,6 +61,8 @@ export interface PowerState {
 export interface UnlockedFeatures {
   dashboardView: boolean
   autoScraping: boolean
+  trainingAllocation: boolean
+  researchAllocation: boolean
   syntheticData: boolean
   quantumLayer: boolean
   prestigeT1: boolean

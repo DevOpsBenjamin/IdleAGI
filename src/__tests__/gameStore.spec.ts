@@ -4,7 +4,7 @@ import { useGameStore, MAX_OFFLINE_SECONDS } from '@/stores/gameStore'
 import Decimal from 'break_infinity.js'
 import { serializeGameState, deserializeGameState } from '@/utils/serialization'
 
-describe('GameStore Core Gameplay (Sprint 1)', () => {
+describe('GameStore Core Gameplay & Bootstrap Economy', () => {
   let memoryStorage: Record<string, string> = {}
 
   beforeAll(() => {
@@ -26,150 +26,137 @@ describe('GameStore Core Gameplay (Sprint 1)', () => {
     setActivePinia(createPinia())
   })
 
-  it('initializes with default values and 1 used CPU', () => {
+  it('initializes in Cold Boot mode: $0, 0 CPU, 0 tokens, raw data broker ready', () => {
     const store = useGameStore()
     expect(store.funds.current.toNumber()).toBe(0)
     expect(store.rawText.current.toNumber()).toBe(0)
     expect(store.tokens.current.toNumber()).toBe(0)
-    expect(store.hardware.used_cpu.count).toBe(1)
-    expect(store.hardware.gtx_gpu.count).toBe(0)
-    expect(store.totalRawCompute.toNumber()).toBeCloseTo(0.05)
-    expect(store.thermalState.efficiency).toBe(1.0)
-    expect(store.powerState.isOverloaded).toBe(false)
+    expect(store.hardware.used_cpu.count).toBe(0)
+    expect(store.totalRawCompute.toNumber()).toBe(0)
+    expect(store.unlockedFeatures.trainingAllocation).toBe(false)
+    expect(store.unlockedFeatures.researchAllocation).toBe(false)
   })
 
-  it('handles manual scraping with default power (+10 chars)', () => {
+  it('allows scraping and selling raw text to data brokers for initial cash', () => {
     const store = useGameStore()
-    store.manualScrape()
-    expect(store.rawText.current.toNumber()).toBe(10)
-    store.manualScrape()
+    // Scrape 40 characters (4 clicks)
+    store.manualScrape() // 10
+    store.manualScrape() // 20
+    store.manualScrape() // 30
+    store.manualScrape() // 40
+    expect(store.rawText.current.toNumber()).toBe(40)
+
+    // Sell 20 characters for $0.05
+    const sold = store.sellRawText(20)
+    expect(sold).toBe(true)
     expect(store.rawText.current.toNumber()).toBe(20)
-  })
+    expect(store.funds.current.toNumber()).toBeCloseTo(0.05)
 
-  it('handles manual tokenization and conversion ratio (4 chars -> 1 token)', () => {
-    const store = useGameStore()
-    store.manualScrape(12) // 12 chars
-    expect(store.rawText.current.toNumber()).toBe(12)
-
-    store.manualTokenize(1) // 1 token = 4 chars
-    expect(store.rawText.current.toNumber()).toBe(8)
-    expect(store.tokens.current.toNumber()).toBe(1)
-
-    store.manualTokenize(2) // 2 tokens = 8 chars
+    // Sell remaining all
+    const soldAll = store.sellAllRawText()
+    expect(soldAll).toBe(true)
     expect(store.rawText.current.toNumber()).toBe(0)
-    expect(store.tokens.current.toNumber()).toBe(3)
+    expect(store.funds.current.toNumber()).toBeCloseTo(0.10)
   })
 
-  it('handles manualTokenizeMax converting all available characters up to buffer limit', () => {
+  it('allows purchasing early micro-upgrades to accelerate scraping power and sell rate', () => {
     const store = useGameStore()
-    store.manualScrape(43) // 43 chars -> 10 tokens with 3 chars remainder
-    store.manualTokenizeMax()
-
-    expect(store.tokens.current.toNumber()).toBe(10)
-    expect(store.rawText.current.toNumber()).toBe(3)
-  })
-
-  it('calculates hardware costs exponentially and allows purchasing', () => {
-    const store = useGameStore()
-    // Initial used CPU cost is 25 * (1.15^1) = 28.75
-    const cost1 = store.getHardwareCost('used_cpu')
-    expect(cost1.toNumber()).toBeCloseTo(28.75)
-
-    // Cannot afford with $0
-    expect(store.buyHardware('used_cpu')).toBe(false)
-
-    // Give $50 funds
-    store.funds.current = new Decimal(50)
-    const bought = store.buyHardware('used_cpu')
-    expect(bought).toBe(true)
-    expect(store.hardware.used_cpu.count).toBe(2)
-    expect(store.funds.current.toNumber()).toBeCloseTo(50 - 28.75)
-
-    // Next cost should be 25 * (1.15^2) = 33.0625
-    const cost2 = store.getHardwareCost('used_cpu')
-    expect(cost2.toNumber()).toBeCloseTo(33.0625)
-
-    // Cannot afford next
-    const boughtAgain = store.buyHardware('used_cpu')
-    expect(boughtAgain).toBe(false)
-  })
-
-  it('allows purchasing software upgrades and applies their immediate effects', () => {
-    const store = useGameStore()
-    // Purchase Multi-thread scraper ($30)
-    expect(store.upgrades.multi_thread_scraper.purchased).toBe(false)
     expect(store.manualScrapePower).toBe(10)
 
-    // Cannot afford with $0
-    expect(store.buyUpgrade('multi_thread_scraper')).toBe(false)
+    // Give $0.50 and buy regex_parser_v0
+    store.funds.current = new Decimal(0.50)
+    const bought1 = store.buyUpgrade('regex_parser_v0')
+    expect(bought1).toBe(true)
+    expect(store.manualScrapePower).toBe(15)
 
-    // Give $30 funds
-    store.funds.current = new Decimal(30)
-    const boughtScraper = store.buyUpgrade('multi_thread_scraper')
-    expect(boughtScraper).toBe(true)
-    expect(store.upgrades.multi_thread_scraper.purchased).toBe(true)
-    expect(store.manualScrapePower).toBe(30)
-
-    // Scrape with upgraded power
-    store.manualScrape()
-    expect(store.rawText.current.toNumber()).toBe(30)
-
-    // Add funds and buy RAM buffer expansion ($80)
-    store.funds.current = new Decimal(100)
-    const boughtRam = store.buyUpgrade('ram_buffer_expansion_1')
-    expect(boughtRam).toBe(true)
-    expect(store.rawText.max.toNumber()).toBe(5000)
-    expect(store.tokens.max.toNumber()).toBe(2500)
+    // Buy broker contract ($3.50)
+    store.funds.current = new Decimal(3.50)
+    const boughtBroker = store.buyUpgrade('raw_data_broker_contract')
+    expect(boughtBroker).toBe(true)
+    expect(store.rawTextSellPrice).toBe(0.08)
   })
 
-  it('processes continuous engine ticks (auto-scraping, auto-tokenizing, inference, training, R&D)', () => {
+  it('activates the hardware tokenizer and inference pipeline upon buying the 1st CPU', () => {
     const store = useGameStore()
-    // Enable auto-scraping via upgrade
-    store.upgrades.crawler_daemon_v1.purchased = true
-    expect(store.autoScrapeRate).toBe(20)
+    expect(store.totalRawCompute.toNumber()).toBe(0)
 
-    // Run 1 second simulation (20 ticks of 0.05s)
-    for (let i = 0; i < 20; i++) {
-      store.processTick(0.05)
-    }
+    // Cost for 1st CPU is $12 (12 * 1.15^0 = 12)
+    expect(store.getHardwareCost('used_cpu').toNumber()).toBe(12)
 
-    // Auto-scraping produced ~20 chars, tokenized by 0.05 TFLOPS CPU
-    expect(store.rawText.current.toNumber() + store.tokens.current.toNumber() * 4).toBeGreaterThan(15)
+    store.funds.current = new Decimal(12)
+    const boughtCpu = store.buyHardware('used_cpu')
+    expect(boughtCpu).toBe(true)
+    expect(store.hardware.used_cpu.count).toBe(1)
+    expect(store.totalRawCompute.toNumber()).toBeCloseTo(0.05)
+
+    // Auto-tokenization now functions: 20 chars -> 5 tokens via 0.05 TFLOPS
+    store.rawText.current = new Decimal(20)
+    store.processTick(1.0) // 1 second: 0.05 TFLOPS * 50 tokens/s = 2.5 tokens
+
+    expect(store.tokens.current.toNumber()).toBeGreaterThan(0)
+    expect(store.rawText.current.toNumber()).toBeLessThan(20)
   })
 
-  it('generates funds from inference and parameters from training according to allocations', () => {
+  it('progressively unlocks Training allocation when enough tokens are served', () => {
     const store = useGameStore()
-    // Give 500 tokens and server blade compute
-    store.tokens.max = new Decimal(1000)
-    store.tokens.current = new Decimal(500)
-    store.hardware.server_blade.count = 1 // 19.5 TFLOPS
-    store.allocations = {
-      inferencePercent: 50,
-      trainingPercent: 50,
-      researchPercent: 0,
-    }
+    store.hardware.used_cpu.count = 1
+    expect(store.unlockedFeatures.trainingAllocation).toBe(false)
 
-    const initialFunds = store.funds.current.toNumber()
-    const initialParams = store.parameters.toNumber()
+    // Serve 30 tokens through inference
+    store.tokens.current = new Decimal(30)
+    store.allocations = { inferencePercent: 100, trainingPercent: 0, researchPercent: 0 }
 
-    store.processTick(1.0) // 1 second
+    // Run tick with enough compute to serve tokens
+    store.hardware.gtx_gpu.count = 1 // 0.5 TFLOPS -> fast inference
+    store.processTick(3.0)
 
-    expect(store.funds.current.toNumber()).toBeGreaterThan(initialFunds)
-    expect(store.parameters.toNumber()).toBeGreaterThan(initialParams)
+    expect(store.unlockedFeatures.trainingAllocation).toBe(true)
   })
 
-  it('respects allocation presets', () => {
+  it('increases API token sale price based on accumulated model parameters', () => {
     const store = useGameStore()
-    store.setAllocationPreset('cash')
-    expect(store.allocations.inferencePercent).toBe(80)
-    expect(store.allocations.trainingPercent).toBe(10)
-    expect(store.allocations.researchPercent).toBe(10)
+    // At 0 parameters, quality multiplier is 1.0
+    expect(store.modelQualityMultiplier).toBe(1.0)
 
-    store.setAllocationPreset('train')
-    expect(store.allocations.inferencePercent).toBe(10)
-    expect(store.allocations.trainingPercent).toBe(70)
-    expect(store.allocations.researchPercent).toBe(20)
+    // At 100 parameters: 1 + 0.25 * log10(100) = 1.5
+    store.parameters = new Decimal(100)
+    expect(store.modelQualityMultiplier).toBeCloseTo(1.5)
 
+    // At 10,000 parameters: 1 + 0.25 * log10(10000) = 2.0
+    store.parameters = new Decimal(10000)
+    expect(store.modelQualityMultiplier).toBeCloseTo(2.0)
+  })
+
+  it('progressively unlocks Research allocation when parameters reach 500', () => {
+    const store = useGameStore()
+    store.unlockedFeatures.trainingAllocation = true
+    expect(store.unlockedFeatures.researchAllocation).toBe(false)
+
+    store.tokens.current = new Decimal(100)
+    store.hardware.gtx_gpu.count = 1
+    store.allocations = { inferencePercent: 0, trainingPercent: 100, researchPercent: 0 }
+
+    // Training 1 token = 100 params -> 6 tokens = 600 params
+    store.processTick(1.0)
+
+    expect(store.parameters.toNumber()).toBeGreaterThanOrEqual(500)
+    expect(store.unlockedFeatures.researchAllocation).toBe(true)
+  })
+
+  it('respects allocation presets with progressive unlock constraints', () => {
+    const store = useGameStore()
+    // With training locked, preset defaults to 100% inference
+    store.setAllocationPreset('balanced')
+    expect(store.allocations.inferencePercent).toBe(100)
+
+    // Unlock training
+    store.unlockedFeatures.trainingAllocation = true
+    store.setAllocationPreset('balanced')
+    expect(store.allocations.inferencePercent).toBe(60)
+    expect(store.allocations.trainingPercent).toBe(40)
+
+    // Unlock research
+    store.unlockedFeatures.researchAllocation = true
     store.setAllocationPreset('balanced')
     expect(store.allocations.inferencePercent).toBe(50)
     expect(store.allocations.trainingPercent).toBe(30)
@@ -182,6 +169,8 @@ describe('GameStore Core Gameplay (Sprint 1)', () => {
     store.parameters = new Decimal(42000)
     store.hardware.gtx_gpu.count = 3
     store.upgrades.fast_bpe_tokenizer.purchased = true
+    store.unlockedFeatures.trainingAllocation = true
+    store.unlockedFeatures.researchAllocation = true
 
     const fullState = store.getFullState()
     const serialized = serializeGameState(fullState)
@@ -192,10 +181,12 @@ describe('GameStore Core Gameplay (Sprint 1)', () => {
     expect(deserialized?.parameters?.toNumber()).toBe(42000)
     expect(deserialized?.hardware?.gtx_gpu.count).toBe(3)
     expect(deserialized?.upgrades?.fast_bpe_tokenizer.purchased).toBe(true)
+    expect(deserialized?.unlockedFeatures?.trainingAllocation).toBe(true)
   })
 
   it('simulates offline progress up to 24h cap without exceeding buffers', () => {
     const store = useGameStore()
+    store.hardware.used_cpu.count = 1
     store.upgrades.crawler_daemon_v1.purchased = true
     store.lastTickTimestamp = Date.now() - 3600 * 1000 // 1 hour offline
 
@@ -208,6 +199,7 @@ describe('GameStore Core Gameplay (Sprint 1)', () => {
 
   it('enforces strict 24h ceiling on offline progress', () => {
     const store = useGameStore()
+    store.hardware.used_cpu.count = 1
     store.lastTickTimestamp = Date.now() - 100000 * 1000 // > 27 hours offline
 
     store.calculateOfflineProgress()

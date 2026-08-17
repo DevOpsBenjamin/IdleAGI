@@ -17,7 +17,6 @@ import {
   serializeGameState,
   deserializeGameState,
 } from '@/utils/serialization'
-import { formatNumber } from '@/utils/format'
 
 export const MAX_OFFLINE_SECONDS = 86400 // 24 heures
 
@@ -25,20 +24,20 @@ const INITIAL_HARDWARE: Record<string, HardwareNode> = {
   used_cpu: {
     id: 'used_cpu',
     name: "CPU d'occasion (4 Cores)",
-    count: 1,
-    baseCost: new Decimal(25),
+    count: 0, // Starts at 0 CPUs: must be bought via initial raw data sales (~3-4 min)
+    baseCost: new Decimal(12), // $12 for the very first CPU
     costMult: 1.15,
     tflops: new Decimal(0.05), // 50 GFLOPS
     vram: new Decimal(4),      // 4 GB
     powerWatts: new Decimal(65),
-    description: "Processeur de récupération permettant d'exécuter un tokenizer basique.",
+    description: "Processeur de récupération permettant d'activer le sous-système de tokenisation automatique et d'inférence.",
     tier: 1,
   },
   gtx_gpu: {
     id: 'gtx_gpu',
     name: 'GPU Grand Public (GTX 1080)',
     count: 0,
-    baseCost: new Decimal(150),
+    baseCost: new Decimal(120),
     costMult: 1.18,
     tflops: new Decimal(0.5),  // 500 GFLOPS
     vram: new Decimal(8),      // 8 GB
@@ -50,7 +49,7 @@ const INITIAL_HARDWARE: Record<string, HardwareNode> = {
     id: 'server_blade',
     name: 'Lame de Serveur Datacenter (A100)',
     count: 0,
-    baseCost: new Decimal(2500),
+    baseCost: new Decimal(2000),
     costMult: 1.22,
     tflops: new Decimal(19.5), // 19.5 TFLOPS
     vram: new Decimal(80),     // 80 GB
@@ -61,11 +60,38 @@ const INITIAL_HARDWARE: Record<string, HardwareNode> = {
 }
 
 const INITIAL_UPGRADES: Record<string, SoftwareUpgrade> = {
-  multi_thread_scraper: {
-    id: 'multi_thread_scraper',
-    name: 'Scraper Multi-threadé',
-    description: 'Optimise les requêtes de scraping manuel pour aspirer 30 caractères par action (+200%).',
-    cost: new Decimal(30),
+  regex_parser_v0: {
+    id: 'regex_parser_v0',
+    name: 'Script Regex v0.1',
+    description: 'Améliore le filtrage manuel des données pour extraire 15 caractères par action (+50%).',
+    cost: new Decimal(0.50),
+    currency: 'funds',
+    purchased: false,
+    category: 'scraping',
+  },
+  http_crawler_stub: {
+    id: 'http_crawler_stub',
+    name: 'Client HTTP Multi-connexions',
+    description: 'Parallélise les requêtes de scraping manuel pour aspirer 25 caractères par action.',
+    cost: new Decimal(2.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'scraping',
+  },
+  raw_data_broker_contract: {
+    id: 'raw_data_broker_contract',
+    name: 'Contrat Courtier de Données',
+    description: 'Négocie un tarif préférentiel pour la vente de texte brut ($0.08 les 20 caractères au lieu de $0.05).',
+    cost: new Decimal(3.50),
+    currency: 'funds',
+    purchased: false,
+    category: 'monetization',
+  },
+  html_stripper: {
+    id: 'html_stripper',
+    name: 'Filtre HTML Vectorisé',
+    description: 'Supprime instantanément les balises superflues : scraping manuel porté à 40 caractères par action.',
+    cost: new Decimal(6.00),
     currency: 'funds',
     purchased: false,
     category: 'scraping',
@@ -74,7 +100,7 @@ const INITIAL_UPGRADES: Record<string, SoftwareUpgrade> = {
     id: 'crawler_daemon_v1',
     name: 'Daemon Crawler v1.0',
     description: 'Active un crawler de fond générant un flux passif continu de Raw Text (+20 chars/s).',
-    cost: new Decimal(60),
+    cost: new Decimal(35),
     currency: 'funds',
     purchased: false,
     category: 'scraping',
@@ -83,7 +109,7 @@ const INITIAL_UPGRADES: Record<string, SoftwareUpgrade> = {
     id: 'ram_buffer_expansion_1',
     name: 'Extension Buffer RAM (16GB)',
     description: 'Étend le cache mémoire : capacité Raw Text portée à 5 000 chars et Tokens à 2 500 $T$.',
-    cost: new Decimal(80),
+    cost: new Decimal(50),
     currency: 'funds',
     purchased: false,
     category: 'hardware',
@@ -92,7 +118,7 @@ const INITIAL_UPGRADES: Record<string, SoftwareUpgrade> = {
     id: 'fast_bpe_tokenizer',
     name: 'BPE Tokenizer Vectorisé',
     description: 'Optimise la vectorisation BPE en mémoire, doublant la vitesse de tokenisation automatique.',
-    cost: new Decimal(160),
+    cost: new Decimal(100),
     currency: 'funds',
     purchased: false,
     category: 'tokenizer',
@@ -109,8 +135,8 @@ const INITIAL_UPGRADES: Record<string, SoftwareUpgrade> = {
   api_tier_pricing: {
     id: 'api_tier_pricing',
     name: 'Pricing API Tier Pro',
-    description: "Augmente la rémunération par token d'inférence servi ($0.10 au lieu de $0.05 par token).",
-    cost: new Decimal(250),
+    description: "Augmente le tarif de base par token d'inférence servi ($0.10 au lieu de $0.05 par token).",
+    cost: new Decimal(200),
     currency: 'funds',
     purchased: false,
     category: 'monetization',
@@ -119,7 +145,7 @@ const INITIAL_UPGRADES: Record<string, SoftwareUpgrade> = {
     id: 'crawler_daemon_v2',
     name: 'Cluster Crawler Parallèle v2.0',
     description: "Distribue le scraping web à grande échelle (+60 chars/s supplémentaires d'auto-scraping).",
-    cost: new Decimal(400),
+    cost: new Decimal(350),
     currency: 'funds',
     purchased: false,
     category: 'scraping',
@@ -145,7 +171,7 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const funds = ref({
-    current: new Decimal(0), // Start capital: $0 (requires manual scraping/tokenization to bootstrap)
+    current: new Decimal(0), // Start capital: $0
     max: new Decimal(Infinity),
     ratePerSec: new Decimal(0),
   })
@@ -175,9 +201,9 @@ export const useGameStore = defineStore('game', () => {
 
   // Allocations (%)
   const allocations = ref<GameState['allocations']>({
-    inferencePercent: 50,
-    trainingPercent: 30,
-    researchPercent: 20,
+    inferencePercent: 100,
+    trainingPercent: 0,
+    researchPercent: 0,
   })
 
   // Physical grid & cooling
@@ -189,7 +215,7 @@ export const useGameStore = defineStore('game', () => {
     {
       id: 'init-1',
       timestamp: Date.now(),
-      message: 'Moteur neural initialisé. En attente de flux de données textuelles...',
+      message: 'Agent Bootstrap initialisé en environnement shell. Commencez par scraper des données textuelles...',
       type: 'info',
     },
   ])
@@ -198,6 +224,8 @@ export const useGameStore = defineStore('game', () => {
   const unlockedFeatures = ref<GameState['unlockedFeatures']>({
     dashboardView: true,
     autoScraping: false,
+    trainingAllocation: false,
+    researchAllocation: false,
     syntheticData: false,
     quantumLayer: false,
     prestigeT1: false,
@@ -207,11 +235,17 @@ export const useGameStore = defineStore('game', () => {
 
   // Tracked milestones for STDOUT events
   const reachedMilestones = ref<Record<string, boolean>>({
+    firstCpu: false,
     firstGpu: false,
+    trainingUnlocked: false,
+    researchUnlocked: false,
     first1000Params: false,
     first10000Params: false,
     first1000Funds: false,
   })
+
+  // Total tokens processed through inference
+  const totalTokensServed = ref(new Decimal(0))
 
   // Offline progress report
   const lastOfflineReport = ref<OfflineProgressSummary | null>(null)
@@ -223,7 +257,15 @@ export const useGameStore = defineStore('game', () => {
   // ==========================================
 
   const manualScrapePower = computed<number>(() => {
-    return upgrades.value.multi_thread_scraper?.purchased ? 30 : 10
+    let power = 10
+    if (upgrades.value.regex_parser_v0?.purchased) power += 5
+    if (upgrades.value.http_crawler_stub?.purchased) power += 10
+    if (upgrades.value.html_stripper?.purchased) power += 15
+    return power
+  })
+
+  const rawTextSellPrice = computed<number>(() => {
+    return upgrades.value.raw_data_broker_contract?.purchased ? 0.08 : 0.05 // per 20 chars
   })
 
   const autoScrapeRate = computed<number>(() => {
@@ -296,6 +338,14 @@ export const useGameStore = defineStore('game', () => {
     return comp
   })
 
+  // Quality multiplier: Training parameters make API responses more valuable!
+  // Formula: 1 + 0.25 * log10(max(1, params))
+  const modelQualityMultiplier = computed<number>(() => {
+    const p = parameters.value.toNumber()
+    if (p <= 0) return 1.0
+    return 1.0 + 0.25 * Math.log10(Math.max(1, p))
+  })
+
   // ==========================================
   // ACTIONS & GAME LOGIC
   // ==========================================
@@ -320,40 +370,36 @@ export const useGameStore = defineStore('game', () => {
       rawText.value.current.add(scrapeAmount)
     )
     const added = rawText.value.current.sub(before)
-    if (added.gt(0) && Math.random() < 0.1) {
+    if (added.gt(0) && Math.random() < 0.15) {
       addLog(`Scraping manuel : +${added.toFixed(0)} caractères bruts acquis.`, 'info')
     }
   }
 
-  function manualTokenize(tokensToMake = 1) {
-    const charsPerToken = 4
-    const neededChars = new Decimal(tokensToMake * charsPerToken)
-
-    if (rawText.value.current.gte(neededChars)) {
-      const maxPossibleTokens = tokens.value.max.minus(tokens.value.current)
-      const actualTokens = Decimal.min(tokensToMake, maxPossibleTokens)
-
-      if (actualTokens.gt(0)) {
-        rawText.value.current = rawText.value.current.sub(actualTokens.mul(charsPerToken))
-        tokens.value.current = Decimal.min(
-          tokens.value.max,
-          tokens.value.current.add(actualTokens)
-        )
-      }
+  // Sell Raw Text to data brokers (early game mechanism before first CPU)
+  function sellRawText(charsToSell = 20): boolean {
+    if (rawText.value.current.gte(charsToSell)) {
+      rawText.value.current = rawText.value.current.sub(charsToSell)
+      const batches = charsToSell / 20
+      const earned = new Decimal(batches * rawTextSellPrice.value)
+      funds.value.current = funds.value.current.add(earned)
+      addLog(`Données brutes vendues au courtier : +$${earned.toFixed(2)} (${charsToSell} chars).`, 'info')
+      return true
     }
+    return false
   }
 
-  function manualTokenizeMax() {
-    const charsPerToken = 4
-    const maxTokensFromChars = rawText.value.current.div(charsPerToken).floor()
-    const spaceInTokens = tokens.value.max.sub(tokens.value.current)
-    const tokensToMake = Decimal.min(maxTokensFromChars, spaceInTokens)
-
-    if (tokensToMake.gt(0)) {
-      rawText.value.current = rawText.value.current.sub(tokensToMake.mul(charsPerToken))
-      tokens.value.current = tokens.value.current.add(tokensToMake)
-      addLog(`Tokenisation batch max : +${formatNumber(tokensToMake)} $T$ générés.`, 'info')
+  function sellAllRawText(): boolean {
+    const available = rawText.value.current.floor().toNumber()
+    const batches = Math.floor(available / 20)
+    if (batches > 0) {
+      const charsToSell = batches * 20
+      rawText.value.current = rawText.value.current.sub(charsToSell)
+      const earned = new Decimal(batches * rawTextSellPrice.value)
+      funds.value.current = funds.value.current.add(earned)
+      addLog(`Lot complet de données brutes vendu : +$${earned.toFixed(2)} (${charsToSell} chars).`, 'info')
+      return true
     }
+    return false
   }
 
   function getHardwareCost(id: string): Decimal {
@@ -370,7 +416,12 @@ export const useGameStore = defineStore('game', () => {
     if (funds.value.current.gte(cost)) {
       funds.value.current = funds.value.current.sub(cost)
       item.count += 1
-      addLog(`Achat effectué : ${item.name} (#${item.count}) pour $${cost.toFixed(2)}.`, 'success')
+      addLog(`Achat matériel effectué : ${item.name} (#${item.count}) pour $${cost.toFixed(2)}.`, 'success')
+
+      if (id === 'used_cpu' && item.count === 1 && !reachedMilestones.value.firstCpu) {
+        reachedMilestones.value.firstCpu = true
+        addLog('Premier processeur en ligne ! Le sous-système de tokenisation automatique et la vente API sont activés.', 'event')
+      }
 
       if (id === 'gtx_gpu' && !reachedMilestones.value.firstGpu) {
         reachedMilestones.value.firstGpu = true
@@ -391,7 +442,7 @@ export const useGameStore = defineStore('game', () => {
         funds.value.current = funds.value.current.sub(cost)
         up.purchased = true
         applyUpgradeEffects(id)
-        addLog(`Module logiciel activé : ${up.name} pour $${cost.toFixed(2)}.`, 'success')
+        addLog(`Module activé : ${up.name} pour $${cost.toFixed(2)}.`, 'success')
         return true
       }
     } else if (up.currency === 'researchPoints') {
@@ -422,6 +473,19 @@ export const useGameStore = defineStore('game', () => {
     trainingPercent: number
     researchPercent: number
   }) {
+    // If training not unlocked, force 100% inference
+    if (!unlockedFeatures.value.trainingAllocation) {
+      allocations.value = { inferencePercent: 100, trainingPercent: 0, researchPercent: 0 }
+      return
+    }
+
+    // If research not unlocked, force research to 0
+    if (!unlockedFeatures.value.researchAllocation && newAllocations.researchPercent > 0) {
+      const train = 100 - newAllocations.inferencePercent
+      allocations.value = { inferencePercent: newAllocations.inferencePercent, trainingPercent: train, researchPercent: 0 }
+      return
+    }
+
     const total =
       newAllocations.inferencePercent +
       newAllocations.trainingPercent +
@@ -432,15 +496,23 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function setAllocationPreset(preset: 'balanced' | 'cash' | 'train') {
-    if (preset === 'balanced') {
-      updateAllocations({ inferencePercent: 50, trainingPercent: 30, researchPercent: 20 })
-      addLog('Allocation réglée sur Mode Équilibré (50% Inf / 30% Train / 20% R&D).', 'info')
-    } else if (preset === 'cash') {
-      updateAllocations({ inferencePercent: 80, trainingPercent: 10, researchPercent: 10 })
-      addLog('Allocation réglée sur Monétisation Maximale (80% Inf / 10% Train / 10% R&D).', 'info')
+    if (preset === 'cash' || !unlockedFeatures.value.trainingAllocation) {
+      updateAllocations({ inferencePercent: 100, trainingPercent: 0, researchPercent: 0 })
+      addLog('Allocation réglée sur Monétisation Maximale (100% Inférence).', 'info')
+    } else if (preset === 'balanced') {
+      if (unlockedFeatures.value.researchAllocation) {
+        updateAllocations({ inferencePercent: 50, trainingPercent: 30, researchPercent: 20 })
+      } else {
+        updateAllocations({ inferencePercent: 60, trainingPercent: 40, researchPercent: 0 })
+      }
+      addLog('Allocation réglée sur Mode Équilibré.', 'info')
     } else if (preset === 'train') {
-      updateAllocations({ inferencePercent: 10, trainingPercent: 70, researchPercent: 20 })
-      addLog('Allocation réglée sur Entraînement Intensif (10% Inf / 70% Train / 20% R&D).', 'info')
+      if (unlockedFeatures.value.researchAllocation) {
+        updateAllocations({ inferencePercent: 20, trainingPercent: 70, researchPercent: 10 })
+      } else {
+        updateAllocations({ inferencePercent: 20, trainingPercent: 80, researchPercent: 0 })
+      }
+      addLog('Allocation réglée sur Entraînement Intensif.', 'info')
     }
   }
 
@@ -456,7 +528,8 @@ export const useGameStore = defineStore('game', () => {
       rawText.value.ratePerSec = new Decimal(0)
     }
 
-    // 2. Tokenisation automatique via le Compute disponible
+    // 2. Tokenisation automatique via le Compute disponible (CPU/GPU)
+    // If compute is 0 (no CPU yet), tokensToCreate is 0 (raw text is not converted to tokens)
     const compute = effectiveCompute.value
     const bpeMultiplier = upgrades.value.fast_bpe_tokenizer?.purchased ? 2.0 : 1.0
     const tokenizingCapacity = compute.mul(50 * bpeMultiplier).mul(dt)
@@ -484,12 +557,24 @@ export const useGameStore = defineStore('game', () => {
     const tokensServed = Decimal.min(maxTokensToServe, tokens.value.current)
 
     let fundsGained = new Decimal(0)
-    const pricePerToken = upgrades.value.api_tier_pricing?.purchased ? 0.10 : 0.05
+    const baseTokenPrice = upgrades.value.api_tier_pricing?.purchased ? 0.10 : 0.05
+    const actualPricePerToken = baseTokenPrice * modelQualityMultiplier.value
+
     if (tokensServed.gt(0)) {
       tokens.value.current = tokens.value.current.sub(tokensServed)
-      fundsGained = tokensServed.mul(pricePerToken)
+      totalTokensServed.value = totalTokensServed.value.add(tokensServed)
+      fundsGained = tokensServed.mul(actualPricePerToken)
       funds.value.current = funds.value.current.add(fundsGained)
       funds.value.ratePerSec = dt > 0 ? fundsGained.div(dt) : new Decimal(0)
+
+      // Progressive disclosure: Unlock Training when enough tokens served
+      if (!unlockedFeatures.value.trainingAllocation && totalTokensServed.value.gte(25)) {
+        unlockedFeatures.value.trainingAllocation = true
+        if (!reachedMilestones.value.trainingUnlocked) {
+          reachedMilestones.value.trainingUnlocked = true
+          addLog('Architecture débloquée : Entraînement Neural actif ! Vous pouvez maintenant allouer du compute pour accroître les Paramètres du modèle.', 'event')
+        }
+      }
     } else {
       funds.value.ratePerSec = new Decimal(0)
     }
@@ -503,6 +588,15 @@ export const useGameStore = defineStore('game', () => {
       tokens.value.current = tokens.value.current.sub(tokensTrained)
       const paramsGained = tokensTrained.mul(100)
       parameters.value = parameters.value.add(paramsGained)
+
+      // Progressive disclosure: Unlock Research when parameters pass 500
+      if (!unlockedFeatures.value.researchAllocation && parameters.value.gte(500)) {
+        unlockedFeatures.value.researchAllocation = true
+        if (!reachedMilestones.value.researchUnlocked) {
+          reachedMilestones.value.researchUnlocked = true
+          addLog('Pôle Scientifique débloqué : R&D active ! Vous pouvez allouer du compute pour générer des points de recherche.', 'event')
+        }
+      }
     }
 
     // C. Recherche : Génère des points de recherche
@@ -523,7 +617,7 @@ export const useGameStore = defineStore('game', () => {
     // Milestones check
     if (!reachedMilestones.value.first1000Params && parameters.value.gte(1000)) {
       reachedMilestones.value.first1000Params = true
-      addLog('Palier atteint : 1 000 Paramètres intégrés au modèle de neurones.', 'event')
+      addLog('Palier atteint : 1 000 Paramètres intégrés au modèle de neurones (Valeur des requêtes accrue).', 'event')
     }
     if (!reachedMilestones.value.first10000Params && parameters.value.gte(10000)) {
       reachedMilestones.value.first10000Params = true
@@ -552,7 +646,6 @@ export const useGameStore = defineStore('game', () => {
     const now = Date.now()
     const elapsedSeconds = Math.max(0, (now - lastTickTimestamp.value) / 1000)
 
-    // Seuil minimal pour déclencher un rapport hors-ligne : 10 secondes
     if (elapsedSeconds < 10) {
       lastTickTimestamp.value = now
       return
@@ -561,13 +654,11 @@ export const useGameStore = defineStore('game', () => {
     const cappedAt24h = elapsedSeconds > MAX_OFFLINE_SECONDS
     const simulatedSeconds = Math.min(elapsedSeconds, MAX_OFFLINE_SECONDS)
 
-    // Capture de l'état initial avant simulation hors-ligne
     const initialRaw = new Decimal(rawText.value.current)
     const initialTokens = new Decimal(tokens.value.current)
     const initialFunds = new Decimal(funds.value.current)
     const initialParams = new Decimal(parameters.value)
 
-    // Simulation rapide par pas de 1 seconde pour respecter les limites et allocations
     const step = 1.0
     const stepsCount = Math.floor(simulatedSeconds / step)
     for (let i = 0; i < stepsCount; i++) {
@@ -662,7 +753,6 @@ export const useGameStore = defineStore('game', () => {
       if (loaded.lastTickTimestamp) lastTickTimestamp.value = loaded.lastTickTimestamp
       if (loaded.gameStartTime) gameStartTime.value = loaded.gameStartTime
 
-      // Ensure upgrades effects are active
       if (upgrades.value.ram_buffer_expansion_1?.purchased) {
         rawText.value.max = new Decimal(5000)
         tokens.value.max = new Decimal(2500)
@@ -705,7 +795,9 @@ export const useGameStore = defineStore('game', () => {
     terminalLogs,
     unlockedFeatures,
     lastOfflineReport,
+    totalTokensServed,
     manualScrapePower,
+    rawTextSellPrice,
     autoScrapeRate,
     totalRawCompute,
     totalPowerDrawWatts,
@@ -713,11 +805,12 @@ export const useGameStore = defineStore('game', () => {
     thermalState,
     powerState,
     effectiveCompute,
+    modelQualityMultiplier,
     addLog,
     clearLogs,
     manualScrape,
-    manualTokenize,
-    manualTokenizeMax,
+    sellRawText,
+    sellAllRawText,
     buyHardware,
     buyUpgrade,
     getHardwareCost,

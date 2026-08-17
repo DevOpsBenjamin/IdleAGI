@@ -18,6 +18,7 @@ const { fps, currentTps } = useGameLoop()
 
 const hardwareArray = computed(() => Object.values(store.hardware))
 const upgradesArray = computed(() => Object.values(store.upgrades))
+const hasCpu = computed(() => store.hardware.used_cpu.count > 0)
 
 // Keyboard shortcuts for active game loop ergonomics
 function handleKeyDown(e: KeyboardEvent) {
@@ -30,12 +31,9 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.code === 'Space') {
     e.preventDefault()
     store.manualScrape()
-  } else if (e.key === 't' || e.key === 'T') {
+  } else if (e.key === 'v' || e.key === 'V') {
     e.preventDefault()
-    store.manualTokenize(1)
-  } else if (e.key === 'm' || e.key === 'M') {
-    e.preventDefault()
-    store.manualTokenizeMax()
+    store.sellRawText(20)
   }
 }
 
@@ -80,14 +78,17 @@ onUnmounted(() => {
             :raw-text-current="store.rawText.current"
             :raw-text-max="store.rawText.max"
             :raw-text-rate="store.rawText.ratePerSec"
+            :raw-text-sell-price="store.rawTextSellPrice"
             :tokens-current="store.tokens.current"
             :tokens-max="store.tokens.max"
             :tokens-rate="store.tokens.ratePerSec"
             :auto-scraping-unlocked="store.unlockedFeatures.autoScraping"
             :manual-scrape-power="store.manualScrapePower"
+            :has-cpu="hasCpu"
+            :effective-compute="store.effectiveCompute"
             @manual-scrape="store.manualScrape()"
-            @manual-tokenize="(amt) => store.manualTokenize(amt)"
-            @manual-tokenize-max="store.manualTokenizeMax()"
+            @sell-raw-text="(amt) => store.sellRawText(amt)"
+            @sell-all-raw-text="store.sellAllRawText()"
           />
 
           <ModelTelemetry
@@ -95,10 +96,14 @@ onUnmounted(() => {
             :total-vram-g-b="store.totalVramGB"
             :effective-compute="store.effectiveCompute"
             :thermal-efficiency="store.thermalState.efficiency"
+            :model-quality-multiplier="store.modelQualityMultiplier"
           />
 
           <AllocationPanel
             :allocations="store.allocations"
+            :training-unlocked="store.unlockedFeatures.trainingAllocation"
+            :research-unlocked="store.unlockedFeatures.researchAllocation"
+            :has-cpu="hasCpu"
             @update-allocations="(val) => store.updateAllocations(val)"
             @set-preset="(p) => store.setAllocationPreset(p)"
           />
@@ -120,7 +125,7 @@ onUnmounted(() => {
             @add-log="(msg, type) => store.addLog(msg, type)"
             @clear-logs="store.clearLogs()"
             @manual-scrape="store.manualScrape()"
-            @manual-tokenize="store.manualTokenize(1)"
+            @manual-tokenize="store.manualScrape()"
           />
         </div>
 
