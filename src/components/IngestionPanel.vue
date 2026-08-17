@@ -1,24 +1,27 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Layers, Sparkles, Play, ArrowRight, Zap } from 'lucide-vue-next'
-import { formatNumber } from '@/utils/format'
+import { Layers, Sparkles, DollarSign, Cpu } from 'lucide-vue-next'
+import { formatNumber, formatMoney } from '@/utils/format'
 import type Decimal from 'break_infinity.js'
 
 const props = defineProps<{
   rawTextCurrent: Decimal
   rawTextMax: Decimal
   rawTextRate: Decimal
+  rawTextSellPrice: number
   tokensCurrent: Decimal
   tokensMax: Decimal
   tokensRate: Decimal
   autoScrapingUnlocked: boolean
   manualScrapePower?: number
+  hasCpu: boolean
+  effectiveCompute: Decimal
 }>()
 
 const emit = defineEmits<{
   (e: 'manual-scrape'): void
-  (e: 'manual-tokenize', amount: number): void
-  (e: 'manual-tokenize-max'): void
+  (e: 'sell-raw-text', amount: number): void
+  (e: 'sell-all-raw-text'): void
 }>()
 
 const rawPercent = computed(() => {
@@ -31,8 +34,8 @@ const tokenPercent = computed(() => {
   return Math.min(100, (props.tokensCurrent.toNumber() / props.tokensMax.toNumber()) * 100)
 })
 
-const canTokenize = computed(() => {
-  return props.rawTextCurrent.gte(4) && props.tokensCurrent.lt(props.tokensMax)
+const canSellRawText = computed(() => {
+  return props.rawTextCurrent.gte(20)
 })
 
 const scrapePowerDisplay = computed(() => props.manualScrapePower ?? 10)
@@ -47,7 +50,7 @@ const scrapePowerDisplay = computed(() => props.manualScrapePower ?? 10)
           <Layers class="w-4 h-4" />
         </div>
         <h3 class="text-xs font-bold text-[#F0F6FC] uppercase tracking-wider">
-          1. Ingestion & Tokenizer
+          1. Ingestion & Vectorisation
         </h3>
       </div>
       <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20">
@@ -83,7 +86,7 @@ const scrapePowerDisplay = computed(() => props.manualScrapePower ?? 10)
         <span v-else class="text-[#8B949E]/70">Auto-scraping inactif</span>
       </div>
 
-      <!-- Action Button -->
+      <!-- Primary Action Button: Manual Scrape -->
       <button
         @click="emit('manual-scrape')"
         class="w-full mt-1 py-2 px-3 rounded bg-[#161B22] hover:bg-[#21262D] text-[#38BDF8] border border-[#38BDF8]/30 hover:border-[#38BDF8] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm"
@@ -96,13 +99,47 @@ const scrapePowerDisplay = computed(() => props.manualScrapePower ?? 10)
           [Espace]
         </span>
       </button>
+
+      <!-- Secondary Bootstrap Action: Sell Raw Text (Early Game before/alongside CPU) -->
+      <div class="grid grid-cols-2 gap-2 pt-1 border-t border-[#21262D]/60 mt-2">
+        <button
+          @click="emit('sell-raw-text', 20)"
+          :disabled="!canSellRawText"
+          class="py-1.5 px-2 rounded bg-[#21262D]/70 hover:bg-[#21262D] disabled:opacity-30 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/20 text-[11px] font-mono flex items-center justify-between cursor-pointer transition-all active:scale-98"
+          title="Vendre 20 caractères au courtier de données"
+        >
+          <span class="flex items-center gap-1">
+            <DollarSign class="w-3 h-3 text-[#00FF66]" />
+            20 chars &rarr; {{ formatMoney(rawTextSellPrice) }}
+          </span>
+          <span class="text-[8px] text-[#8B949E] px-1 py-0.2 rounded bg-[#161B22]">[V]</span>
+        </button>
+
+        <button
+          @click="emit('sell-all-raw-text')"
+          :disabled="!canSellRawText"
+          class="py-1.5 px-2 rounded bg-[#21262D]/70 hover:bg-[#21262D] disabled:opacity-30 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/20 text-[11px] font-mono flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-98"
+          title="Vendre tout le Raw Text disponible par lot de 20"
+        >
+          <span>Vendre Tout</span>
+        </button>
+      </div>
     </div>
 
-    <!-- Transition indicator -->
-    <div class="flex items-center justify-center -my-1 text-[#8B949E]/60 text-[10px] font-mono gap-1">
-      <span>Ratio : 4 Caractères</span>
-      <ArrowRight class="w-3 h-3" />
-      <span>1 Token</span>
+    <!-- Pipeline Transition & CPU Tokenizer Status -->
+    <div class="p-2.5 rounded-lg border text-xs font-mono flex items-center justify-between gap-2" :class="hasCpu ? 'bg-[#00FF66]/5 border-[#00FF66]/30 text-[#00FF66]' : 'bg-[#FFB800]/5 border-[#FFB800]/30 text-[#FFB800]'">
+      <div class="flex items-center gap-2">
+        <Cpu class="w-4 h-4 shrink-0" />
+        <span v-if="hasCpu" class="text-[11px]">
+          Tokenizer Actif : Automatisé par le Cluster ({{ formatNumber(effectiveCompute.mul(50)) }} T/s max)
+        </span>
+        <span v-else class="text-[11px]">
+          Tokenizer Inactif : Nécessite 1 CPU d'occasion (0 TFLOPS)
+        </span>
+      </div>
+      <span class="text-[9px] px-1.5 py-0.5 rounded border" :class="hasCpu ? 'bg-[#00FF66]/10 border-[#00FF66]/30' : 'bg-[#FFB800]/10 border-[#FFB800]/30'">
+        {{ hasCpu ? '4 Chars → 1 $T$' : 'En attente' }}
+      </span>
     </div>
 
     <!-- Section B: Tokenizer Output Buffer -->
@@ -130,36 +167,9 @@ const scrapePowerDisplay = computed(() => props.manualScrapePower ?? 10)
         <span class="text-[#00FF66]">Flux net : {{ formatNumber(tokensRate) }}/s</span>
       </div>
 
-      <!-- Tokenize Action Buttons -->
-      <div class="grid grid-cols-2 gap-2 mt-1">
-        <button
-          @click="emit('manual-tokenize', 1)"
-          :disabled="!canTokenize"
-          class="py-2 px-2.5 rounded bg-[#161B22] hover:bg-[#21262D] disabled:opacity-40 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 hover:border-[#00FF66] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm"
-        >
-          <span class="flex items-center gap-1.5 text-[11px]">
-            <Play class="w-3 h-3 text-[#00FF66]" />
-            1 BATCH
-          </span>
-          <span class="text-[9px] px-1 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D]">
-            [T]
-          </span>
-        </button>
-
-        <button
-          @click="emit('manual-tokenize-max')"
-          :disabled="!canTokenize"
-          class="py-2 px-2.5 rounded bg-[#161B22] hover:bg-[#21262D] disabled:opacity-40 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 hover:border-[#00FF66] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm"
-        >
-          <span class="flex items-center gap-1.5 text-[11px]">
-            <Zap class="w-3 h-3 text-[#00FF66]" />
-            MAX
-          </span>
-          <span class="text-[9px] px-1 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D]">
-            [M]
-          </span>
-        </button>
-      </div>
+      <p class="text-[10px] text-[#8B949E] leading-relaxed pt-1 border-t border-[#21262D]/60">
+        Les tokens sont consommés automatiquement par les canaux d'Inférence (Vente $) et d'Entraînement (Poids).
+      </p>
     </div>
   </div>
 </template>

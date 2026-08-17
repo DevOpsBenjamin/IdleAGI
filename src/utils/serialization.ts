@@ -159,6 +159,8 @@ export function deserializeGameState(
       unlockedFeatures: {
         dashboardView: raw.unlockedFeatures?.dashboardView ?? true,
         autoScraping: raw.unlockedFeatures?.autoScraping ?? false,
+        trainingAllocation: raw.unlockedFeatures?.trainingAllocation ?? false,
+        researchAllocation: raw.unlockedFeatures?.researchAllocation ?? false,
         syntheticData: raw.unlockedFeatures?.syntheticData ?? false,
         quantumLayer: raw.unlockedFeatures?.quantumLayer ?? false,
         prestigeT1: raw.unlockedFeatures?.prestigeT1 ?? false,

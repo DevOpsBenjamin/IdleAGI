@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Cpu, HardDrive, ShieldCheck, Gauge } from 'lucide-vue-next'
+import { Cpu, HardDrive, Sparkles, Gauge } from 'lucide-vue-next'
 import { formatNumber, formatFlops } from '@/utils/format'
 import type Decimal from 'break_infinity.js'
 
@@ -9,10 +9,15 @@ const props = defineProps<{
   totalVramGB: Decimal
   effectiveCompute: Decimal
   thermalEfficiency: number
+  modelQualityMultiplier?: number
 }>()
 
 const paramsFormatted = computed(() => formatNumber(props.parameters))
 const vramFormatted = computed(() => formatNumber(props.totalVramGB))
+const qualityDisplay = computed(() => {
+  const mult = props.modelQualityMultiplier ?? 1.0
+  return `x${mult.toFixed(2)}`
+})
 </script>
 
 <template>
@@ -47,6 +52,32 @@ const vramFormatted = computed(() => formatNumber(props.totalVramGB))
         <div class="text-[9px] text-[#8B949E] font-mono">Complexité cognitive</div>
       </div>
 
+      <!-- Quality Multiplier on API Pricing -->
+      <div class="bg-[#161B22]/70 border border-[#21262D] p-3 rounded-lg flex flex-col gap-1">
+        <div class="text-[11px] text-[#8B949E] flex items-center justify-between">
+          <span>Valeur Requête API</span>
+          <Sparkles class="w-3 h-3 text-[#00FF66]" />
+        </div>
+        <div class="text-base font-bold text-[#00FF66] font-mono tracking-wide">
+          {{ qualityDisplay }}
+        </div>
+        <div class="text-[9px] text-[#00FF66]/80 font-mono">Bonus intelligence IA</div>
+      </div>
+
+      <!-- Effective Compute -->
+      <div class="bg-[#161B22]/70 border border-[#21262D] p-3 rounded-lg flex flex-col gap-1">
+        <div class="text-[11px] text-[#8B949E] flex items-center justify-between">
+          <span>Puissance Réelle</span>
+          <Cpu class="w-3 h-3 text-[#38BDF8]" />
+        </div>
+        <div class="text-base font-bold text-[#38BDF8] font-mono tracking-wide">
+          {{ formatFlops(effectiveCompute) }}
+        </div>
+        <div class="text-[9px] text-[#8B949E] font-mono">
+          Efficacité thermique : {{ Math.round(thermalEfficiency * 100) }}%
+        </div>
+      </div>
+
       <!-- VRAM -->
       <div class="bg-[#161B22]/70 border border-[#21262D] p-3 rounded-lg flex flex-col gap-1">
         <div class="text-[11px] text-[#8B949E] flex items-center justify-between">
@@ -57,32 +88,6 @@ const vramFormatted = computed(() => formatNumber(props.totalVramGB))
           {{ vramFormatted }} GB
         </div>
         <div class="text-[9px] text-[#8B949E] font-mono">Plafond de contexte</div>
-      </div>
-
-      <!-- Effective Compute -->
-      <div class="bg-[#161B22]/70 border border-[#21262D] p-3 rounded-lg flex flex-col gap-1">
-        <div class="text-[11px] text-[#8B949E] flex items-center justify-between">
-          <span>Puissance Réelle</span>
-          <Cpu class="w-3 h-3 text-[#00FF66]" />
-        </div>
-        <div class="text-base font-bold text-[#00FF66] font-mono tracking-wide">
-          {{ formatFlops(effectiveCompute) }}
-        </div>
-        <div class="text-[9px] text-[#8B949E] font-mono">
-          Efficacité thermique : {{ Math.round(thermalEfficiency * 100) }}%
-        </div>
-      </div>
-
-      <!-- Alignment / Entropy -->
-      <div class="bg-[#161B22]/70 border border-[#21262D] p-3 rounded-lg flex flex-col gap-1">
-        <div class="text-[11px] text-[#8B949E] flex items-center justify-between">
-          <span>Alignement</span>
-          <ShieldCheck class="w-3 h-3 text-[#00FF66]" />
-        </div>
-        <div class="text-base font-bold text-[#38BDF8] font-mono tracking-wide">
-          100.0%
-        </div>
-        <div class="text-[9px] text-[#00FF66] font-mono">Entropie nominale</div>
       </div>
     </div>
   </div>
