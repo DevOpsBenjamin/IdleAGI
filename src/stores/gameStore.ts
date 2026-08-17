@@ -177,7 +177,7 @@ export const useGameStore = defineStore('game', () => {
         if (!features.reachedMilestones.firstPotatoPc) {
           features.reachedMilestones.firstPotatoPc = true
           terminal.addLog(
-            'Vieux PC Poubelle allumé ! Les ventilateurs tournent bruyamment. Vous pouvez maintenant écrire vos premiers scripts Python.',
+            'Relique allumée ! Le disque dur IDE 5400 RPM crépite et le ventilateur hurle. Vous pouvez maintenant exécuter vos premiers scripts Python.',
             'event'
           )
         }
