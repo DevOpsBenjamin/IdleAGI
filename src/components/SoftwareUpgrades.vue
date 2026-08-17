@@ -21,6 +21,9 @@ const emit = defineEmits<{
 
 const visibleUpgrades = computed(() => {
   return props.upgradesList.filter((up) => {
+    // Hardware (RAM kits, cooling) are presented in Panel 3 (HardwareCluster)
+    if (up.category === 'hardware') return false
+
     // Already purchased upgrades stay visible as completed
     if (up.purchased) return true
 

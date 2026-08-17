@@ -159,11 +159,16 @@ export const useGameStore = defineStore('game', () => {
   }
 
   function buyHardware(id: string): boolean {
-    const result = hardwareStore.buyHardware(id, resources.funds.current)
+    const purchasedUpgrades = new Set(
+      Object.values(upgradesStore.upgrades)
+        .filter((u) => u.purchased)
+        .map((u) => u.id)
+    )
+    const result = hardwareStore.buyHardware(id, resources.funds.current, purchasedUpgrades)
     if (result.success && result.node) {
       resources.funds.current = resources.funds.current.sub(result.cost)
       terminal.addLog(
-        `Achat matériel effectué : ${result.node.name} (#${result.node.count}) pour $${result.cost.toFixed(2)}.`,
+        `Achat matériel effectué : ${result.node.name} pour $${result.cost.toFixed(2)}.`,
         'success'
       )
 
@@ -223,7 +228,17 @@ export const useGameStore = defineStore('game', () => {
       return true
     }
 
-    if (result.reason === 'host_tier_too_low') {
+    if (result.reason === 'missing_ram_upgrade') {
+      terminal.addLog(
+        'Impossible d’acquérir cette tour : vous devez d’abord installer tous les kits de RAM requis sur votre machine actuelle !',
+        'warn'
+      )
+    } else if (result.reason === 'max_count_reached') {
+      terminal.addLog(
+        'Cette machine est déjà installée et active !',
+        'warn'
+      )
+    } else if (result.reason === 'host_tier_too_low') {
       const node = hardwareStore.hardware[id]
       const minTier = node?.minHostTier ?? 1
       terminal.addLog(
@@ -538,6 +553,8 @@ export const useGameStore = defineStore('game', () => {
     effectiveCompute,
     hasPotatoPc,
     hasWorkstation,
+    activeHostNode: computed(() => hardwareStore.activeHostNode),
+    nextHostNode: computed(() => hardwareStore.nextHostNode),
     // Upgrades
     upgrades: computed({
       get: () => upgradesStore.upgrades,

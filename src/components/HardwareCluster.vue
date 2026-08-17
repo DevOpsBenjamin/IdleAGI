@@ -1,24 +1,29 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { HardDrive, Plus, Zap, Cpu, MemoryStick, Activity, Layers, Server } from 'lucide-vue-next'
+import { HardDrive, Plus, Zap, Cpu, MemoryStick, Activity, Layers, Server, Check, AlertCircle } from 'lucide-vue-next'
 import { formatMoney, formatFlops, formatWatts, formatVram, formatBandwidth } from '@/utils/format'
-import type { HardwareNode } from '@/types/game'
+import type { HardwareNode, SoftwareUpgrade } from '@/types/game'
 import type Decimal from 'break_infinity.js'
 import { ComputeEngine, type PcieSlotsState } from '@/domain/engine/ComputeEngine'
 
 const props = defineProps<{
   hardwareList: HardwareNode[]
+  ramUpgradesList?: SoftwareUpgrade[]
   fundsCurrent: Decimal
   currentPhase: number
   pcieSlots?: PcieSlotsState
+  activeHostNode?: HardwareNode | null
+  nextHostNode?: HardwareNode | null
+  purchasedUpgradeIds?: string[]
   getHardwareCost: (id: string) => Decimal
 }>()
 
 const emit = defineEmits<{
   (e: 'buy-hardware', id: string): void
+  (e: 'buy-upgrade', id: string): void
 }>()
 
-const activeTab = ref<'all' | 'host' | 'gpu'>('all')
+const activeTab = ref<'host' | 'ram' | 'gpu'>('host')
 
 const hardwareRecord = computed(() => {
   const map: Record<string, HardwareNode> = {}
@@ -28,44 +33,111 @@ const hardwareRecord = computed(() => {
   return map
 })
 
-const visibleHardware = computed(() => {
-  return props.hardwareList.filter((hw) => {
-    // Filter by tab
-    if (activeTab.value !== 'all' && hw.category !== activeTab.value) return false
+const purchasedSet = computed(() => new Set(props.purchasedUpgradeIds ?? []))
 
-    // Already owned hardware is always visible
-    if (hw.count > 0) return true
+// ==========================================
+// 1. HOST STATION TAB COMPUTEDS
+// ==========================================
+const currentHost = computed(() => props.activeHostNode ?? null)
+const nextHost = computed(() => props.nextHostNode ?? null)
 
-    // Tier 0 hardware (Potato PC, Core 2 Quad) always visible once hardware section is unlocked
-    if (hw.tier === 0) return true
+function isHostRamRequirementsMet(node: HardwareNode | null): boolean {
+  if (!node || !node.requiredUpgrades || node.requiredUpgrades.length === 0) return true
+  return node.requiredUpgrades.every((req) => purchasedSet.value.has(req))
+}
 
-    // Higher tiers unlock when player has accumulated decent capital or unlocked corresponding phase
-    const thresholdRatio = hw.tier === 1 ? 0.3 : hw.tier === 2 ? 0.2 : 0.15
-    const costThreshold = hw.baseCost.mul(thresholdRatio)
-    return props.fundsCurrent.gte(costThreshold) || props.currentPhase >= hw.tier
+function getMissingRamUpgradeNames(node: HardwareNode | null): string[] {
+  if (!node || !node.requiredUpgrades) return []
+  const missingIds = node.requiredUpgrades.filter((req) => !purchasedSet.value.has(req))
+  return missingIds.map((id) => {
+    const up = props.ramUpgradesList?.find((u) => u.id === id)
+    return up ? up.name : id
+  })
+}
+
+function canBuyHost(node: HardwareNode | null): boolean {
+  if (!node) return false
+  if (node.maxCount && node.count >= node.maxCount) return false
+  if (!isHostRamRequirementsMet(node)) return false
+  const cost = props.getHardwareCost(node.id)
+  return props.fundsCurrent.gte(cost)
+}
+
+function getHostButtonLabel(node: HardwareNode | null): string {
+  if (!node) return 'Max'
+  if (node.maxCount && node.count >= node.maxCount) return 'Actif (Actuel)'
+  if (!isHostRamRequirementsMet(node)) return 'RAM max requise'
+  return 'Mettre à niveau'
+}
+
+// ==========================================
+// 2. RAM UPGRADES TAB COMPUTEDS
+// ==========================================
+const visibleRamUpgrades = computed(() => {
+  if (!props.ramUpgradesList) return []
+  const currentTier = currentHost.value?.tier ?? -1
+
+  return props.ramUpgradesList.filter((up) => {
+    // If already purchased, always keep visible
+    if (up.purchased) return true
+
+    // If no host owned yet, show nothing
+    if (!currentHost.value) return false
+
+    // Gating by active host platform
+    if (currentTier === 0) {
+      return (
+        up.id === 'ram_sdram_256mb' ||
+        up.id === 'script_ram_expansion_512' ||
+        up.id === 'ram_ddr2_8gb' ||
+        up.id === 'ram_ddr3_16gb'
+      )
+    } else if (currentTier === 1) {
+      return up.id === 'ram_ddr4_32gb' || up.id === 'ram_ddr4_64gb'
+    } else if (currentTier === 2) {
+      return up.id === 'ram_ddr5_128gb' || up.id === 'ram_ddr5_256gb'
+    } else {
+      return true
+    }
   })
 })
 
-function canBuyNode(hw: HardwareNode): boolean {
-  const cost = props.getHardwareCost(hw.id)
-  if (props.fundsCurrent.lt(cost)) return false
-  if (hw.category === 'gpu') {
-    const check = ComputeEngine.canInstallGpu(hardwareRecord.value, hw)
-    if (!check.canInstall) return false
-  }
-  return true
+function canAffordUpgrade(up: SoftwareUpgrade): boolean {
+  if (up.purchased) return false
+  return props.fundsCurrent.gte(up.cost)
 }
 
-function getBuyButtonLabel(hw: HardwareNode): string {
-  if (hw.category === 'gpu') {
-    const check = ComputeEngine.canInstallGpu(hardwareRecord.value, hw)
-    if (!check.canInstall) {
-      if (check.reason === 'host_tier_too_low') {
-        return `Hôte T${hw.minHostTier ?? 0}+ requis`
-      }
-      if (check.reason === 'no_pcie_slots') {
-        return 'Slot PCIe requis'
-      }
+// ==========================================
+// 3. GPU ACCELERATORS TAB COMPUTEDS
+// ==========================================
+const visibleGpus = computed(() => {
+  const currentTier = currentHost.value?.tier ?? -1
+
+  return props.hardwareList.filter((hw) => {
+    if (hw.category !== 'gpu') return false
+    // If owned, always show
+    if (hw.count > 0) return true
+    // Only show GPUs compatible with current or immediately accessible host
+    const minTier = hw.minHostTier ?? 0
+    return minTier <= Math.max(0, currentTier)
+  })
+})
+
+function canBuyGpu(hw: HardwareNode): boolean {
+  const cost = props.getHardwareCost(hw.id)
+  if (props.fundsCurrent.lt(cost)) return false
+  const check = ComputeEngine.canInstallGpu(hardwareRecord.value, hw)
+  return check.canInstall
+}
+
+function getGpuButtonLabel(hw: HardwareNode): string {
+  const check = ComputeEngine.canInstallGpu(hardwareRecord.value, hw)
+  if (!check.canInstall) {
+    if (check.reason === 'host_tier_too_low') {
+      return `Hôte T${hw.minHostTier ?? 0}+ requis`
+    }
+    if (check.reason === 'no_pcie_slots') {
+      return 'Slot PCIe requis'
     }
   }
   return 'Acquérir'
@@ -82,10 +154,10 @@ function getBuyButtonLabel(hw: HardwareNode): string {
         </div>
         <div>
           <h3 class="text-xs font-bold text-[#F0F6FC] uppercase tracking-wider font-mono">
-            3. Matériel & Nœuds de Calcul
+            3. Matériel, RAM & Accélérateurs
           </h3>
           <p class="text-[10px] text-[#8B949E] font-mono">
-            Stations Hôtes, Slots PCIe & Accélérateurs Dédiés
+            Station hôte active, barrettes mémoires et cartes GPU
           </p>
         </div>
       </div>
@@ -106,19 +178,20 @@ function getBuyButtonLabel(hw: HardwareNode): string {
     <!-- Category Tabs -->
     <div class="flex items-center gap-1 bg-[#161B22] p-1 rounded-md border border-[#21262D] text-xs font-mono">
       <button
-        @click="activeTab = 'all'"
-        :class="activeTab === 'all' ? 'bg-[#21262D] text-[#F0F6FC] font-bold shadow-sm' : 'text-[#8B949E] hover:text-[#F0F6FC]'"
-        class="flex-1 py-1 rounded transition-all cursor-pointer text-center"
-      >
-        Tout
-      </button>
-      <button
         @click="activeTab = 'host'"
         :class="activeTab === 'host' ? 'bg-[#21262D] text-[#38BDF8] font-bold shadow-sm' : 'text-[#8B949E] hover:text-[#38BDF8]'"
         class="flex-1 py-1 rounded flex items-center justify-center gap-1 transition-all cursor-pointer"
       >
         <Server class="w-3 h-3" />
-        Hôtes & RAM
+        Station Hôte
+      </button>
+      <button
+        @click="activeTab = 'ram'"
+        :class="activeTab === 'ram' ? 'bg-[#21262D] text-[#FFB800] font-bold shadow-sm' : 'text-[#8B949E] hover:text-[#FFB800]'"
+        class="flex-1 py-1 rounded flex items-center justify-center gap-1 transition-all cursor-pointer"
+      >
+        <MemoryStick class="w-3 h-3" />
+        Barrettes RAM
       </button>
       <button
         @click="activeTab = 'gpu'"
@@ -126,27 +199,220 @@ function getBuyButtonLabel(hw: HardwareNode): string {
         class="flex-1 py-1 rounded flex items-center justify-center gap-1 transition-all cursor-pointer"
       >
         <Zap class="w-3 h-3" />
-        GPUs & Accélérateurs
+        GPU Dédiés
       </button>
     </div>
 
-    <!-- Hardware Nodes List -->
-    <div class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+    <!-- TAB 1: HOST STATION PROGRESSION -->
+    <div v-if="activeTab === 'host'" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+      <!-- 1. Active Owned Host Card -->
       <div
-        v-for="hw in visibleHardware"
-        :key="hw.id"
-        class="bg-[#161B22]/80 border border-[#21262D] hover:border-[#38BDF8]/40 transition-all rounded-lg p-3.5 flex flex-col gap-2.5 shadow-sm"
+        v-if="currentHost"
+        class="bg-[#161B22]/90 border border-[#38BDF8]/40 rounded-lg p-3.5 flex flex-col gap-2.5 shadow-sm"
       >
-        <!-- Node Top Bar -->
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="text-xs font-bold text-[#F0F6FC] font-mono flex items-center gap-2">
+              {{ currentHost.name }}
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/30 font-bold uppercase">
+                Station Active • T{{ currentHost.tier }}
+              </span>
+            </div>
+            <div class="text-[10px] text-[#8B949E] font-mono flex flex-wrap items-center gap-2 mt-1">
+              <span class="flex items-center gap-1 text-[#38BDF8]">
+                <Cpu class="w-3 h-3" /> +{{ formatFlops(currentHost.tflops) }} CPU
+              </span>
+              <span>•</span>
+              <span class="flex items-center gap-1 text-[#FFB800]">
+                <Zap class="w-3 h-3" /> {{ formatWatts(currentHost.powerWatts) }}
+              </span>
+              <span>•</span>
+              <span class="flex items-center gap-1 text-[#00FF66]">
+                <MemoryStick class="w-3 h-3" /> {{ formatVram(currentHost.vram) }}
+              </span>
+              <span>•</span>
+              <span class="text-[#38BDF8] font-bold">
+                {{ (currentHost.pcieSlotsProvided ?? 0) > 0 ? `+${currentHost.pcieSlotsProvided} Slot PCIe` : '0 slot PCIe' }}
+              </span>
+            </div>
+          </div>
+
+          <span class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/30 flex items-center gap-1">
+            <Check class="w-3 h-3" /> En Ligne
+          </span>
+        </div>
+
+        <p v-if="currentHost.description" class="text-[10px] text-[#8B949E] leading-relaxed">
+          {{ currentHost.description }}
+        </p>
+      </div>
+
+      <!-- 2. Next Target Host Card -->
+      <div
+        v-if="nextHost"
+        class="bg-[#161B22]/60 border border-[#21262D] hover:border-[#38BDF8]/40 transition-all rounded-lg p-3.5 flex flex-col gap-2.5 shadow-sm"
+      >
+        <div class="flex justify-between items-start">
+          <div>
+            <div class="text-xs font-bold text-[#F0F6FC] font-mono flex items-center gap-2">
+              {{ nextHost.name }}
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-[#FFB800]/10 text-[#FFB800] border border-[#FFB800]/30 uppercase font-mono">
+                Prochain Palier • T{{ nextHost.tier }}
+              </span>
+            </div>
+            <div class="text-[10px] text-[#8B949E] font-mono flex flex-wrap items-center gap-2 mt-1">
+              <span class="flex items-center gap-1 text-[#38BDF8]">
+                <Cpu class="w-3 h-3" /> +{{ formatFlops(nextHost.tflops) }} CPU
+              </span>
+              <span>•</span>
+              <span class="flex items-center gap-1 text-[#FFB800]">
+                <Zap class="w-3 h-3" /> {{ formatWatts(nextHost.powerWatts) }}
+              </span>
+              <span>•</span>
+              <span class="flex items-center gap-1 text-[#00FF66]">
+                <MemoryStick class="w-3 h-3" /> {{ formatVram(nextHost.vram) }}
+              </span>
+              <span v-if="(nextHost.pcieSlotsProvided ?? 0) > 0" class="text-[#38BDF8] font-bold">
+                • +{{ nextHost.pcieSlotsProvided }} Slots PCIe
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <p v-if="nextHost.description" class="text-[10px] text-[#8B949E] leading-relaxed">
+          {{ nextHost.description }}
+        </p>
+
+        <!-- RAM Gating Requirements Banner -->
+        <div
+          v-if="!isHostRamRequirementsMet(nextHost)"
+          class="p-2 rounded bg-[#FFB800]/10 border border-[#FFB800]/20 flex items-start gap-2 text-[10px] font-mono text-[#FFB800]"
+        >
+          <AlertCircle class="w-3.5 h-3.5 shrink-0 mt-0.5" />
+          <div>
+            <span class="font-bold">Prérequis RAM non satisfait :</span>
+            <p class="text-[#8B949E] text-[9px] mt-0.5">
+              Installez d'abord les extensions requises : <span class="text-[#F0F6FC] font-bold">{{ getMissingRamUpgradeNames(nextHost).join(', ') }}</span> dans l'onglet <strong>Barrettes RAM</strong>.
+            </p>
+          </div>
+        </div>
+
+        <div
+          v-else-if="nextHost.requiredUpgrades && nextHost.requiredUpgrades.length > 0"
+          class="p-1.5 rounded bg-[#00FF66]/10 border border-[#00FF66]/20 flex items-center gap-1.5 text-[10px] font-mono text-[#00FF66]"
+        >
+          <Check class="w-3.5 h-3.5" />
+          <span>Tous les kits de RAM requis sont installés ! Prêt pour la mise à niveau.</span>
+        </div>
+
+        <!-- Upgrade Cost & Action Button -->
+        <div class="flex justify-between items-center pt-2 border-t border-[#21262D]/60 text-xs font-mono">
+          <div class="flex flex-col">
+            <span class="text-[9px] text-[#8B949E] uppercase">Coût de mise à niveau</span>
+            <span class="font-bold text-[#00FF66]">
+              {{ formatMoney(getHardwareCost(nextHost.id)) }}
+            </span>
+          </div>
+
+          <button
+            @click="emit('buy-hardware', nextHost.id)"
+            :disabled="!canBuyHost(nextHost)"
+            :class="canBuyHost(nextHost) ? 'hover:bg-[#30363D] hover:text-[#00FF66] text-[#F0F6FC]' : 'opacity-40 cursor-not-allowed text-[#8B949E]'"
+            class="px-3.5 py-1.5 rounded bg-[#21262D] active:scale-95 text-xs font-bold font-mono flex items-center gap-1.5 transition-all cursor-pointer border border-[#30363D]"
+          >
+            <Plus class="w-3.5 h-3.5" />
+            {{ getHostButtonLabel(nextHost) }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Max Host Station Reached -->
+      <div v-if="!nextHost && currentHost" class="text-center p-4 bg-[#161B22]/40 rounded-lg border border-[#21262D] text-xs font-mono text-[#8B949E]">
+        🏆 Félicitations ! Votre cluster fonctionne sur l'infrastructure serveur ultime.
+      </div>
+    </div>
+
+    <!-- TAB 2: RAM UPGRADES -->
+    <div v-else-if="activeTab === 'ram'" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+      <div v-if="visibleRamUpgrades.length === 0" class="p-4 text-center text-xs font-mono text-[#8B949E]">
+        Aucune extension de RAM disponible pour le moment.
+      </div>
+
+      <div
+        v-for="up in visibleRamUpgrades"
+        :key="up.id"
+        :class="[
+          'border rounded-lg p-3 flex flex-col gap-2 transition-all shadow-sm',
+          up.purchased
+            ? 'bg-[#161B22]/40 border-[#21262D]/60 opacity-70'
+            : 'bg-[#161B22]/80 border-[#21262D] hover:border-[#FFB800]/40'
+        ]"
+      >
+        <div class="flex justify-between items-start gap-2">
+          <div class="flex items-center gap-1.5">
+            <MemoryStick class="w-3.5 h-3.5 text-[#FFB800] shrink-0" />
+            <span class="text-xs font-bold text-[#F0F6FC] font-mono">
+              {{ up.name }}
+            </span>
+          </div>
+
+          <span
+            v-if="up.purchased"
+            class="text-[9px] font-mono px-2 py-0.5 rounded bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/30 flex items-center gap-1 shrink-0"
+          >
+            <Check class="w-3 h-3" /> Installé
+          </span>
+          <span
+            v-else
+            class="text-xs font-mono font-bold text-[#00FF66] shrink-0"
+          >
+            {{ formatMoney(up.cost) }}
+          </span>
+        </div>
+
+        <p class="text-[10px] text-[#8B949E] leading-relaxed">
+          {{ up.description }}
+        </p>
+
+        <div v-if="!up.purchased" class="flex justify-end pt-1">
+          <button
+            @click="emit('buy-upgrade', up.id)"
+            :disabled="!canAffordUpgrade(up)"
+            class="w-full py-1.5 px-3 rounded bg-[#21262D] hover:bg-[#30363D] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed text-[#F0F6FC] hover:text-[#FFB800] text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-[#30363D]"
+          >
+            Installer la barrette
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: GPU ACCELERATORS -->
+    <div v-else class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+      <!-- No PCIe Slot Info Box -->
+      <div
+        v-if="!currentHost || (currentHost.pcieSlotsProvided ?? 0) <= 0"
+        class="p-4 rounded-lg bg-[#161B22]/60 border border-[#21262D] text-center text-xs font-mono text-[#8B949E] flex flex-col items-center gap-2"
+      >
+        <Layers class="w-6 h-6 text-[#38BDF8]/60" />
+        <p>
+          Votre machine actuelle ne possède aucun port d'extension PCIe x16.
+        </p>
+        <p class="text-[10px] text-[#38BDF8]">
+          Améliorez votre station hôte vers un <strong>Chauffage d'Appoint (Core 2 Quad)</strong> ou supérieur pour installer un GPU dédié.
+        </p>
+      </div>
+
+      <div
+        v-for="hw in visibleGpus"
+        :key="hw.id"
+        class="bg-[#161B22]/80 border border-[#21262D] hover:border-[#00FF66]/40 transition-all rounded-lg p-3.5 flex flex-col gap-2.5 shadow-sm"
+      >
         <div class="flex justify-between items-start">
           <div>
             <div class="text-xs font-bold text-[#F0F6FC] font-mono flex items-center gap-2">
               {{ hw.name }}
-              <span
-                :class="hw.category === 'host' ? 'bg-[#38BDF8]/10 text-[#38BDF8] border-[#38BDF8]/20' : 'bg-[#00FF66]/10 text-[#00FF66] border-[#00FF66]/20'"
-                class="text-[9px] px-1.5 py-0.2 rounded border font-normal uppercase"
-              >
-                {{ hw.category === 'host' ? 'Hôte' : 'GPU' }} • T{{ hw.tier }}
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/20 font-normal uppercase">
+                GPU • T{{ hw.tier }}
               </span>
             </div>
             <div class="text-[10px] text-[#8B949E] font-mono flex flex-wrap items-center gap-2 mt-1">
@@ -165,28 +431,21 @@ function getBuyButtonLabel(hw: HardwareNode): string {
               <span class="flex items-center gap-1 text-[#E2E8F0]">
                 <Activity class="w-3 h-3 text-[#38BDF8]" /> {{ formatBandwidth(hw.memoryBandwidthGBs) }} ({{ hw.memoryType }})
               </span>
-              <!-- PCIe slot info -->
-              <span v-if="hw.category === 'host' && (hw.pcieSlotsProvided ?? 0) > 0" class="text-[#38BDF8] font-bold">
-                • +{{ hw.pcieSlotsProvided }} Slot PCIe
-              </span>
-              <span v-else-if="hw.category === 'gpu'" class="text-[#FFB800] font-bold">
-                • {{ hw.pcieSlotsRequired ?? 1 }} Slot (Hôte T{{ hw.minHostTier ?? 0 }}+)
+              <span class="text-[#FFB800] font-bold">
+                • {{ hw.pcieSlotsRequired ?? 1 }} Slot requis
               </span>
             </div>
           </div>
 
-          <!-- Quantity Badge -->
           <span class="text-xs font-mono font-bold px-2 py-0.5 rounded bg-[#21262D] text-[#F0F6FC] border border-[#30363D]">
             x{{ hw.count }}
           </span>
         </div>
 
-        <!-- Node Description -->
         <p v-if="hw.description" class="text-[10px] text-[#8B949E] leading-relaxed">
           {{ hw.description }}
         </p>
 
-        <!-- Bottom Cost & Acquisition Action -->
         <div class="flex justify-between items-center pt-2 border-t border-[#21262D]/60 text-xs font-mono">
           <div class="flex flex-col">
             <span class="text-[9px] text-[#8B949E] uppercase">Coût unitaire</span>
@@ -197,12 +456,12 @@ function getBuyButtonLabel(hw: HardwareNode): string {
 
           <button
             @click="emit('buy-hardware', hw.id)"
-            :disabled="!canBuyNode(hw)"
-            :class="canBuyNode(hw) ? 'hover:bg-[#30363D] hover:text-[#00FF66] text-[#F0F6FC]' : 'opacity-40 cursor-not-allowed text-[#8B949E]'"
+            :disabled="!canBuyGpu(hw)"
+            :class="canBuyGpu(hw) ? 'hover:bg-[#30363D] hover:text-[#00FF66] text-[#F0F6FC]' : 'opacity-40 cursor-not-allowed text-[#8B949E]'"
             class="px-3.5 py-1.5 rounded bg-[#21262D] active:scale-95 text-xs font-bold font-mono flex items-center gap-1.5 transition-all cursor-pointer border border-[#30363D]"
           >
             <Plus class="w-3.5 h-3.5" />
-            {{ getBuyButtonLabel(hw) }}
+            {{ getGpuButtonLabel(hw) }}
           </button>
         </div>
       </div>

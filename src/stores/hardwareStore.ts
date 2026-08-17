@@ -74,6 +74,21 @@ export const useHardwareStore = defineStore('hardware', () => {
     )
   })
 
+  const hostNodesInOrder = computed<HardwareNode[]>(() => {
+    return Object.values(hardware.value)
+      .filter((n) => n.category === 'host')
+      .sort((a, b) => a.baseCost.cmp(b.baseCost))
+  })
+
+  const activeHostNode = computed<HardwareNode | null>(() => {
+    const owned = hostNodesInOrder.value.filter((n) => n.count > 0)
+    return owned.length > 0 ? owned[owned.length - 1] : null
+  })
+
+  const nextHostNode = computed<HardwareNode | null>(() => {
+    return hostNodesInOrder.value.find((n) => n.count === 0) ?? null
+  })
+
   function getHardwareCost(id: string): Decimal {
     const node = hardware.value[id]
     return ComputeEngine.calculateHardwareCost(node)
@@ -81,21 +96,22 @@ export const useHardwareStore = defineStore('hardware', () => {
 
   function buyHardware(
     id: string,
-    availableFunds: Decimal
+    availableFunds: Decimal,
+    purchasedUpgradeIds: Set<string> | string[] = new Set()
   ): { success: boolean; cost: Decimal; node?: HardwareNode; reason?: string } {
     const node = hardware.value[id]
     if (!node) return { success: false, cost: new Decimal(Infinity) }
 
     const cost = getHardwareCost(id)
-    if (!availableFunds.gte(cost)) {
-      return { success: false, cost, reason: 'insufficient_funds' }
-    }
+    const check = ComputeEngine.canBuyHardware(
+      hardware.value,
+      node,
+      availableFunds,
+      purchasedUpgradeIds
+    )
 
-    if (node.category === 'gpu') {
-      const check = ComputeEngine.canInstallGpu(hardware.value, node)
-      if (!check.canInstall) {
-        return { success: false, cost, reason: check.reason }
-      }
+    if (!check.canBuy) {
+      return { success: false, cost, reason: check.reason }
     }
 
     node.count += 1
@@ -117,6 +133,8 @@ export const useHardwareStore = defineStore('hardware', () => {
     effectiveCompute,
     hasPotatoPc,
     hasWorkstation,
+    activeHostNode,
+    nextHostNode,
     getHardwareCost,
     buyHardware,
   }

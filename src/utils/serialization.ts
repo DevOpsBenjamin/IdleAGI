@@ -49,6 +49,8 @@ export function serializeHardwareNode(node: HardwareNode): SerializedHardwareNod
     pcieSlotsProvided: node.pcieSlotsProvided,
     pcieSlotsRequired: node.pcieSlotsRequired,
     minHostTier: node.minHostTier,
+    maxCount: node.maxCount,
+    requiredUpgrades: node.requiredUpgrades,
     description: node.description,
     tier: node.tier ?? 1,
   }
@@ -74,6 +76,8 @@ export function deserializeHardwareNode(
     pcieSlotsProvided: raw.pcieSlotsProvided ?? fallback.pcieSlotsProvided,
     pcieSlotsRequired: raw.pcieSlotsRequired ?? fallback.pcieSlotsRequired,
     minHostTier: typeof raw.minHostTier === 'number' ? raw.minHostTier : fallback.minHostTier,
+    maxCount: typeof raw.maxCount === 'number' ? raw.maxCount : fallback.maxCount,
+    requiredUpgrades: Array.isArray(raw.requiredUpgrades) ? raw.requiredUpgrades : fallback.requiredUpgrades,
     description: raw.description ?? fallback.description,
     tier: raw.tier ?? fallback.tier ?? 1,
   }

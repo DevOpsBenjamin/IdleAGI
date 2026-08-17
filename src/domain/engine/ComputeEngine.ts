@@ -12,6 +12,10 @@ export type GpuInstallResult =
   | { canInstall: true }
   | { canInstall: false; reason: 'no_pcie_slots' | 'host_tier_too_low' }
 
+export type HardwareBuyResult =
+  | { canBuy: true }
+  | { canBuy: false; reason: 'insufficient_funds' | 'max_count_reached' | 'missing_ram_upgrade' | 'no_pcie_slots' | 'host_tier_too_low' }
+
 export class ComputeEngine {
   /**
    * Calculate total raw compute (TFLOPS) from all active hardware nodes.
@@ -139,6 +143,47 @@ export class ComputeEngine {
     }
 
     return { canInstall: true }
+  }
+
+  /**
+   * Check if hardware can be purchased factoring in costs, maxCount caps, RAM upgrade prerequisites, and GPU slots.
+   */
+  public static canBuyHardware(
+    hardware: Record<string, HardwareNode>,
+    node: HardwareNode | undefined,
+    availableFunds: Decimal,
+    purchasedUpgradeIds: Set<string> | string[] = new Set()
+  ): HardwareBuyResult {
+    if (!node) return { canBuy: false, reason: 'insufficient_funds' }
+
+    const cost = this.calculateHardwareCost(node)
+    if (availableFunds.lt(cost)) {
+      return { canBuy: false, reason: 'insufficient_funds' }
+    }
+
+    if (node.maxCount !== undefined && node.count >= node.maxCount) {
+      return { canBuy: false, reason: 'max_count_reached' }
+    }
+
+    if (node.requiredUpgrades && node.requiredUpgrades.length > 0) {
+      const upgradeSet = Array.isArray(purchasedUpgradeIds)
+        ? new Set(purchasedUpgradeIds)
+        : purchasedUpgradeIds
+      for (const req of node.requiredUpgrades) {
+        if (!upgradeSet.has(req)) {
+          return { canBuy: false, reason: 'missing_ram_upgrade' }
+        }
+      }
+    }
+
+    if (node.category === 'gpu') {
+      const gpuCheck = this.canInstallGpu(hardware, node)
+      if (!gpuCheck.canInstall) {
+        return { canBuy: false, reason: gpuCheck.reason }
+      }
+    }
+
+    return { canBuy: true }
   }
 
   /**
