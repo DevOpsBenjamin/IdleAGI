@@ -36,7 +36,7 @@ function confirmReset() {
 </script>
 
 <template>
-  <header class="border-b border-[#21262D] bg-[#0D1117]/90 backdrop-blur-md px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 z-20">
+  <header class="shrink-0 border-b border-[#21262D] bg-[#0D1117]/90 backdrop-blur-md px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 z-20">
     <!-- Brand & Project Title -->
     <div class="flex items-center gap-3">
       <div class="p-2 rounded-lg bg-[#00FF66]/10 border border-[#00FF66]/30 text-[#00FF66] shadow-[0_0_12px_rgba(0,255,102,0.2)]">

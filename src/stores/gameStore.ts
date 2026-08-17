@@ -145,7 +145,7 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const funds = ref({
-    current: new Decimal(50), // Start capital
+    current: new Decimal(0), // Start capital: $0 (requires manual scraping/tokenization to bootstrap)
     max: new Decimal(Infinity),
     ratePerSec: new Decimal(0),
   })

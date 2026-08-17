@@ -49,7 +49,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#07090E] text-[#E2E8F0] font-mono flex flex-col relative overflow-hidden selection:bg-[#00FF66]/30 selection:text-[#00FF66]">
+  <div class="h-screen bg-[#07090E] text-[#E2E8F0] font-mono flex flex-col overflow-hidden relative selection:bg-[#00FF66]/30 selection:text-[#00FF66]">
     <!-- Scanline effect overlay -->
     <div class="fixed inset-0 scanlines opacity-30 pointer-events-none z-40"></div>
 
@@ -60,7 +60,7 @@ onUnmounted(() => {
       @dismiss="store.dismissOfflineReport()"
     />
 
-    <!-- Header Navigation Bar -->
+    <!-- Header Navigation Bar (Fixed / Persistent at top) -->
     <AppHeader
       :version="store.version"
       :power-state="store.powerState"
@@ -71,79 +71,79 @@ onUnmounted(() => {
       @reset="store.hardReset()"
     />
 
-    <!-- Main Cyber-Terminal Grid -->
-    <main class="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-7xl mx-auto w-full z-10">
-      
-      <!-- Left Column: Data Ingestion & Model Telemetry & Allocations (4 cols) -->
-      <div class="lg:col-span-4 flex flex-col gap-5">
-        <IngestionPanel
-          :raw-text-current="store.rawText.current"
-          :raw-text-max="store.rawText.max"
-          :raw-text-rate="store.rawText.ratePerSec"
-          :tokens-current="store.tokens.current"
-          :tokens-max="store.tokens.max"
-          :tokens-rate="store.tokens.ratePerSec"
-          :auto-scraping-unlocked="store.unlockedFeatures.autoScraping"
-          :manual-scrape-power="store.manualScrapePower"
-          @manual-scrape="store.manualScrape()"
-          @manual-tokenize="(amt) => store.manualTokenize(amt)"
-          @manual-tokenize-max="store.manualTokenizeMax()"
-        />
+    <!-- Main Scrollable Content Area -->
+    <main class="flex-1 overflow-y-auto p-4 md:p-6 min-h-0 z-10">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-7xl mx-auto w-full">
+        <!-- Left Column: Data Ingestion & Model Telemetry & Allocations (4 cols) -->
+        <div class="lg:col-span-4 flex flex-col gap-5">
+          <IngestionPanel
+            :raw-text-current="store.rawText.current"
+            :raw-text-max="store.rawText.max"
+            :raw-text-rate="store.rawText.ratePerSec"
+            :tokens-current="store.tokens.current"
+            :tokens-max="store.tokens.max"
+            :tokens-rate="store.tokens.ratePerSec"
+            :auto-scraping-unlocked="store.unlockedFeatures.autoScraping"
+            :manual-scrape-power="store.manualScrapePower"
+            @manual-scrape="store.manualScrape()"
+            @manual-tokenize="(amt) => store.manualTokenize(amt)"
+            @manual-tokenize-max="store.manualTokenizeMax()"
+          />
 
-        <ModelTelemetry
-          :parameters="store.parameters"
-          :total-vram-g-b="store.totalVramGB"
-          :effective-compute="store.effectiveCompute"
-          :thermal-efficiency="store.thermalState.efficiency"
-        />
+          <ModelTelemetry
+            :parameters="store.parameters"
+            :total-vram-g-b="store.totalVramGB"
+            :effective-compute="store.effectiveCompute"
+            :thermal-efficiency="store.thermalState.efficiency"
+          />
 
-        <AllocationPanel
-          :allocations="store.allocations"
-          @update-allocations="(val) => store.updateAllocations(val)"
-          @set-preset="(p) => store.setAllocationPreset(p)"
-        />
+          <AllocationPanel
+            :allocations="store.allocations"
+            @update-allocations="(val) => store.updateAllocations(val)"
+            @set-preset="(p) => store.setAllocationPreset(p)"
+          />
+        </div>
+
+        <!-- Center Column: Telemetry Oscilloscope & STDOUT Terminal (4 cols) -->
+        <div class="lg:col-span-4 flex flex-col gap-5">
+          <!-- Live Real-Time Flow Oscilloscope -->
+          <OscilloscopeCanvas
+            :token-rate="store.tokens.ratePerSec.toNumber()"
+            :raw-text-rate="store.rawText.ratePerSec.toNumber()"
+            :effective-compute="store.effectiveCompute.toNumber()"
+          />
+
+          <!-- Cyber Terminal STDOUT -->
+          <TerminalStdout
+            :logs="store.terminalLogs"
+            :parameters-count="store.parameters.toNumber()"
+            @add-log="(msg, type) => store.addLog(msg, type)"
+            @clear-logs="store.clearLogs()"
+            @manual-scrape="store.manualScrape()"
+            @manual-tokenize="store.manualTokenize(1)"
+          />
+        </div>
+
+        <!-- Right Column: Hardware Cluster Rack & Software Upgrades (4 cols) -->
+        <div class="lg:col-span-4 flex flex-col gap-5">
+          <HardwareCluster
+            :hardware-list="hardwareArray"
+            :funds-current="store.funds.current"
+            :get-hardware-cost="(id) => store.getHardwareCost(id)"
+            @buy-hardware="(id) => store.buyHardware(id)"
+          />
+
+          <SoftwareUpgrades
+            :upgrades-list="upgradesArray"
+            :funds-current="store.funds.current"
+            :research-points-current="store.researchPoints.current"
+            @buy-upgrade="(id) => store.buyUpgrade(id)"
+          />
+        </div>
       </div>
-
-      <!-- Center Column: Telemetry Oscilloscope & STDOUT Terminal (4 cols) -->
-      <div class="lg:col-span-4 flex flex-col gap-5">
-        <!-- Live Real-Time Flow Oscilloscope -->
-        <OscilloscopeCanvas
-          :token-rate="store.tokens.ratePerSec.toNumber()"
-          :raw-text-rate="store.rawText.ratePerSec.toNumber()"
-          :effective-compute="store.effectiveCompute.toNumber()"
-        />
-
-        <!-- Cyber Terminal STDOUT -->
-        <TerminalStdout
-          :logs="store.terminalLogs"
-          :parameters-count="store.parameters.toNumber()"
-          @add-log="(msg, type) => store.addLog(msg, type)"
-          @clear-logs="store.clearLogs()"
-          @manual-scrape="store.manualScrape()"
-          @manual-tokenize="store.manualTokenize(1)"
-        />
-      </div>
-
-      <!-- Right Column: Hardware Cluster Rack & Software Upgrades (4 cols) -->
-      <div class="lg:col-span-4 flex flex-col gap-5">
-        <HardwareCluster
-          :hardware-list="hardwareArray"
-          :funds-current="store.funds.current"
-          :get-hardware-cost="(id) => store.getHardwareCost(id)"
-          @buy-hardware="(id) => store.buyHardware(id)"
-        />
-
-        <SoftwareUpgrades
-          :upgrades-list="upgradesArray"
-          :funds-current="store.funds.current"
-          :research-points-current="store.researchPoints.current"
-          @buy-upgrade="(id) => store.buyUpgrade(id)"
-        />
-      </div>
-
     </main>
 
-    <!-- Footer System Status -->
+    <!-- Footer System Status (Fixed / Persistent at bottom) -->
     <AppFooter
       :fps="fps"
       :tps="currentTps"

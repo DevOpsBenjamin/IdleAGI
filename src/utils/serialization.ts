@@ -143,7 +143,7 @@ export function deserializeGameState(
       gameStartTime: raw.gameStartTime ?? Date.now(),
       rawText: deserializeResource(raw.rawText, 0, 1000),
       tokens: deserializeResource(raw.tokens, 0, 500),
-      funds: deserializeResource(raw.funds, 50, Infinity),
+      funds: deserializeResource(raw.funds, 0, Infinity),
       parameters: new Decimal(raw.parameters ?? 0),
       researchPoints: deserializeResource(raw.researchPoints, 0, 10000),
       hardware: deserializedHardware,

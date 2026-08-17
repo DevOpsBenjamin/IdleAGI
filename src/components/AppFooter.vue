@@ -10,7 +10,7 @@ defineProps<{
 </script>
 
 <template>
-  <footer class="border-t border-[#21262D] bg-[#0D1117] px-6 py-2.5 text-xs text-[#8B949E] flex flex-wrap justify-between items-center gap-3 font-mono z-20">
+  <footer class="shrink-0 border-t border-[#21262D] bg-[#0D1117] px-6 py-2.5 text-xs text-[#8B949E] flex flex-wrap justify-between items-center gap-3 font-mono z-20">
     <div class="flex items-center gap-2">
       <span class="text-[#00FF66] font-bold">Project Singularity Loop</span>
       <span>•</span>
