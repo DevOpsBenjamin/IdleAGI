@@ -1,7 +1,7 @@
 import type Decimal from 'break_infinity.js'
 import type { CurrencyType } from './resources'
 
-export type UpgradeCategory = 'human' | 'scraping' | 'tokenizer' | 'monetization' | 'hardware'
+export type UpgradeCategory = 'human' | 'scraping' | 'tokenizer' | 'monetization' | 'hardware' | 'cooling'
 
 export interface SoftwareUpgrade {
   readonly id: string

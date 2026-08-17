@@ -8,11 +8,15 @@ export interface AllocationState {
   researchPercent: number  // 0 to 100
 }
 
+export type ThermalStatus = 'nominal' | 'warm' | 'throttling'
+
 export interface ThermalState {
   heatGeneratedWatts: Decimal
   coolingCapacityWatts: Decimal
-  efficiency: number // 0.0 to 1.0
+  efficiency: number // 0.1 to 1.0
   isThrottling: boolean
+  temperatureCelsius: number
+  status: ThermalStatus
 }
 
 export interface PowerState {
@@ -54,6 +58,7 @@ export interface MilestoneState {
   first1000Params: boolean
   first10000Params: boolean
   first1000Funds: boolean
+  firstThrottling?: boolean
 }
 
 export interface OfflineProgressSummary {

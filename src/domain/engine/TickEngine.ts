@@ -19,6 +19,7 @@ export interface TickContext {
   effectiveCompute: Decimal
   modelQualityMultiplier: number
   bandwidthSpeedMultiplier?: number
+  isThrottling?: boolean
   totalTokensServed: Decimal
   autoBrokerAccumulator: number
   onSellRawTextQuiet: (amount: number) => void
@@ -201,6 +202,17 @@ export class TickEngine {
     )
     for (const evt of globalEvents) {
       onAddLog(evt.message, evt.type)
+    }
+
+    // Thermal Throttling Milestones
+    if (context.isThrottling) {
+      const thermalEvents = MilestoneTracker.checkThermalMilestones(
+        true,
+        milestones
+      )
+      for (const evt of thermalEvents) {
+        onAddLog(evt.message, evt.type)
+      }
     }
 
     return {

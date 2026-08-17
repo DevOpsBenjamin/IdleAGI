@@ -303,4 +303,37 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(store.lastOfflineReport?.simulatedSeconds).toBe(MAX_OFFLINE_SECONDS)
     expect(store.lastOfflineReport?.cappedAt24h).toBe(true)
   })
+
+  it('allows purchasing active cooling solutions to expand cooling capacity and eliminate throttling', () => {
+    const store = useGameStore()
+    store.funds.current = new Decimal(5000)
+    store.unlockedFeatures.scriptsSection = true
+    store.unlockedFeatures.tokenizerUnlocked = true
+    store.unlockedFeatures.trainingAllocation = true
+    store.hardware.gaming_pc.count = 1
+    store.coolingCapacityWatts = new Decimal(100)
+
+    // Install two power-hungry RTX 3090 GPUs (2 * 350W = 700W power + 120W host = 820W -> 738W heat)
+    store.hardware.rtx_3090.count = 2
+    expect(store.thermalState.heatGeneratedWatts.toNumber()).toBe(738)
+    expect(store.thermalState.isThrottling).toBe(true)
+    expect(store.thermalState.efficiency).toBeCloseTo(100 / 738, 2)
+    expect(store.thermalState.status).toBe('throttling')
+
+    // Buy cooling upgrades
+    expect(store.buyUpgrade('cooling_case_fans_120mm')).toBe(true)
+    expect(store.coolingCapacityWatts.toNumber()).toBe(170)
+
+    expect(store.buyUpgrade('cooling_tower_heatsink')).toBe(true)
+    expect(store.coolingCapacityWatts.toNumber()).toBe(350)
+
+    expect(store.buyUpgrade('cooling_aio_watercooling_360')).toBe(true)
+    expect(store.coolingCapacityWatts.toNumber()).toBe(800)
+
+    // Now cooling capacity (800W) > heat (738W) -> throttling resolved!
+    expect(store.thermalState.isThrottling).toBe(false)
+    expect(store.thermalState.efficiency).toBe(1.0)
+    expect(store.thermalState.status).toBe('warm')
+    expect(store.thermalState.temperatureCelsius).toBeLessThan(80)
+  })
 })

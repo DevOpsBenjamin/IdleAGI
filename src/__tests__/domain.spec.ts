@@ -82,14 +82,46 @@ describe('ComputeEngine Domain Unit Tests', () => {
     }
   })
 
-  it('calculates thermal state and throttling correctly', () => {
-    // Under cooling capacity: 100W power -> 90W heat <= 100W cooling -> efficiency 1.0
+  it('calculates heat generated with canonical Q = P * 0.90 formula', () => {
+    const heat1 = ComputeEngine.calculateHeatGenerated(new Decimal(100))
+    expect(heat1.toNumber()).toBe(90)
+
+    const heat2 = ComputeEngine.calculateHeatGenerated(new Decimal(700))
+    expect(heat2.toNumber()).toBe(630)
+  })
+
+  it('calculates simulated operating temperature and qualified thermal status', () => {
+    // Ambient / zero load: 22°C nominal
+    expect(ComputeEngine.calculateTemperatureCelsius(new Decimal(0), new Decimal(100), 1.0)).toBe(22.0)
+    expect(ComputeEngine.calculateThermalStatus(22.0)).toBe('nominal')
+
+    // 50% thermal load: 22 + 10 + 45 * 0.5 = 54.5°C nominal
+    const tempHalf = ComputeEngine.calculateTemperatureCelsius(new Decimal(50), new Decimal(100), 1.0)
+    expect(tempHalf).toBe(54.5)
+    expect(ComputeEngine.calculateThermalStatus(tempHalf)).toBe('nominal')
+
+    // 100% thermal load: 22 + 10 + 45 * 1.0 = 77°C warm
+    const tempFull = ComputeEngine.calculateTemperatureCelsius(new Decimal(100), new Decimal(100), 1.0)
+    expect(tempFull).toBe(77.0)
+    expect(ComputeEngine.calculateThermalStatus(tempFull)).toBe('warm')
+
+    // Overload / throttling with 50% efficiency: 77 + 28 * 0.5 = 91°C throttling
+    const tempThrottled = ComputeEngine.calculateTemperatureCelsius(new Decimal(200), new Decimal(100), 0.5)
+    expect(tempThrottled).toBe(91.0)
+    expect(ComputeEngine.calculateThermalStatus(tempThrottled)).toBe('throttling')
+  })
+
+  it('calculates thermal state, temperature, and throttling correctly', () => {
+    // Under cooling capacity: 100W power -> 90W heat <= 100W cooling -> efficiency 1.0, ~72.5°C
     const stateNormal = ComputeEngine.calculateThermalState(
       new Decimal(100),
       new Decimal(100)
     )
     expect(stateNormal.isThrottling).toBe(false)
     expect(stateNormal.efficiency).toBe(1.0)
+    expect(stateNormal.heatGeneratedWatts.toNumber()).toBe(90)
+    expect(stateNormal.temperatureCelsius).toBeCloseTo(72.5, 1)
+    expect(stateNormal.status).toBe('warm')
 
     // Over cooling capacity: 500W power -> 450W heat > 150W cooling -> efficiency = 150/450 = 0.333
     const stateThrottled = ComputeEngine.calculateThermalState(
@@ -98,6 +130,8 @@ describe('ComputeEngine Domain Unit Tests', () => {
     )
     expect(stateThrottled.isThrottling).toBe(true)
     expect(stateThrottled.efficiency).toBeCloseTo(0.333, 2)
+    expect(stateThrottled.status).toBe('throttling')
+    expect(stateThrottled.temperatureCelsius).toBeGreaterThan(90)
   })
 
   it('calculates power grid state and overload penalty correctly', () => {
@@ -116,7 +150,7 @@ describe('ComputeEngine Domain Unit Tests', () => {
     expect(gridOverloaded.gridLoadPercent).toBe(150)
 
     // Effective compute suffers 50% penalty on grid overload
-    const thermal = { heatGeneratedWatts: new Decimal(0), coolingCapacityWatts: new Decimal(100), efficiency: 1.0, isThrottling: false }
+    const thermal = ComputeEngine.calculateThermalState(new Decimal(0), new Decimal(100))
     const comp = ComputeEngine.calculateEffectiveCompute(new Decimal(10), thermal, gridOverloaded)
     expect(comp.toNumber()).toBe(5.0)
   })

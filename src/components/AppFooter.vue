@@ -35,10 +35,10 @@ defineProps<{
       <span class="flex items-center gap-1.5">
         <Flame
           class="w-3.5 h-3.5 transition-colors"
-          :class="thermalState.isThrottling ? 'text-[#FFB800] animate-pulse' : 'text-[#38BDF8]'"
+          :class="thermalState.isThrottling ? 'text-[#EF4444] animate-pulse' : thermalState.status === 'warm' ? 'text-[#FFB800]' : 'text-[#38BDF8]'"
         />
-        <span :class="thermalState.isThrottling ? 'text-[#FFB800] font-semibold' : 'text-[#8B949E]'">
-          Thermique : {{ thermalState.isThrottling ? `${Math.round((1 - thermalState.efficiency) * 100)}% Throttling` : 'Nominal' }}
+        <span :class="thermalState.isThrottling ? 'text-[#EF4444] font-semibold' : thermalState.status === 'warm' ? 'text-[#FFB800]' : 'text-[#8B949E]'">
+          Thermique : {{ thermalState.temperatureCelsius.toFixed(1) }}°C ({{ thermalState.isThrottling ? `${Math.round((1 - thermalState.efficiency) * 100)}% Throttling` : thermalState.status === 'warm' ? 'Chaud' : 'Nominal' }})
         </span>
       </span>
     </div>

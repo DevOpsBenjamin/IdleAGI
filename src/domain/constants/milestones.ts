@@ -13,6 +13,7 @@ export const INITIAL_MILESTONES: Readonly<MilestoneState> = {
   first1000Params: false,
   first10000Params: false,
   first1000Funds: false,
+  firstThrottling: false,
 } as const
 
 export const INITIAL_UNLOCKED_FEATURES: Readonly<UnlockedFeatures> = {
