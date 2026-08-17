@@ -10,6 +10,7 @@
     --color-accent-green: #00FF66;
     --color-accent-amber: #FFB800;
     --color-accent-blue: #38BDF8;
+    --color-accent-purple: #A855F7;
     --color-accent-red: #F43F5E;
     --color-text-primary: #F0F6FC;
     --color-text-secondary: #8B949E;
@@ -52,4 +53,35 @@
   );
   background-size: 100% 2px, 3px 100%;
   pointer-events: none;
+}
+
+/* Keyframes & Vue Transitions */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }

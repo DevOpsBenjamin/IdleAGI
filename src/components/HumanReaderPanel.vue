@@ -1,0 +1,224 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { BookOpen, Sparkles, DollarSign, Cpu, UserCheck, HardDrive } from 'lucide-vue-next'
+import { formatNumber, formatMoney } from '@/utils/format'
+import type Decimal from 'break_infinity.js'
+
+const props = defineProps<{
+  rawTextCurrent: Decimal
+  rawTextMax: Decimal
+  rawTextRate: Decimal
+  rawTextSellPrice: number
+  totalCharsRead: Decimal
+  currentSnippet: string
+  manualScrapePower: number
+  dataBrokerUnlocked: boolean
+  hasPotatoPc: boolean
+  hasWorkstation: boolean
+  tokenizerUnlocked: boolean
+  fundsCurrent: Decimal
+}>()
+
+const emit = defineEmits<{
+  (e: 'manual-scrape'): void
+  (e: 'sell-raw-text', amount: number): void
+  (e: 'sell-all-raw-text'): void
+}>()
+
+const isReadingActive = ref(false)
+
+function handleReadClick() {
+  isReadingActive.value = true
+  emit('manual-scrape')
+  setTimeout(() => {
+    isReadingActive.value = false
+  }, 180)
+}
+
+const rawPercent = computed(() => {
+  if (props.rawTextMax.lte(0)) return 0
+  return Math.min(100, (props.rawTextCurrent.toNumber() / props.rawTextMax.toNumber()) * 100)
+})
+
+const canSellRawText = computed(() => {
+  return props.rawTextCurrent.gte(20)
+})
+
+// Early game discovery progress towards data broker
+const brokerDiscoveryProgress = computed(() => {
+  const chars = props.totalCharsRead.toNumber()
+  return Math.min(100, Math.round((chars / 80) * 100))
+})
+</script>
+
+<template>
+  <div class="bg-[#0D1117] border border-[#21262D] rounded-lg p-4 flex flex-col gap-4 shadow-lg transition-all duration-300">
+    <!-- Header -->
+    <div class="flex items-center justify-between border-b border-[#21262D] pb-3">
+      <div class="flex items-center gap-2">
+        <div class="p-1.5 rounded bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20">
+          <BookOpen class="w-4 h-4" />
+        </div>
+        <div>
+          <h3 class="text-xs font-bold text-[#F0F6FC] uppercase tracking-wider font-mono">
+            1. Transcription & Scribe Humain
+          </h3>
+          <p class="text-[10px] text-[#8B949E] font-mono">
+            Saisie manuelle & flux de texte brut
+          </p>
+        </div>
+      </div>
+      <span
+        v-if="!tokenizerUnlocked"
+        class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20 flex items-center gap-1"
+      >
+        <UserCheck class="w-3 h-3" /> Scribe Actif
+      </span>
+      <span
+        v-else
+        class="text-[10px] font-mono px-2 py-0.5 rounded bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/20 flex items-center gap-1"
+      >
+        <Cpu class="w-3 h-3" /> Pipeline Automatisé
+      </span>
+    </div>
+
+    <!-- Interactive Text Stream Preview -->
+    <div class="bg-[#05070A] border border-[#21262D] rounded-lg p-3 relative overflow-hidden flex flex-col gap-2">
+      <div class="flex justify-between items-center text-[10px] font-mono text-[#8B949E]">
+        <span class="flex items-center gap-1.5 text-[#38BDF8]">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#38BDF8] animate-pulse"></span>
+          Flux Source Web [RAW STREAM]
+        </span>
+        <span>Total transcrit : <strong class="text-[#F0F6FC]">{{ formatNumber(totalCharsRead) }}</strong> chars</span>
+      </div>
+
+      <div
+        class="p-2.5 rounded bg-[#161B22]/60 border border-[#21262D]/60 font-mono text-xs text-[#E2E8F0] leading-relaxed transition-all duration-150 relative min-h-[58px]"
+        :class="{ 'border-[#38BDF8]/60 bg-[#38BDF8]/5 text-[#38BDF8]': isReadingActive }"
+      >
+        <p class="italic text-[11px] select-none">
+          "{{ currentSnippet }}"
+        </p>
+      </div>
+    </div>
+
+    <!-- Buffer Gauge & Capacity -->
+    <div class="space-y-2 bg-[#161B22]/60 border border-[#21262D] rounded-lg p-3">
+      <div class="flex justify-between items-center text-xs font-mono">
+        <span class="text-[#8B949E] flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-[#38BDF8]"></span>
+          Presse-papiers / Buffer Mémoire
+        </span>
+        <span class="font-bold text-[#F0F6FC]">
+          {{ formatNumber(rawTextCurrent) }} / {{ formatNumber(rawTextMax) }} chars
+        </span>
+      </div>
+
+      <!-- Meter -->
+      <div class="w-full bg-[#0D1117] h-2.5 rounded-full overflow-hidden border border-[#21262D] relative">
+        <div
+          class="bg-gradient-to-r from-[#0284C7] to-[#38BDF8] h-full transition-all duration-150"
+          :style="{ width: `${rawPercent}%` }"
+        ></div>
+      </div>
+
+      <div class="flex justify-between items-center text-[10px] font-mono text-[#8B949E]">
+        <span>Remplissage : {{ rawPercent.toFixed(1) }}%</span>
+        <span v-if="rawTextRate.gt(0)" class="text-[#38BDF8]">
+          Auto : +{{ formatNumber(rawTextRate) }}/s
+        </span>
+        <span v-else class="text-[#8B949E]/70">Scripts inactifs</span>
+      </div>
+
+      <!-- Primary Action Button: Manual Read & Scrape -->
+      <button
+        @click="handleReadClick"
+        class="w-full mt-1 py-2.5 px-3 rounded bg-[#161B22] hover:bg-[#21262D] text-[#38BDF8] border border-[#38BDF8]/40 hover:border-[#38BDF8] transition-all text-xs font-bold font-mono flex items-center justify-between cursor-pointer active:scale-98 shadow-sm"
+      >
+        <span class="flex items-center gap-2">
+          <Sparkles class="w-4 h-4 text-[#38BDF8]" :class="{ 'animate-spin': isReadingActive }" />
+          LIRE & TRANSCRIRE (+{{ manualScrapePower }} Chars)
+        </span>
+        <span class="text-[9px] px-2 py-0.5 rounded bg-[#21262D] text-[#8B949E] border border-[#30363D]">
+          [Espace]
+        </span>
+      </button>
+    </div>
+
+    <!-- Data Broker Section (Discovered after 80 chars read) -->
+    <div
+      v-if="dataBrokerUnlocked"
+      class="bg-[#161B22]/70 border border-[#00FF66]/30 rounded-lg p-3 flex flex-col gap-2.5 animate-fadeIn"
+    >
+      <div class="flex justify-between items-center">
+        <div class="flex items-center gap-1.5 text-xs font-mono text-[#00FF66] font-bold">
+          <DollarSign class="w-4 h-4" />
+          Vente au Courtier de Données (Labos LLM)
+        </div>
+        <span class="text-[9px] font-mono text-[#8B949E]">
+          Tarif : {{ formatMoney(rawTextSellPrice) }} / 20 chars
+        </span>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          @click="emit('sell-raw-text', 20)"
+          :disabled="!canSellRawText"
+          class="py-2 px-2.5 rounded bg-[#21262D]/80 hover:bg-[#21262D] disabled:opacity-30 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 text-xs font-mono flex items-center justify-between cursor-pointer transition-all active:scale-98"
+          title="Vendre un lot de 20 caractères au courtier"
+        >
+          <span class="flex items-center gap-1">
+            20 chars &rarr; {{ formatMoney(rawTextSellPrice) }}
+          </span>
+          <span class="text-[9px] text-[#8B949E] px-1 py-0.2 rounded bg-[#161B22]">[V]</span>
+        </button>
+
+        <button
+          @click="emit('sell-all-raw-text')"
+          :disabled="!canSellRawText"
+          class="py-2 px-2.5 rounded bg-[#21262D]/80 hover:bg-[#21262D] disabled:opacity-30 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 text-xs font-mono flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-98 font-bold"
+          title="Vendre tout le texte disponible par lots"
+        >
+          Vendre Tout
+        </button>
+      </div>
+
+      <!-- Potato PC Purchase Reminder Prompt (If available and not owned) -->
+      <div
+        v-if="!hasPotatoPc"
+        class="text-[10px] font-mono text-[#FFB800] bg-[#FFB800]/10 border border-[#FFB800]/20 rounded p-2 flex items-center justify-between"
+      >
+        <span class="flex items-center gap-1.5">
+          <HardDrive class="w-3.5 h-3.5 shrink-0" />
+          Objectif : $10.00 pour acheter un vieux PC d'occasion
+        </span>
+        <span class="text-[10px] font-bold text-[#F0F6FC]">
+          {{ formatMoney(fundsCurrent) }} / $10.00
+        </span>
+      </div>
+    </div>
+
+    <!-- Discovery Progress Banner (When broker is still locked) -->
+    <div
+      v-else
+      class="bg-[#161B22]/40 border border-[#21262D] rounded-lg p-3 flex flex-col gap-1.5 font-mono text-xs"
+    >
+      <div class="flex justify-between items-center text-[11px] text-[#8B949E]">
+        <span class="flex items-center gap-1">
+          <Sparkles class="w-3 h-3 text-[#FFB800]" />
+          Découverte de débouchés commerciaux...
+        </span>
+        <span class="text-[#FFB800] font-bold">{{ brokerDiscoveryProgress }}%</span>
+      </div>
+      <div class="w-full bg-[#0D1117] h-1.5 rounded-full overflow-hidden border border-[#21262D]">
+        <div
+          class="bg-[#FFB800] h-full transition-all duration-200"
+          :style="{ width: `${brokerDiscoveryProgress}%` }"
+        ></div>
+      </div>
+      <p class="text-[10px] text-[#8B949E]/70 pt-0.5">
+        Continuez à transcrire du texte brut pour attirer l'attention des courtiers de données d'IA.
+      </p>
+    </div>
+  </div>
+</template>

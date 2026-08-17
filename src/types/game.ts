@@ -35,7 +35,7 @@ export interface SoftwareUpgrade {
   cost: Decimal
   currency: 'funds' | 'researchPoints'
   purchased: boolean
-  category: 'scraping' | 'tokenizer' | 'monetization' | 'hardware'
+  category: 'human' | 'scraping' | 'tokenizer' | 'monetization' | 'hardware'
 }
 
 export interface AllocationState {
@@ -60,7 +60,14 @@ export interface PowerState {
 
 export interface UnlockedFeatures {
   dashboardView: boolean
+  humanReading: boolean
+  dataBroker: boolean
+  hardwareSection: boolean
+  scriptsSection: boolean
+  autoBroker: boolean
   autoScraping: boolean
+  tokenizerUnlocked: boolean
+  oscilloscope: boolean
   trainingAllocation: boolean
   researchAllocation: boolean
   syntheticData: boolean
@@ -85,6 +92,8 @@ export interface GameState {
   version: string
   lastTickTimestamp: number
   gameStartTime: number
+  currentPhase: number
+  totalCharsRead: Decimal
   
   // Devises & Ressources primaires
   rawText: Resource
@@ -139,13 +148,15 @@ export interface SerializedSoftwareUpgrade {
   cost: string
   currency: 'funds' | 'researchPoints'
   purchased: boolean
-  category: 'scraping' | 'tokenizer' | 'monetization' | 'hardware'
+  category: 'human' | 'scraping' | 'tokenizer' | 'monetization' | 'hardware'
 }
 
 export interface SerializedGameState {
   version: string
   lastTickTimestamp: number
   gameStartTime: number
+  currentPhase?: number
+  totalCharsRead?: string
   rawText: SerializedResource
   tokens: SerializedResource
   funds: SerializedResource

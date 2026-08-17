@@ -5,6 +5,7 @@ import { useGameLoop } from '@/composables/useGameLoop'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
 import OfflineModal from '@/components/OfflineModal.vue'
+import HumanReaderPanel from '@/components/HumanReaderPanel.vue'
 import IngestionPanel from '@/components/IngestionPanel.vue'
 import ModelTelemetry from '@/components/ModelTelemetry.vue'
 import AllocationPanel from '@/components/AllocationPanel.vue'
@@ -18,7 +19,8 @@ const { fps, currentTps } = useGameLoop()
 
 const hardwareArray = computed(() => Object.values(store.hardware))
 const upgradesArray = computed(() => Object.values(store.upgrades))
-const hasCpu = computed(() => store.hardware.used_cpu.count > 0)
+const hasHardware = computed(() => store.hasPotatoPc || store.hasWorkstation || store.totalRawCompute.gt(0))
+const hasCpu = computed(() => store.hardware.used_cpu.count > 0 || store.hardware.gtx_gpu.count > 0)
 
 // Keyboard shortcuts for active game loop ergonomics
 function handleKeyDown(e: KeyboardEvent) {
@@ -61,10 +63,13 @@ onUnmounted(() => {
     <!-- Header Navigation Bar (Fixed / Persistent at top) -->
     <AppHeader
       :version="store.version"
+      :current-phase="store.currentPhase"
       :power-state="store.powerState"
       :effective-compute="store.effectiveCompute"
       :funds-current="store.funds.current"
       :funds-rate="store.funds.ratePerSec"
+      :data-broker-unlocked="store.unlockedFeatures.dataBroker"
+      :has-hardware="hasHardware"
       @save="store.saveToLocalStorage()"
       @reset="store.hardReset()"
     />
@@ -72,53 +77,81 @@ onUnmounted(() => {
     <!-- Main Scrollable Content Area -->
     <main class="flex-1 overflow-y-auto p-4 md:p-6 min-h-0 z-10">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 max-w-7xl mx-auto w-full">
-        <!-- Left Column: Data Ingestion & Model Telemetry & Allocations (4 cols) -->
+        <!-- Left Column: Human Reader & Ingestion Pipeline & Model Telemetry (4 cols) -->
         <div class="lg:col-span-4 flex flex-col gap-5">
-          <IngestionPanel
+          <!-- 1. Human Scribe & Manual Transcription Panel (Always active) -->
+          <HumanReaderPanel
             :raw-text-current="store.rawText.current"
             :raw-text-max="store.rawText.max"
             :raw-text-rate="store.rawText.ratePerSec"
             :raw-text-sell-price="store.rawTextSellPrice"
-            :tokens-current="store.tokens.current"
-            :tokens-max="store.tokens.max"
-            :tokens-rate="store.tokens.ratePerSec"
-            :auto-scraping-unlocked="store.unlockedFeatures.autoScraping"
+            :total-chars-read="store.totalCharsRead"
+            :current-snippet="store.currentSnippet"
             :manual-scrape-power="store.manualScrapePower"
-            :has-cpu="hasCpu"
-            :effective-compute="store.effectiveCompute"
+            :data-broker-unlocked="store.unlockedFeatures.dataBroker"
+            :has-potato-pc="store.hasPotatoPc"
+            :has-workstation="store.hasWorkstation"
+            :tokenizer-unlocked="store.unlockedFeatures.tokenizerUnlocked"
+            :funds-current="store.funds.current"
             @manual-scrape="store.manualScrape()"
             @sell-raw-text="(amt) => store.sellRawText(amt)"
             @sell-all-raw-text="store.sellAllRawText()"
           />
 
-          <ModelTelemetry
-            :parameters="store.parameters"
-            :total-vram-g-b="store.totalVramGB"
-            :effective-compute="store.effectiveCompute"
-            :thermal-efficiency="store.thermalState.efficiency"
-            :model-quality-multiplier="store.modelQualityMultiplier"
-          />
+          <!-- 2. Tokenizer BPE & Token Output Buffer (Unlocked in Phase 2) -->
+          <Transition name="fade-slide">
+            <IngestionPanel
+              v-if="store.unlockedFeatures.tokenizerUnlocked"
+              :raw-text-current="store.rawText.current"
+              :raw-text-max="store.rawText.max"
+              :raw-text-rate="store.rawText.ratePerSec"
+              :tokens-current="store.tokens.current"
+              :tokens-max="store.tokens.max"
+              :tokens-rate="store.tokens.ratePerSec"
+              :has-cpu="hasCpu"
+              :effective-compute="store.effectiveCompute"
+            />
+          </Transition>
 
-          <AllocationPanel
-            :allocations="store.allocations"
-            :training-unlocked="store.unlockedFeatures.trainingAllocation"
-            :research-unlocked="store.unlockedFeatures.researchAllocation"
-            :has-cpu="hasCpu"
-            @update-allocations="(val) => store.updateAllocations(val)"
-            @set-preset="(p) => store.setAllocationPreset(p)"
-          />
+          <!-- 3. Model Parameters Telemetry (Unlocked in Phase 3) -->
+          <Transition name="fade-slide">
+            <ModelTelemetry
+              v-if="store.unlockedFeatures.trainingAllocation"
+              :parameters="store.parameters"
+              :total-vram-g-b="store.totalVramGB"
+              :effective-compute="store.effectiveCompute"
+              :thermal-efficiency="store.thermalState.efficiency"
+              :model-quality-multiplier="store.modelQualityMultiplier"
+            />
+          </Transition>
+
+          <!-- 4. Tri-Allocation Panel (Unlocked in Phase 3) -->
+          <Transition name="fade-slide">
+            <AllocationPanel
+              v-if="store.unlockedFeatures.trainingAllocation"
+              :allocations="store.allocations"
+              :training-unlocked="store.unlockedFeatures.trainingAllocation"
+              :research-unlocked="store.unlockedFeatures.researchAllocation"
+              :has-cpu="hasCpu"
+              @update-allocations="(val) => store.updateAllocations(val)"
+              @set-preset="(p) => store.setAllocationPreset(p)"
+            />
+          </Transition>
         </div>
 
         <!-- Center Column: Telemetry Oscilloscope & STDOUT Terminal (4 cols) -->
         <div class="lg:col-span-4 flex flex-col gap-5">
-          <!-- Live Real-Time Flow Oscilloscope -->
-          <OscilloscopeCanvas
-            :token-rate="store.tokens.ratePerSec.toNumber()"
-            :raw-text-rate="store.rawText.ratePerSec.toNumber()"
-            :effective-compute="store.effectiveCompute.toNumber()"
-          />
+          <!-- Live Real-Time Flow Oscilloscope (Unlocked in Phase 2) -->
+          <Transition name="fade-slide">
+            <OscilloscopeCanvas
+              v-if="store.unlockedFeatures.oscilloscope"
+              :token-rate="store.tokens.ratePerSec.toNumber()"
+              :raw-text-rate="store.rawText.ratePerSec.toNumber()"
+              :effective-compute="store.effectiveCompute.toNumber()"
+            />
+          </Transition>
 
-          <!-- Cyber Terminal STDOUT -->
+          <!-- Cyber Terminal STDOUT (Always active) -->
           <TerminalStdout
             :logs="store.terminalLogs"
             :parameters-count="store.parameters.toNumber()"
@@ -131,17 +164,26 @@ onUnmounted(() => {
 
         <!-- Right Column: Hardware Cluster Rack & Software Upgrades (4 cols) -->
         <div class="lg:col-span-4 flex flex-col gap-5">
-          <HardwareCluster
-            :hardware-list="hardwareArray"
-            :funds-current="store.funds.current"
-            :get-hardware-cost="(id) => store.getHardwareCost(id)"
-            @buy-hardware="(id) => store.buyHardware(id)"
-          />
+          <!-- Hardware Cluster (Unlocked when hardwareSection is true) -->
+          <Transition name="fade-slide">
+            <HardwareCluster
+              v-if="store.unlockedFeatures.hardwareSection"
+              :hardware-list="hardwareArray"
+              :funds-current="store.funds.current"
+              :current-phase="store.currentPhase"
+              :get-hardware-cost="(id) => store.getHardwareCost(id)"
+              @buy-hardware="(id) => store.buyHardware(id)"
+            />
+          </Transition>
 
+          <!-- Software Upgrades / Human Skills & Python Scripts (Always visible, filtered by phase) -->
           <SoftwareUpgrades
             :upgrades-list="upgradesArray"
             :funds-current="store.funds.current"
             :research-points-current="store.researchPoints.current"
+            :current-phase="store.currentPhase"
+            :scripts-unlocked="store.unlockedFeatures.scriptsSection"
+            :tokenizer-unlocked="store.unlockedFeatures.tokenizerUnlocked"
             @buy-upgrade="(id) => store.buyUpgrade(id)"
           />
         </div>
