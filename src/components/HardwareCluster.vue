@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { HardDrive, Plus, Zap, Cpu, MemoryStick, Activity, Layers, Server, Check, AlertCircle, Flame, Wind } from 'lucide-vue-next'
 import { formatMoney, formatFlops, formatWatts, formatVram, formatBandwidth } from '@/utils/format'
-import type { HardwareNode, SoftwareUpgrade, ThermalState } from '@/types/game'
+import type { HardwareNode, SoftwareUpgrade, ThermalState, PowerState } from '@/types/game'
 import type Decimal from 'break_infinity.js'
 import { ComputeEngine, type PcieSlotsState } from '@/domain/engine/ComputeEngine'
 
@@ -10,7 +10,9 @@ const props = defineProps<{
   hardwareList: HardwareNode[]
   ramUpgradesList?: SoftwareUpgrade[]
   coolingUpgradesList?: SoftwareUpgrade[]
+  powerUpgradesList?: SoftwareUpgrade[]
   thermalState?: ThermalState
+  powerState?: PowerState
   fundsCurrent: Decimal
   currentPhase: number
   pcieSlots?: PcieSlotsState
@@ -25,7 +27,7 @@ const emit = defineEmits<{
   (e: 'buy-upgrade', id: string): void
 }>()
 
-const activeTab = ref<'host' | 'ram' | 'cooling' | 'gpu'>('host')
+const activeTab = ref<'host' | 'ram' | 'cooling' | 'power' | 'gpu'>('host')
 
 const hardwareRecord = computed(() => {
   const map: Record<string, HardwareNode> = {}
@@ -138,7 +140,31 @@ const thermalLoadPercent = computed(() => {
 })
 
 // ==========================================
-// 4. GPU ACCELERATORS TAB COMPUTEDS
+// 4. POWER GRID INFRASTRUCTURE COMPUTEDS
+// ==========================================
+const visiblePowerUpgrades = computed(() => {
+  if (!props.powerUpgradesList) return []
+  const currentTier = currentHost.value?.tier ?? -1
+
+  return props.powerUpgradesList.filter((up) => {
+    if (up.purchased) return true
+    if (!currentHost.value) return false
+
+    if (up.requiredFeature === 'scriptsSection') {
+      return props.currentPhase >= 1
+    }
+    if (up.requiredFeature === 'tokenizerUnlocked') {
+      return props.currentPhase >= 2
+    }
+    if (up.requiredFeature === 'trainingAllocation') {
+      return props.currentPhase >= 3 || currentTier >= 2
+    }
+    return true
+  })
+})
+
+// ==========================================
+// 5. GPU ACCELERATORS TAB COMPUTEDS
 // ==========================================
 const visibleGpus = computed(() => {
   const currentTier = currentHost.value?.tier ?? -1
@@ -182,16 +208,26 @@ function getGpuButtonLabel(hw: HardwareNode): string {
         </div>
         <div>
           <h3 class="text-xs font-bold text-[#F0F6FC] uppercase tracking-wider font-mono">
-            3. Matériel, Refroidissement & Accélérateurs
+            3. Matériel, Énergie & Accélérateurs
           </h3>
           <p class="text-[10px] text-[#8B949E] font-mono">
-            Hôtes, RAM, dissipation thermique et cartes GPU
+            Hôtes, RAM, dissipation thermique, réseau électrique et cartes GPU
           </p>
         </div>
       </div>
 
-      <!-- PCIe Slots & Thermal Badges -->
+      <!-- Power Grid, Thermal & PCIe Badges -->
       <div class="flex items-center gap-2">
+        <div v-if="powerState" class="flex items-center gap-1 px-2 py-1 rounded bg-[#161B22] border border-[#21262D] text-[10px] font-mono">
+          <Zap
+            class="w-3 h-3 transition-colors"
+            :class="powerState.isOverloaded ? 'text-[#EF4444] animate-bounce' : powerState.status === 'strained' ? 'text-[#FFB800]' : 'text-[#00FF66]'"
+          />
+          <span :class="powerState.isOverloaded ? 'text-[#EF4444] font-bold' : powerState.status === 'strained' ? 'text-[#FFB800]' : 'text-[#8B949E]'">
+            {{ powerState.gridLoadPercent.toFixed(0) }}%
+          </span>
+        </div>
+
         <div v-if="thermalState" class="flex items-center gap-1 px-2 py-1 rounded bg-[#161B22] border border-[#21262D] text-[10px] font-mono">
           <Flame
             class="w-3 h-3 transition-colors"
@@ -240,6 +276,18 @@ function getGpuButtonLabel(hw: HardwareNode): string {
         <span
           v-if="thermalState?.isThrottling"
           class="w-1.5 h-1.5 rounded-full bg-[#EF4444] absolute -top-0.5 -right-0.5"
+        ></span>
+      </button>
+      <button
+        @click="activeTab = 'power'"
+        :class="activeTab === 'power' ? 'bg-[#21262D] text-[#FFB800] font-bold shadow-sm' : powerState?.isOverloaded ? 'text-[#EF4444] animate-pulse font-bold' : 'text-[#8B949E] hover:text-[#FFB800]'"
+        class="flex-1 py-1 rounded flex items-center justify-center gap-1 transition-all cursor-pointer relative"
+      >
+        <Zap class="w-3 h-3" />
+        Énergie
+        <span
+          v-if="powerState?.isOverloaded"
+          class="w-1.5 h-1.5 rounded-full bg-[#EF4444] absolute -top-0.5 -right-0.5 animate-ping"
         ></span>
       </button>
       <button
@@ -551,7 +599,125 @@ function getGpuButtonLabel(hw: HardwareNode): string {
       </div>
     </div>
 
-    <!-- TAB 4: GPU ACCELERATORS -->
+    <!-- TAB 4: POWER GRID INFRASTRUCTURE -->
+    <div v-else-if="activeTab === 'power'" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+      <!-- Power Grid Status Card -->
+      <div
+        v-if="powerState"
+        class="bg-[#161B22]/90 border rounded-lg p-3.5 flex flex-col gap-2.5 shadow-sm transition-all"
+        :class="powerState.isOverloaded ? 'border-[#EF4444]/60 bg-[#EF4444]/5' : powerState.status === 'strained' ? 'border-[#FFB800]/40' : 'border-[#00FF66]/30'"
+      >
+        <div class="flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <Zap
+              class="w-4 h-4 transition-colors"
+              :class="powerState.isOverloaded ? 'text-[#EF4444] animate-bounce' : powerState.status === 'strained' ? 'text-[#FFB800]' : 'text-[#00FF66]'"
+            />
+            <span class="text-xs font-bold text-[#F0F6FC] font-mono uppercase">
+              Bilan du Réseau Électrique
+            </span>
+          </div>
+
+          <span
+            class="text-[9px] font-mono font-bold px-2 py-0.5 rounded border uppercase flex items-center gap-1"
+            :class="powerState.isOverloaded ? 'bg-[#EF4444]/20 text-[#EF4444] border-[#EF4444]/40 animate-pulse' : powerState.status === 'strained' ? 'bg-[#FFB800]/20 text-[#FFB800] border-[#FFB800]/40' : 'bg-[#00FF66]/10 text-[#00FF66] border-[#00FF66]/30'"
+          >
+            {{ powerState.isOverloaded ? 'Surcharge (-50% Compute)' : powerState.status === 'strained' ? 'En Charge (100%)' : 'Nominal (100%)' }}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-[10px] font-mono pt-1">
+          <div class="flex flex-col bg-[#0D1117] p-2 rounded border border-[#21262D]">
+            <span class="text-[#8B949E]">Puissance Appelée</span>
+            <span class="font-bold text-[#FFB800] text-xs mt-0.5">
+              {{ formatWatts(powerState.totalDrawWatts) }}
+            </span>
+          </div>
+          <div class="flex flex-col bg-[#0D1117] p-2 rounded border border-[#21262D]">
+            <span class="text-[#8B949E]">Capacité Réseau</span>
+            <span class="font-bold text-[#00FF66] text-xs mt-0.5">
+              {{ formatWatts(powerState.gridCapacityWatts) }}
+            </span>
+          </div>
+          <div class="flex flex-col bg-[#0D1117] p-2 rounded border border-[#21262D]">
+            <span class="text-[#8B949E]">Multiplicateur Compute</span>
+            <span
+              class="font-bold text-xs mt-0.5"
+              :class="powerState.isOverloaded ? 'text-[#EF4444]' : 'text-[#00FF66]'"
+            >
+              {{ Math.round(powerState.effectiveMultiplier * 100) }}%
+            </span>
+          </div>
+        </div>
+
+        <!-- Power Load Progress Bar -->
+        <div class="flex flex-col gap-1 pt-1">
+          <div class="flex justify-between text-[9px] text-[#8B949E] font-mono">
+            <span>Charge du Réseau Électrique</span>
+            <span :class="powerState.isOverloaded ? 'text-[#EF4444] font-bold' : powerState.status === 'strained' ? 'text-[#FFB800] font-bold' : 'text-[#8B949E]'">
+              {{ powerState.gridLoadPercent.toFixed(1) }}%
+            </span>
+          </div>
+          <div class="h-1.5 w-full bg-[#0D1117] rounded-full overflow-hidden border border-[#21262D]">
+            <div
+              class="h-full transition-all duration-300 rounded-full"
+              :class="powerState.isOverloaded ? 'bg-[#EF4444]' : powerState.status === 'strained' ? 'bg-[#FFB800]' : 'bg-[#00FF66]'"
+              :style="{ width: `${Math.min(100, powerState.gridLoadPercent)}%` }"
+            ></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Power Upgrades List -->
+      <div
+        v-for="up in visiblePowerUpgrades"
+        :key="up.id"
+        :class="[
+          'border rounded-lg p-3 flex flex-col gap-2 transition-all shadow-sm',
+          up.purchased
+            ? 'bg-[#161B22]/40 border-[#21262D]/60 opacity-70'
+            : 'bg-[#161B22]/80 border-[#21262D] hover:border-[#FFB800]/40'
+        ]"
+      >
+        <div class="flex justify-between items-start gap-2">
+          <div class="flex items-center gap-1.5">
+            <Zap class="w-3.5 h-3.5 text-[#FFB800] shrink-0" />
+            <span class="text-xs font-bold text-[#F0F6FC] font-mono">
+              {{ up.name }}
+            </span>
+          </div>
+
+          <span
+            v-if="up.purchased"
+            class="text-[9px] font-mono px-2 py-0.5 rounded bg-[#00FF66]/10 text-[#00FF66] border border-[#00FF66]/30 flex items-center gap-1 shrink-0"
+          >
+            <Check class="w-3 h-3" /> Connecté
+          </span>
+          <span
+            v-else
+            class="text-xs font-mono font-bold text-[#00FF66] shrink-0"
+          >
+            {{ formatMoney(up.cost) }}
+          </span>
+        </div>
+
+        <p class="text-[10px] text-[#8B949E] leading-relaxed">
+          {{ up.description }}
+        </p>
+
+        <div v-if="!up.purchased" class="flex justify-end pt-1">
+          <button
+            @click="emit('buy-upgrade', up.id)"
+            :disabled="!canAffordUpgrade(up)"
+            class="w-full py-1.5 px-3 rounded bg-[#21262D] hover:bg-[#30363D] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed text-[#F0F6FC] hover:text-[#FFB800] text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-[#30363D]"
+          >
+            Mettre à niveau l’infrastructure électrique
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: GPU ACCELERATORS -->
     <div v-else class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
       <div
         v-if="!currentHost || (currentHost.pcieSlotsProvided ?? 0) <= 0"

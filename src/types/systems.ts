@@ -19,13 +19,17 @@ export interface ThermalState {
   status: ThermalStatus
 }
 
+export type PowerStatus = 'nominal' | 'strained' | 'overloaded'
+ 
 export interface PowerState {
   totalDrawWatts: Decimal
   gridCapacityWatts: Decimal
   gridLoadPercent: number
   isOverloaded: boolean
+  status: PowerStatus
+  effectiveMultiplier: number
 }
-
+ 
 export interface UnlockedFeatures {
   dashboardView: boolean
   humanReading: boolean
@@ -44,7 +48,7 @@ export interface UnlockedFeatures {
   prestigeT2: boolean
   prestigeT3: boolean
 }
-
+ 
 export interface MilestoneState {
   readingSkill1: boolean
   readingSkill2: boolean
@@ -59,6 +63,7 @@ export interface MilestoneState {
   first10000Params: boolean
   first1000Funds: boolean
   firstThrottling?: boolean
+  firstGridOverload?: boolean
 }
 
 export interface OfflineProgressSummary {

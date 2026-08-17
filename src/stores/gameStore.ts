@@ -210,6 +210,18 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
+      if (id === 'gaming_pc' && result.node.count === 1) {
+        hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, 650)
+      }
+
+      if (id === 'workstation_pro' && result.node.count === 1) {
+        hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, 1500)
+      }
+
+      if (id === 'datacenter_chassis' && result.node.count === 1) {
+        hardwareStore.gridCapacityWatts = Decimal.max(hardwareStore.gridCapacityWatts, 8000)
+      }
+
       if ((id === 'rtx_3060' || id === 'gtx_750ti' || id === 'gtx_1060' || id === 'gtx_gpu') && !features.reachedMilestones.firstGpu) {
         features.reachedMilestones.firstGpu = true
         terminal.addLog(
@@ -296,6 +308,16 @@ export const useGameStore = defineStore('game', () => {
       hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(4000)
     } else if (id === 'cooling_immersion_cryo') {
       hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(15000)
+    } else if (id === 'power_psu_500w') {
+      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(400)
+    } else if (id === 'power_psu_850w_gold') {
+      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(750)
+    } else if (id === 'power_dedicated_circuit_16a') {
+      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(2500)
+    } else if (id === 'power_triphase_industrial') {
+      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(8000)
+    } else if (id === 'power_substation_transformer') {
+      hardwareStore.gridCapacityWatts = hardwareStore.gridCapacityWatts.add(35000)
     }
   }
 
@@ -363,6 +385,7 @@ export const useGameStore = defineStore('game', () => {
         modelQualityMultiplier: modelQualityMultiplier.value,
         bandwidthSpeedMultiplier: bandwidthSpeedMultiplier.value,
         isThrottling: hardwareStore.thermalState.isThrottling,
+        isOverloaded: hardwareStore.powerState.isOverloaded,
         totalTokensServed: resources.totalTokensServed,
         autoBrokerAccumulator,
         onSellRawTextQuiet: (amount: number) => sellRawText(amount, true),

@@ -35,13 +35,19 @@ Ce document constitue le glossaire canonique et le modèle de domaine du jeu inc
 - **Définition** : Débit de transfert brut entre la mémoire (SDRAM, DDR, GDDR, HBM) et les unités de calcul.
 - **Rôle** : Dans les LLMs auto-régressifs, l'inférence est structurellement *Memory-Bound*. La bande passante détermine directement le multiplicateur de vitesse de génération et de traitement de tokens par seconde.
 
-### Energy & Thermal System (Watts, Chaleur & Dissipation Active)
+### Energy & Thermal System (Watts, Chaleur, Dissipation Active & Réseau Électrique)
 - **Watts ($P_{\text{draw}}$)** : Consommation électrique totale du hardware en fonctionnement.
+- **Power Grid Capacity ($W_{\text{gridCapacity}}$)** : Capacité maximale du circuit électrique avant disjonction (150W $\to$ 500W $\to$ 1 250W $\to$ 3 750W $\to$ 12 000W $\to$ 47 000W).
+- **Power Grid Load ($P_{\text{load}}$)** : $P_{\text{load}} = (P_{\text{draw}} / W_{\text{gridCapacity}}) \times 100\%$.
+- **Statuts Électriques** :
+  - `nominal` ($P_{\text{load}} \le 80\%$) : Alimentation stable ($\mu_{\text{power}} = 1.0$).
+  - `strained` ($80\% < P_{\text{load}} \le 100\%$) : Ligne sous tension critique ($\mu_{\text{power}} = 1.0$).
+  - `overloaded` ($P_{\text{load}} > 100\%$) : Disjoncteur différentiel déclenché ($\mu_{\text{power}} = 0.50$, réduction de 50% du Compute effectif).
 - **Heat Generated ($Q_{\text{heat}}$)** : Chaleur dégagée par effet Joule ($Q_{\text{heat}} = P_{\text{draw}} \times 0.90$).
 - **Cooling Capacity ($W_{\text{cooling}}$)** : Capacité de dissipation thermique active et passive (ventilateurs 120mm, ventirad cuivre, watercooling AIO, boucle custom D5, climatisation in-row datacenter, immersion cryogénique).
 - **Thermal Throttling & Efficacité ($\eta$)** : Goulot d'étranglement appliqué si la chaleur dégagée dépasse le seuil de refroidissement :
   $$\text{Efficiency} = \min\left(1.0, \frac{W_{\text{cooling}}}{Q_{\text{heat}}}\right) \quad (\text{plancher } 0.10)$$
-  $$\text{EffectiveCompute} = \text{RawCompute} \times \text{Efficiency} \times \text{PowerGridMultiplier}$$
+  $$\text{EffectiveCompute} = \text{RawCompute} \times \text{Efficiency} \times \mu_{\text{power}}$$
 - **Température Opérationnelle Simulée ($T^\circ\text{C}$)** :
   - Régime nominal ($Q_{\text{heat}} \le W_{\text{cooling}}$) : $T = 22 + 10 + 45 \times (Q_{\text{heat}} / W_{\text{cooling}}) \implies [32^\circ\text{C} - 77^\circ\text{C}]$.
   - Régime de surchauffe ($Q_{\text{heat}} > W_{\text{cooling}}$) : $T = 77 + 28 \times (1 - \text{Efficiency}) \implies [78^\circ\text{C} - 105^\circ\text{C}]$.

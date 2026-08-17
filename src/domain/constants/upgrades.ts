@@ -93,6 +93,16 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     category: 'scraping',
     requiredFeature: 'scriptsSection',
   },
+  power_psu_500w: {
+    id: 'power_psu_500w',
+    name: 'Bloc d’Alimentation 500W Bronze Modulaire',
+    description: 'Alimentation 80+ Bronze modulaire remplaçant le vieux bloc d’origine (+400W de capacité réseau).',
+    cost: new Decimal(25.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'power',
+    requiredFeature: 'scriptsSection',
+  },
 
   // Phase 2 : Workstation & Tokenizer RAM Kits
   ram_ddr2_8gb: {
@@ -206,6 +216,26 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     category: 'scraping',
     requiredFeature: 'tokenizerUnlocked',
   },
+  power_psu_850w_gold: {
+    id: 'power_psu_850w_gold',
+    name: 'Bloc d’Alimentation 850W Gold Multi-Rail',
+    description: 'Alimentation haute performance 80+ Gold à double rail 12V (+750W de capacité réseau).',
+    cost: new Decimal(75.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'power',
+    requiredFeature: 'tokenizerUnlocked',
+  },
+  power_dedicated_circuit_16a: {
+    id: 'power_dedicated_circuit_16a',
+    name: 'Ligne Dédiée Disjoncteur 16A Tableau',
+    description: 'Tirage d’un câble 2.5 mm² blindé avec disjoncteur 16A dédié pour éviter les coupures (+2 500W de capacité réseau).',
+    cost: new Decimal(280.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'power',
+    requiredFeature: 'tokenizerUnlocked',
+  },
 
   // Phase 3 : Training & Datacenter Memory & High-End Cooling
   cooling_custom_loop_d5: {
@@ -236,6 +266,26 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'cooling',
+    requiredFeature: 'trainingAllocation',
+  },
+  power_triphase_industrial: {
+    id: 'power_triphase_industrial',
+    name: 'Branchement Triphasé Industriel 400V 32A',
+    description: 'Raccordement réseau triphasé moyenne tension pour alimenter des racks multi-GPU sans saturation (+8 000W de capacité réseau).',
+    cost: new Decimal(1200.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'power',
+    requiredFeature: 'trainingAllocation',
+  },
+  power_substation_transformer: {
+    id: 'power_substation_transformer',
+    name: 'Poste Haute Tension & Transformateur Dédié 50 kVA',
+    description: 'Transformateur d’infrastructure sous cabine étanche pour alimenter des clusters de supercalculateurs (+35 000W de capacité réseau).',
+    cost: new Decimal(8500.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'power',
     requiredFeature: 'trainingAllocation',
   },
   ram_ddr5_128gb: {
