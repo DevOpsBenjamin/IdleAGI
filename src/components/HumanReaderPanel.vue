@@ -21,18 +21,22 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'manual-scrape'): void
-  (e: 'sell-raw-text', amount: number): void
   (e: 'sell-all-raw-text'): void
 }>()
 
 const isReadingActive = ref(false)
+let lastClickTimestamp = 0
 
 function handleReadClick() {
+  const now = performance.now()
+  if (now - lastClickTimestamp < 90) return // Cooldown: ~11 clicks/sec max
+  lastClickTimestamp = now
+
   isReadingActive.value = true
   emit('manual-scrape')
   setTimeout(() => {
     isReadingActive.value = false
-  }, 180)
+  }, 120)
 }
 
 const rawPercent = computed(() => {
@@ -42,6 +46,11 @@ const rawPercent = computed(() => {
 
 const canSellRawText = computed(() => {
   return props.rawTextCurrent.gte(20)
+})
+
+const totalSellValue = computed(() => {
+  const batches = Math.floor(props.rawTextCurrent.toNumber() / 20)
+  return batches * props.rawTextSellPrice
 })
 
 // Early game discovery progress towards data broker
@@ -160,28 +169,19 @@ const brokerDiscoveryProgress = computed(() => {
         </span>
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
-        <button
-          @click="emit('sell-raw-text', 20)"
-          :disabled="!canSellRawText"
-          class="py-2 px-2.5 rounded bg-[#21262D]/80 hover:bg-[#21262D] disabled:opacity-30 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 text-xs font-mono flex items-center justify-between cursor-pointer transition-all active:scale-98"
-          title="Vendre un lot de 20 caractères au courtier"
-        >
-          <span class="flex items-center gap-1">
-            20 chars &rarr; {{ formatMoney(rawTextSellPrice) }}
-          </span>
-          <span class="text-[9px] text-[#8B949E] px-1 py-0.2 rounded bg-[#161B22]">[V]</span>
-        </button>
-
-        <button
-          @click="emit('sell-all-raw-text')"
-          :disabled="!canSellRawText"
-          class="py-2 px-2.5 rounded bg-[#21262D]/80 hover:bg-[#21262D] disabled:opacity-30 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/30 text-xs font-mono flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-98 font-bold"
-          title="Vendre tout le texte disponible par lots"
-        >
-          Vendre Tout
-        </button>
-      </div>
+      <!-- Single Dynamic Sell-All Button -->
+      <button
+        @click="emit('sell-all-raw-text')"
+        :disabled="!canSellRawText"
+        class="w-full py-2.5 px-3 rounded bg-[#21262D]/80 hover:bg-[#21262D] disabled:opacity-30 disabled:cursor-not-allowed text-[#00FF66] border border-[#00FF66]/40 hover:border-[#00FF66] text-xs font-mono flex items-center justify-between cursor-pointer transition-all active:scale-98 font-bold shadow-sm"
+        title="Vendre tout le texte brut disponible au courtier"
+      >
+        <span class="flex items-center gap-1.5">
+          <DollarSign class="w-4 h-4 text-[#00FF66]" />
+          TOUT VENDRE ({{ formatMoney(totalSellValue) }})
+        </span>
+        <span class="text-[9px] text-[#8B949E] px-1.5 py-0.5 rounded bg-[#161B22] border border-[#30363D]">[V]</span>
+      </button>
 
       <!-- Potato PC Purchase Reminder Prompt (If available and not owned) -->
       <div
