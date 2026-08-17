@@ -105,3 +105,7 @@ La puissance effective de calcul ($\text{EffectiveCompute}$) est distribuée ent
 - **Définition** : Simulation par pas discrets du temps écoulé depuis la dernière fermeture de session.
 - **Plafond strict** : Plafonné à 24 heures maximales.
 - **Philosophie de Conception (Active Loop)** : *Project Singularity Loop* est conçu pour des sessions de jeu actives, dynamiques et stratégiques (prises de décision d'allocation, upgrades de refroidissement, prestiges) plutôt que des jours d'attente passive.
+
+### Simulation & Tests Fonctionnels Fast-Forward (`ScenarioRunner`)
+- **Définition** : Moteur déterministe headless d'accélération temporelle permettant d'exécuter des scénarios complets de progression (Phase 0 à Datacenter Hyperscale) en quelques millisecondes de temps CPU réel.
+- **Rôle** : Validation continue de la chaîne d'achats ordonnés, de l'absence de blocages économiques et des seuils physiques thermodynamiques et électriques.
