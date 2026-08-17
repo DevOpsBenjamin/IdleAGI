@@ -17,6 +17,27 @@
 
 ## Agent skills & Architecture
 
+### TypeScript & Code Splitting Standards (Obligatoire)
+
+- **TypeScript Stricte & Puissance du Typage** :
+  - Exploiter pleinement la puissance du système de types TypeScript : interfaces explicites et découplées, types discriminés, génériques typés, unions strictes, `readonly` et garde de types.
+  - Bannir l'utilisation de `any` (préférer `unknown`, génériques ou interfaces dédiées avec validation/narrowing).
+  - Découpage granulaire des types dans `src/types/` par sous-domaine (`resources.ts`, `hardware.ts`, `upgrades.ts`, `systems.ts`, `logs.ts`, `game.ts`, `index.ts`).
+- **Code Splitting & Granularité des Fichiers** :
+  - Respect strict du principe de responsabilité unique (SRP). Bannir les fichiers monstres / monolithiques (> 250-300 lignes).
+  - Décomposer le code en modules spécialisés et bien délimités.
+  - Séparation stricte des couches :
+    1. **Couche Domaine / Logique Métier Pure (`src/domain/`)** : calculateurs, formules mathématiques (Decimal / break_infinity.js), moteurs de simulation, classes pures et fonctions déterministes sans dépendance directe à Vue/Pinia (ex: `ComputeEngine`, `EconomyEngine`, `TickEngine`, `OfflineEngine`, `MilestoneTracker`).
+    2. **Constantes Métier (`src/domain/constants/`)** : catalogues d'équipements, snippets, upgrades et paliers isolés de la logique d'état.
+    3. **Couche État Réactif Modulaire (`src/stores/`)** : stores Pinia découpés par sous-domaine (`resourcesStore`, `hardwareStore`, `upgradesStore`, `allocationStore`, `terminalStore`, `featuresStore`) orchestrés par un root store / façade (`gameStore`).
+    4. **Couche Composables (`src/composables/`)** : gestion du cycle de vie navigateur, boucles de tick, raccourcis et interactions réactives.
+    5. **Couche Présentation (`src/components/`, `src/App.vue`)** : composants Vue épurés, fortement typés avec `defineProps<{ ... }>()` et `defineEmits<{ ... }>()`.
+- **Classes & Modèles Orientés Domaine** :
+  - Encapsuler la logique métier et les calculs complexes dans des classes de domaine ou des services modulaires purs testables unitairement sans mock de framework.
+- **Tests Unitaires & Qualité** :
+  - Chaque module de domaine, moteur de calcul et sous-store Pinia doit posséder ses propres tests unitaires ciblés (`src/__tests__/`).
+  - Validation obligatoire via `npm run type-check` et `npm test`.
+
 ### Issue tracker
 
 GitHub Issues & Pull Requests via `gh` CLI. Voir `docs/agents/issue-tracker.md`.
@@ -24,3 +45,4 @@ GitHub Issues & Pull Requests via `gh` CLI. Voir `docs/agents/issue-tracker.md`.
 ### Domain docs
 
 Single-context (`CONTEXT.md` + `docs/adr/`). Voir `docs/agents/domain.md`.
+

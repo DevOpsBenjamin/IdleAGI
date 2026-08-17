@@ -3,13 +3,17 @@ import type {
   GameState,
   SerializedGameState,
   Resource,
+  SerializedResource,
   HardwareNode,
-} from '@/types/game'
+  SerializedHardwareNode,
+  SoftwareUpgrade,
+  SerializedSoftwareUpgrade,
+} from '@/types'
 
 export const SAVE_KEY = 'idleagi_singularity_save'
 export const CURRENT_SAVE_VERSION = '0.1.0'
 
-export function serializeResource(res: Resource) {
+export function serializeResource(res: Resource): SerializedResource {
   return {
     current: res.current.toString(),
     max: res.max.toString(),
@@ -18,7 +22,7 @@ export function serializeResource(res: Resource) {
 }
 
 export function deserializeResource(
-  raw: any,
+  raw: Partial<SerializedResource> | undefined,
   defaultCurrent = 0,
   defaultMax = 1000
 ): Resource {
@@ -29,7 +33,7 @@ export function deserializeResource(
   }
 }
 
-export function serializeHardwareNode(node: HardwareNode) {
+export function serializeHardwareNode(node: HardwareNode): SerializedHardwareNode {
   return {
     id: node.id,
     name: node.name,
@@ -44,7 +48,10 @@ export function serializeHardwareNode(node: HardwareNode) {
   }
 }
 
-export function deserializeHardwareNode(raw: any, fallback: HardwareNode): HardwareNode {
+export function deserializeHardwareNode(
+  raw: Partial<SerializedHardwareNode> | undefined,
+  fallback: HardwareNode
+): HardwareNode {
   if (!raw) return fallback
   return {
     id: raw.id ?? fallback.id,
@@ -60,7 +67,7 @@ export function deserializeHardwareNode(raw: any, fallback: HardwareNode): Hardw
   }
 }
 
-export function serializeSoftwareUpgrade(upgrade: any) {
+export function serializeSoftwareUpgrade(upgrade: SoftwareUpgrade): SerializedSoftwareUpgrade {
   return {
     id: upgrade.id,
     name: upgrade.name,
@@ -72,7 +79,10 @@ export function serializeSoftwareUpgrade(upgrade: any) {
   }
 }
 
-export function deserializeSoftwareUpgrade(raw: any, fallback: any) {
+export function deserializeSoftwareUpgrade(
+  raw: Partial<SerializedSoftwareUpgrade> | undefined,
+  fallback: SoftwareUpgrade
+): SoftwareUpgrade {
   if (!raw) return fallback
   return {
     id: raw.id ?? fallback.id,
@@ -112,7 +122,7 @@ export function serializeGameState(state: GameState): string {
     allocations: { ...state.allocations },
     gridCapacityWatts: state.gridCapacityWatts.toString(),
     coolingCapacityWatts: state.coolingCapacityWatts.toString(),
-    terminalLogs: (state.terminalLogs || []).slice(-100), // Max 100 logs persistes
+    terminalLogs: (state.terminalLogs || []).slice(-100), // Max 100 logs persisted
     unlockedFeatures: { ...state.unlockedFeatures },
   }
 
@@ -129,13 +139,13 @@ export function deserializeGameState(
 
     const deserializedHardware: Record<string, HardwareNode> = {}
     for (const [key, fallbackNode] of Object.entries(initialState.hardware)) {
-      const rawNode = raw.hardware ? raw.hardware[key] : null
+      const rawNode = raw.hardware ? raw.hardware[key] : undefined
       deserializedHardware[key] = deserializeHardwareNode(rawNode, fallbackNode)
     }
 
-    const deserializedUpgrades: Record<string, any> = {}
+    const deserializedUpgrades: Record<string, SoftwareUpgrade> = {}
     for (const [key, fallbackUpgrade] of Object.entries(initialState.upgrades || {})) {
-      const rawUpgrade = raw.upgrades ? raw.upgrades[key] : null
+      const rawUpgrade = raw.upgrades ? raw.upgrades[key] : undefined
       deserializedUpgrades[key] = deserializeSoftwareUpgrade(rawUpgrade, fallbackUpgrade)
     }
 
