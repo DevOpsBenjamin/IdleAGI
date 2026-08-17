@@ -23,6 +23,8 @@ const hasHardware = computed(() => store.hasPotatoPc || store.hasWorkstation || 
 const hasCpu = computed(() => store.hasWorkstation)
 
 // Keyboard shortcuts for active game loop ergonomics
+let lastScrapeTimestamp = 0
+
 function handleKeyDown(e: KeyboardEvent) {
   // Do not intercept if user is typing in an input
   const activeEl = document.activeElement
@@ -32,10 +34,14 @@ function handleKeyDown(e: KeyboardEvent) {
 
   if (e.code === 'Space') {
     e.preventDefault()
+    if (e.repeat) return // Prevent holding space key spam
+    const now = performance.now()
+    if (now - lastScrapeTimestamp < 90) return // Cooldown: ~11 clicks/sec max human speed
+    lastScrapeTimestamp = now
     store.manualScrape()
   } else if (e.key === 'v' || e.key === 'V') {
     e.preventDefault()
-    store.sellRawText(20)
+    store.sellAllRawText()
   }
 }
 
@@ -94,7 +100,6 @@ onUnmounted(() => {
             :tokenizer-unlocked="store.unlockedFeatures.tokenizerUnlocked"
             :funds-current="store.funds.current"
             @manual-scrape="store.manualScrape()"
-            @sell-raw-text="(amt) => store.sellRawText(amt)"
             @sell-all-raw-text="store.sellAllRawText()"
           />
 
