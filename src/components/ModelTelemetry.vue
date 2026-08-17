@@ -1,21 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Cpu, HardDrive, Sparkles, Gauge } from 'lucide-vue-next'
-import { formatNumber, formatFlops } from '@/utils/format'
+import { Cpu, Sparkles, Gauge, Activity } from 'lucide-vue-next'
+import { formatNumber, formatFlops, formatVram, formatBandwidth } from '@/utils/format'
 import type Decimal from 'break_infinity.js'
 
 const props = defineProps<{
   parameters: Decimal
   totalVramGB: Decimal
+  totalMemoryBandwidthGBs?: Decimal
+  bandwidthSpeedMultiplier?: number
   effectiveCompute: Decimal
   thermalEfficiency: number
   modelQualityMultiplier?: number
 }>()
 
 const paramsFormatted = computed(() => formatNumber(props.parameters))
-const vramFormatted = computed(() => formatNumber(props.totalVramGB))
+const vramFormatted = computed(() => formatVram(props.totalVramGB))
+const bandwidthFormatted = computed(() => {
+  return props.totalMemoryBandwidthGBs ? formatBandwidth(props.totalMemoryBandwidthGBs) : '0 Go/s'
+})
 const qualityDisplay = computed(() => {
   const mult = props.modelQualityMultiplier ?? 1.0
+  return `x${mult.toFixed(2)}`
+})
+const speedDisplay = computed(() => {
+  const mult = props.bandwidthSpeedMultiplier ?? 1.0
   return `x${mult.toFixed(2)}`
 })
 </script>
@@ -78,16 +87,19 @@ const qualityDisplay = computed(() => {
         </div>
       </div>
 
-      <!-- VRAM -->
+      <!-- Memory Bandwidth & VRAM -->
       <div class="bg-[#161B22]/70 border border-[#21262D] p-3 rounded-lg flex flex-col gap-1">
         <div class="text-[11px] text-[#8B949E] flex items-center justify-between">
-          <span>VRAM Déployée</span>
-          <HardDrive class="w-3 h-3 text-[#FFB800]" />
+          <span>Bande Passante RAM</span>
+          <Activity class="w-3 h-3 text-[#FFB800]" />
         </div>
-        <div class="text-base font-bold text-[#F0F6FC] font-mono tracking-wide">
-          {{ vramFormatted }} GB
+        <div class="text-base font-bold text-[#FFB800] font-mono tracking-wide">
+          {{ bandwidthFormatted }}
         </div>
-        <div class="text-[9px] text-[#8B949E] font-mono">Plafond de contexte</div>
+        <div class="text-[9px] text-[#8B949E] font-mono flex items-center justify-between">
+          <span>VRAM : {{ vramFormatted }}</span>
+          <span class="text-[#00FF66] font-bold">{{ speedDisplay }} Vitesse</span>
+        </div>
       </div>
     </div>
   </div>

@@ -19,24 +19,30 @@ describe('ComputeEngine Domain Unit Tests', () => {
     const hw = createInitialHardware()
     expect(ComputeEngine.calculateRawCompute(hw).toNumber()).toBe(0)
 
-    hw.potato_pc.count = 2 // 2 * 0.001 = 0.002
-    hw.used_cpu.count = 1   // 1 * 0.05 = 0.05
-    hw.gtx_gpu.count = 2    // 2 * 0.5 = 1.0
+    hw.potato_pc.count = 2   // 2 * 0.001 = 0.002
+    hw.core2_quad.count = 1  // 1 * 0.04 = 0.04
+    hw.gtx_750ti.count = 2   // 2 * 1.3 = 2.6
 
     const raw = ComputeEngine.calculateRawCompute(hw)
-    expect(raw.toNumber()).toBeCloseTo(1.052)
+    expect(raw.toNumber()).toBeCloseTo(2.642)
   })
 
-  it('calculates total power draw and vram correctly', () => {
+  it('calculates total power draw, vram and memory bandwidth correctly', () => {
     const hw = createInitialHardware()
-    hw.potato_pc.count = 1 // 35W, 0.064GB
-    hw.gtx_gpu.count = 2   // 2 * 150 = 300W, 2 * 6 = 12GB
+    hw.potato_pc.count = 1 // 35W, 0.064GB, 0.8 GB/s
+    hw.gtx_750ti.count = 2  // 2 * 60 = 120W, 2 * 2 = 4GB, 2 * 86.4 = 172.8 GB/s
 
     const power = ComputeEngine.calculatePowerDraw(hw)
-    expect(power.toNumber()).toBe(335)
+    expect(power.toNumber()).toBe(155)
 
     const vram = ComputeEngine.calculateVram(hw)
-    expect(vram.toNumber()).toBeCloseTo(12.064)
+    expect(vram.toNumber()).toBeCloseTo(4.064)
+
+    const bw = ComputeEngine.calculateTotalMemoryBandwidth(hw)
+    expect(bw.toNumber()).toBeCloseTo(173.6)
+
+    const mult = ComputeEngine.calculateBandwidthSpeedMultiplier(100)
+    expect(mult).toBeCloseTo(1.40)
   })
 
   it('calculates thermal state and throttling correctly', () => {

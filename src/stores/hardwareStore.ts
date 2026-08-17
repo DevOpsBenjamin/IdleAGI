@@ -22,6 +22,14 @@ export const useHardwareStore = defineStore('hardware', () => {
     return ComputeEngine.calculateVram(hardware.value)
   })
 
+  const totalMemoryBandwidthGBs = computed<Decimal>(() => {
+    return ComputeEngine.calculateTotalMemoryBandwidth(hardware.value)
+  })
+
+  const bandwidthSpeedMultiplier = computed<number>(() => {
+    return ComputeEngine.calculateBandwidthSpeedMultiplier(totalMemoryBandwidthGBs.value)
+  })
+
   const thermalState = computed<ThermalState>(() => {
     return ComputeEngine.calculateThermalState(
       totalPowerDrawWatts.value,
@@ -50,8 +58,14 @@ export const useHardwareStore = defineStore('hardware', () => {
 
   const hasWorkstation = computed<boolean>(() => {
     return (
-      (hardware.value.used_cpu?.count ?? 0) > 0 ||
-      (hardware.value.gtx_gpu?.count ?? 0) > 0
+      (hardware.value.core2_quad?.count ?? 0) > 0 ||
+      (hardware.value.gtx_750ti?.count ?? 0) > 0 ||
+      (hardware.value.gaming_pc?.count ?? 0) > 0 ||
+      (hardware.value.rtx_3060?.count ?? 0) > 0 ||
+      (hardware.value.rtx_3090?.count ?? 0) > 0 ||
+      (hardware.value.rig_4x3090?.count ?? 0) > 0 ||
+      (hardware.value.a100_blade?.count ?? 0) > 0 ||
+      (hardware.value.h100_server?.count ?? 0) > 0
     )
   })
 
@@ -82,6 +96,8 @@ export const useHardwareStore = defineStore('hardware', () => {
     totalRawCompute,
     totalPowerDrawWatts,
     totalVramGB,
+    totalMemoryBandwidthGBs,
+    bandwidthSpeedMultiplier,
     thermalState,
     powerState,
     effectiveCompute,

@@ -20,7 +20,7 @@ const { fps, currentTps } = useGameLoop()
 const hardwareArray = computed(() => Object.values(store.hardware))
 const upgradesArray = computed(() => Object.values(store.upgrades))
 const hasHardware = computed(() => store.hasPotatoPc || store.hasWorkstation || store.totalRawCompute.gt(0))
-const hasCpu = computed(() => store.hardware.used_cpu.count > 0 || store.hardware.gtx_gpu.count > 0)
+const hasCpu = computed(() => store.hasWorkstation)
 
 // Keyboard shortcuts for active game loop ergonomics
 function handleKeyDown(e: KeyboardEvent) {
@@ -119,6 +119,8 @@ onUnmounted(() => {
               v-if="store.unlockedFeatures.trainingAllocation"
               :parameters="store.parameters"
               :total-vram-g-b="store.totalVramGB"
+              :total-memory-bandwidth-g-bs="store.totalMemoryBandwidthGBs"
+              :bandwidth-speed-multiplier="store.bandwidthSpeedMultiplier"
               :effective-compute="store.effectiveCompute"
               :thermal-efficiency="store.thermalState.efficiency"
               :model-quality-multiplier="store.modelQualityMultiplier"

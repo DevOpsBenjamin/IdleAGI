@@ -60,6 +60,8 @@ export const useGameStore = defineStore('game', () => {
   const totalRawCompute = computed(() => hardwareStore.totalRawCompute)
   const totalPowerDrawWatts = computed(() => hardwareStore.totalPowerDrawWatts)
   const totalVramGB = computed(() => hardwareStore.totalVramGB)
+  const totalMemoryBandwidthGBs = computed(() => hardwareStore.totalMemoryBandwidthGBs)
+  const bandwidthSpeedMultiplier = computed(() => hardwareStore.bandwidthSpeedMultiplier)
   const thermalState = computed(() => hardwareStore.thermalState)
   const powerState = computed(() => hardwareStore.powerState)
   const effectiveCompute = computed(() => hardwareStore.effectiveCompute)
@@ -183,8 +185,8 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      // Phase 2 trigger: First Workstation CPU
-      if (id === 'used_cpu' && result.node.count === 1) {
+      // Phase 2 trigger: First Workstation CPU or GPU
+      if ((id === 'core2_quad' || id === 'gtx_750ti' || id === 'used_cpu') && result.node.count === 1) {
         features.unlockFeature('tokenizerUnlocked')
         features.unlockFeature('oscilloscope')
         resources.rawText.max = Decimal.max(resources.rawText.max, 2000)
@@ -202,11 +204,18 @@ export const useGameStore = defineStore('game', () => {
         }
       }
 
-      if (id === 'gtx_gpu' && !features.reachedMilestones.firstGpu) {
+      if ((id === 'rtx_3060' || id === 'gtx_750ti' || id === 'gtx_gpu') && !features.reachedMilestones.firstGpu) {
         features.reachedMilestones.firstGpu = true
         terminal.addLog(
-          'GPU grand public déployé avec succès. Accélération de tokenisation débloquée !',
+          'GPU dédié déployé avec succès. Accélération massive de la bande passante mémoire et tokenisation !',
           'event'
+        )
+      }
+
+      if (id === 'a100_blade') {
+        terminal.addLog(
+          'Lame Datacenter NVIDIA A100 en ligne ! Mémoire HBM2e 2 To/s connectée.',
+          'success'
         )
       }
 
@@ -292,6 +301,7 @@ export const useGameStore = defineStore('game', () => {
         milestones: features.reachedMilestones,
         effectiveCompute: effectiveCompute.value,
         modelQualityMultiplier: modelQualityMultiplier.value,
+        bandwidthSpeedMultiplier: bandwidthSpeedMultiplier.value,
         totalTokensServed: resources.totalTokensServed,
         autoBrokerAccumulator,
         onSellRawTextQuiet: (amount: number) => sellRawText(amount, true),
@@ -487,6 +497,8 @@ export const useGameStore = defineStore('game', () => {
     totalRawCompute,
     totalPowerDrawWatts,
     totalVramGB,
+    totalMemoryBandwidthGBs,
+    bandwidthSpeedMultiplier,
     thermalState,
     powerState,
     effectiveCompute,

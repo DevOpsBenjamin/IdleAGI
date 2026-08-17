@@ -34,7 +34,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(store.totalCharsRead.toNumber()).toBe(0)
     expect(store.tokens.current.toNumber()).toBe(0)
     expect(store.hardware.potato_pc.count).toBe(0)
-    expect(store.hardware.used_cpu.count).toBe(0)
+    expect(store.hardware.core2_quad.count).toBe(0)
     expect(store.totalRawCompute.toNumber()).toBe(0)
 
     // Unlocks state
@@ -153,21 +153,21 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(store.funds.current.toNumber()).toBeGreaterThan(0)
   })
 
-  it('Phase 2 (Workstation & Tokenizer): Buying Workstation ($25) unlocks Tokenizer BPE and Oscilloscope', () => {
+  it('Phase 2 (Workstation & Tokenizer): Buying Workstation ($45) unlocks Tokenizer BPE and Oscilloscope', () => {
     const store = useGameStore()
-    store.funds.current = new Decimal(25)
+    store.funds.current = new Decimal(45)
 
-    const boughtCpu = store.buyHardware('used_cpu')
+    const boughtCpu = store.buyHardware('core2_quad')
     expect(boughtCpu).toBe(true)
-    expect(store.hardware.used_cpu.count).toBe(1)
+    expect(store.hardware.core2_quad.count).toBe(1)
     expect(store.currentPhase).toBe(2)
     expect(store.unlockedFeatures.tokenizerUnlocked).toBe(true)
     expect(store.unlockedFeatures.oscilloscope).toBe(true)
-    expect(store.totalRawCompute.toNumber()).toBeCloseTo(0.05)
+    expect(store.totalRawCompute.toNumber()).toBeCloseTo(0.04)
 
     // Auto-tokenization now converts raw text into tokens
     store.rawText.current = new Decimal(40)
-    store.processTick(1.0) // 0.05 TFLOPS * 50 tokens/s = 2.5 tokens (10 chars consumed)
+    store.processTick(1.0) // 0.04 TFLOPS * 50 tokens/s * bwMultiplier
 
     expect(store.tokens.current.toNumber()).toBeGreaterThan(0)
     expect(store.rawText.current.toNumber()).toBeLessThan(40)
@@ -175,7 +175,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
 
   it('Phase 3 (Model & Tri-Allocation): Serving 25 tokens unlocks Neural Training and Model Telemetry', () => {
     const store = useGameStore()
-    store.hardware.used_cpu.count = 1
+    store.hardware.core2_quad.count = 1
     store.unlockedFeatures.tokenizerUnlocked = true
     store.gridCapacityWatts = new Decimal(500)
     store.coolingCapacityWatts = new Decimal(300)
@@ -186,7 +186,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     store.allocations = { inferencePercent: 100, trainingPercent: 0, researchPercent: 0 }
 
     // Add GPU for fast inference
-    store.hardware.gtx_gpu.count = 1
+    store.hardware.rtx_3060.count = 1
     store.processTick(3.0)
 
     expect(store.unlockedFeatures.trainingAllocation).toBe(true)
@@ -215,7 +215,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(store.unlockedFeatures.researchAllocation).toBe(false)
 
     store.tokens.current = new Decimal(100)
-    store.hardware.gtx_gpu.count = 1
+    store.hardware.rtx_3060.count = 1
     store.allocations = { inferencePercent: 0, trainingPercent: 100, researchPercent: 0 }
 
     // 1 token trained = 100 params -> 5 tokens * 100 = 500 params
@@ -252,7 +252,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     store.funds.current = new Decimal(1337.5)
     store.parameters = new Decimal(42000)
     store.hardware.potato_pc.count = 1
-    store.hardware.gtx_gpu.count = 2
+    store.hardware.rtx_3060.count = 2
     store.upgrades.fast_bpe_tokenizer.purchased = true
     store.unlockedFeatures.tokenizerUnlocked = true
     store.unlockedFeatures.trainingAllocation = true
@@ -267,13 +267,13 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(deserialized?.funds?.current.toNumber()).toBe(1337.5)
     expect(deserialized?.parameters?.toNumber()).toBe(42000)
     expect(deserialized?.hardware?.potato_pc.count).toBe(1)
-    expect(deserialized?.hardware?.gtx_gpu.count).toBe(2)
+    expect(deserialized?.hardware?.rtx_3060.count).toBe(2)
     expect(deserialized?.unlockedFeatures?.tokenizerUnlocked).toBe(true)
   })
 
   it('simulates offline progress up to 24h cap without crashing', () => {
     const store = useGameStore()
-    store.hardware.used_cpu.count = 1
+    store.hardware.core2_quad.count = 1
     store.unlockedFeatures.tokenizerUnlocked = true
     store.lastTickTimestamp = Date.now() - 3600 * 1000 // 1 hour offline
 
@@ -286,7 +286,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
 
   it('enforces strict 24h ceiling on offline progress', () => {
     const store = useGameStore()
-    store.hardware.used_cpu.count = 1
+    store.hardware.core2_quad.count = 1
     store.lastTickTimestamp = Date.now() - 100000 * 1000 // > 27 hours offline
 
     store.calculateOfflineProgress()
