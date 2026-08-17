@@ -6,9 +6,15 @@ Ce document constitue le glossaire canonique et le modèle de domaine du jeu inc
 
 ## 1. Devises et Débits (Currencies & Flows)
 
+### Phases de Démarrage & Déblocages Progressifs (Early Game Bootstrap)
+- **Phase 0 : Scribe Humain** : Transcription manuelle de textes réels du web, apprentissage de la lecture rapide, découverte du courtier de données (*Data Broker*) et vente manuelle de texte brut pour constituer le capital initial.
+- **Phase 1 : Station Poubelle & Scripts** : Achat du premier PC d'occasion (RAM et CPU limités) et activation des premiers scripts d'automatisation (auto-scraping, auto-broker).
+- **Phase 2 : Station de Travail & Tokenisation** : Acquisition d'un processeur multi-cœurs et activation du Tokenizer BPE (4 chars $\to$ 1 Token) et de l'Oscilloscope temps réel.
+- **Phase 3 : Émergence du Modèle & Datacenter** : Déblocage de la Tri-Allocation de compute, de l'entraînement de neurones, de la R&D et du cluster datacenter.
+
 ### Raw Text (Caractères bruts)
-- **Définition** : Flux de données brutes aspirées par scraping ou synthèse, stocké dans un buffer avant tokenisation.
-- **Rôle** : Matière première du Tokenizer.
+- **Définition** : Flux de données brutes aspirées par lecture humaine, scraping par script ou synthèse, stocké dans un buffer avant vente ou tokenisation.
+- **Rôle** : Matière première vendable au courtier ou convertible par le Tokenizer.
 
 ### Tokens ($T$)
 - **Définition** : Unités lexicales produites à partir du Raw Text après passage dans le Tokenizer.

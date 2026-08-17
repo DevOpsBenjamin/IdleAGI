@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Terminal, Check, Sparkles, DollarSign, Cpu, Layers } from 'lucide-vue-next'
+import { Terminal, Check, Sparkles, DollarSign, Cpu, Layers, Coffee } from 'lucide-vue-next'
 import { formatMoney } from '@/utils/format'
 import type { SoftwareUpgrade } from '@/types/game'
 import type Decimal from 'break_infinity.js'
@@ -9,15 +9,41 @@ const props = defineProps<{
   upgradesList: SoftwareUpgrade[]
   fundsCurrent: Decimal
   researchPointsCurrent: Decimal
+  currentPhase: number
+  scriptsUnlocked: boolean
+  tokenizerUnlocked: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'buy-upgrade', id: string): void
 }>()
 
+const visibleUpgrades = computed(() => {
+  return props.upgradesList.filter((up) => {
+    // Human skills are always visible
+    if (up.category === 'human') return true
+
+    // Scripts require the Potato PC / scriptsUnlocked
+    if (up.id.startsWith('script_') || up.id === 'broker_negotiation') {
+      return props.scriptsUnlocked || props.fundsCurrent.gte(2) || up.purchased
+    }
+
+    // Advanced tokenizing / datacenter upgrades require Phase 2 / tokenizer
+    if (up.category === 'tokenizer' || up.id === 'ram_buffer_expansion_1' || up.id === 'cooling_optimization_v1') {
+      return props.tokenizerUnlocked || up.purchased
+    }
+
+    // Datacenter tier 2/3
+    if (up.id === 'api_tier_pricing' || up.id === 'crawler_daemon_v2') {
+      return props.tokenizerUnlocked || up.purchased
+    }
+
+    return true
+  })
+})
+
 const sortedUpgrades = computed(() => {
-  // Show unpurchased first, then purchased
-  return [...props.upgradesList].sort((a, b) => {
+  return [...visibleUpgrades.value].sort((a, b) => {
     if (a.purchased === b.purchased) return 0
     return a.purchased ? 1 : -1
   })
@@ -33,6 +59,8 @@ function canAfford(up: SoftwareUpgrade): boolean {
 
 function getCategoryIcon(cat: SoftwareUpgrade['category']) {
   switch (cat) {
+    case 'human':
+      return Coffee
     case 'scraping':
       return Sparkles
     case 'tokenizer':
@@ -48,24 +76,29 @@ function getCategoryIcon(cat: SoftwareUpgrade['category']) {
 </script>
 
 <template>
-  <div class="bg-[#0D1117] border border-[#21262D] rounded-lg p-4 flex flex-col gap-4">
+  <div class="bg-[#0D1117] border border-[#21262D] rounded-lg p-4 flex flex-col gap-4 shadow-lg animate-fadeIn">
     <!-- Header -->
     <div class="flex items-center justify-between border-b border-[#21262D] pb-3">
       <div class="flex items-center gap-2">
-        <div class="p-1 rounded bg-[#38BDF8]/10 text-[#38BDF8]">
+        <div class="p-1.5 rounded bg-[#38BDF8]/10 text-[#38BDF8] border border-[#38BDF8]/20">
           <Terminal class="w-4 h-4" />
         </div>
-        <h3 class="text-xs font-bold text-[#F0F6FC] uppercase tracking-wider">
-          4. Optimisations Logicielles
-        </h3>
+        <div>
+          <h3 class="text-xs font-bold text-[#F0F6FC] uppercase tracking-wider font-mono">
+            4. Compétences & Scripts Logiciels
+          </h3>
+          <p class="text-[10px] text-[#8B949E] font-mono">
+            Optimisations de lecture, scripts Python et modules
+          </p>
+        </div>
       </div>
       <span class="text-[10px] font-mono text-[#8B949E]">
-        Modules Système
+        {{ sortedUpgrades.filter(u => u.purchased).length }} / {{ sortedUpgrades.length }} Actifs
       </span>
     </div>
 
     <!-- Upgrades List -->
-    <div class="space-y-2.5 max-h-[360px] overflow-y-auto pr-1">
+    <div class="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
       <div
         v-for="up in sortedUpgrades"
         :key="up.id"
@@ -114,7 +147,7 @@ function getCategoryIcon(cat: SoftwareUpgrade['category']) {
             :disabled="!canAfford(up)"
             class="w-full py-1.5 px-3 rounded bg-[#21262D] hover:bg-[#30363D] active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed text-[#F0F6FC] hover:text-[#38BDF8] text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-[#30363D]"
           >
-            Activer le module
+            Débloquer l'optimisation
           </button>
         </div>
       </div>

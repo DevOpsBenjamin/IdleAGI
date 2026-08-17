@@ -4,7 +4,7 @@ import { useGameStore, MAX_OFFLINE_SECONDS } from '@/stores/gameStore'
 import Decimal from 'break_infinity.js'
 import { serializeGameState, deserializeGameState } from '@/utils/serialization'
 
-describe('GameStore Core Gameplay & Bootstrap Economy', () => {
+describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
   let memoryStorage: Record<string, string> = {}
 
   beforeAll(() => {
@@ -26,96 +26,166 @@ describe('GameStore Core Gameplay & Bootstrap Economy', () => {
     setActivePinia(createPinia())
   })
 
-  it('initializes in Cold Boot mode: $0, 0 CPU, 0 tokens, raw data broker ready', () => {
+  it('Phase 0 (Cold Boot): Initializes in Human Scribe mode with minimal UI unlocks', () => {
     const store = useGameStore()
+    expect(store.currentPhase).toBe(0)
     expect(store.funds.current.toNumber()).toBe(0)
     expect(store.rawText.current.toNumber()).toBe(0)
+    expect(store.totalCharsRead.toNumber()).toBe(0)
     expect(store.tokens.current.toNumber()).toBe(0)
+    expect(store.hardware.potato_pc.count).toBe(0)
     expect(store.hardware.used_cpu.count).toBe(0)
     expect(store.totalRawCompute.toNumber()).toBe(0)
+
+    // Unlocks state
+    expect(store.unlockedFeatures.humanReading).toBe(true)
+    expect(store.unlockedFeatures.dataBroker).toBe(false)
+    expect(store.unlockedFeatures.hardwareSection).toBe(false)
+    expect(store.unlockedFeatures.scriptsSection).toBe(false)
+    expect(store.unlockedFeatures.tokenizerUnlocked).toBe(false)
+    expect(store.unlockedFeatures.oscilloscope).toBe(false)
     expect(store.unlockedFeatures.trainingAllocation).toBe(false)
     expect(store.unlockedFeatures.researchAllocation).toBe(false)
   })
 
-  it('allows scraping and selling raw text to data brokers for initial cash', () => {
+  it('Phase 0 (Human Reading): Transcribes text, cycles snippets, and discovers data brokers at 80 chars', () => {
     const store = useGameStore()
-    // Scrape 40 characters (4 clicks)
+    expect(store.manualScrapePower).toBe(10)
+
+    // Manual read 4 times (40 chars)
     store.manualScrape() // 10
     store.manualScrape() // 20
     store.manualScrape() // 30
     store.manualScrape() // 40
+    expect(store.totalCharsRead.toNumber()).toBe(40)
     expect(store.rawText.current.toNumber()).toBe(40)
+    expect(store.unlockedFeatures.dataBroker).toBe(false)
 
-    // Sell 20 characters for $0.05
+    // Read 4 more times (80 chars total) -> Triggers Data Broker discovery!
+    store.manualScrape() // 50
+    store.manualScrape() // 60
+    store.manualScrape() // 70
+    store.manualScrape() // 80
+    expect(store.totalCharsRead.toNumber()).toBe(80)
+    expect(store.unlockedFeatures.dataBroker).toBe(true)
+  })
+
+  it('Phase 0 (Selling Data): Allows selling transcribed raw text to data brokers for initial cash', () => {
+    const store = useGameStore()
+    store.rawText.current = new Decimal(60)
+    store.unlockedFeatures.dataBroker = true
+
+    // Sell 20 chars for $0.05
     const sold = store.sellRawText(20)
     expect(sold).toBe(true)
-    expect(store.rawText.current.toNumber()).toBe(20)
+    expect(store.rawText.current.toNumber()).toBe(40)
     expect(store.funds.current.toNumber()).toBeCloseTo(0.05)
 
     // Sell remaining all
     const soldAll = store.sellAllRawText()
     expect(soldAll).toBe(true)
     expect(store.rawText.current.toNumber()).toBe(0)
-    expect(store.funds.current.toNumber()).toBeCloseTo(0.10)
+    expect(store.funds.current.toNumber()).toBeCloseTo(0.15)
   })
 
-  it('allows purchasing early micro-upgrades to accelerate scraping power and sell rate', () => {
+  it('Phase 0 (Human Skills): Unlocks reading skills and broker negotiation', () => {
     const store = useGameStore()
     expect(store.manualScrapePower).toBe(10)
 
-    // Give $0.50 and buy regex_parser_v0
-    store.funds.current = new Decimal(0.50)
-    const bought1 = store.buyUpgrade('regex_parser_v0')
+    // Buy speed reading ($0.15)
+    store.funds.current = new Decimal(0.15)
+    const bought1 = store.buyUpgrade('human_speed_reading')
     expect(bought1).toBe(true)
     expect(store.manualScrapePower).toBe(15)
 
-    // Buy broker contract ($3.50)
-    store.funds.current = new Decimal(3.50)
-    const boughtBroker = store.buyUpgrade('raw_data_broker_contract')
+    // Buy espresso ($0.60)
+    store.funds.current = new Decimal(0.60)
+    const bought2 = store.buyUpgrade('human_espresso')
+    expect(bought2).toBe(true)
+    expect(store.manualScrapePower).toBe(25)
+
+    // Buy broker negotiation ($2.50)
+    store.funds.current = new Decimal(2.50)
+    const boughtBroker = store.buyUpgrade('broker_negotiation')
     expect(boughtBroker).toBe(true)
     expect(store.rawTextSellPrice).toBe(0.08)
   })
 
-  it('activates the hardware tokenizer and inference pipeline upon buying the 1st CPU', () => {
+  it('Phase 1 (Potato PC & Scripts): Buying Potato PC ($10) unlocks hardware, scripts, and passive auto-broker', () => {
     const store = useGameStore()
-    expect(store.totalRawCompute.toNumber()).toBe(0)
+    store.funds.current = new Decimal(10)
 
-    // Cost for 1st CPU is $12 (12 * 1.15^0 = 12)
-    expect(store.getHardwareCost('used_cpu').toNumber()).toBe(12)
+    expect(store.getHardwareCost('potato_pc').toNumber()).toBe(10)
+    const boughtPotato = store.buyHardware('potato_pc')
+    expect(boughtPotato).toBe(true)
+    expect(store.hardware.potato_pc.count).toBe(1)
+    expect(store.hasPotatoPc).toBe(true)
+    expect(store.currentPhase).toBe(1)
+    expect(store.unlockedFeatures.scriptsSection).toBe(true)
+    expect(store.rawText.max.toNumber()).toBeGreaterThanOrEqual(500)
 
-    store.funds.current = new Decimal(12)
+    // Buy Python auto-scraper script ($3.00)
+    store.funds.current = new Decimal(3.00)
+    const boughtScraper = store.buyUpgrade('script_simple_scraper')
+    expect(boughtScraper).toBe(true)
+    expect(store.autoScrapeRate).toBe(5) // +5 chars/s
+
+    // Buy Cron auto-broker script ($5.00)
+    store.funds.current = new Decimal(5.00)
+    const boughtAutoBroker = store.buyUpgrade('script_cron_autobroker')
+    expect(boughtAutoBroker).toBe(true)
+    expect(store.unlockedFeatures.autoBroker).toBe(true)
+
+    // Run ticks to verify passive scraping and automatic broker selling
+    store.rawText.current = new Decimal(35)
+    store.funds.current = new Decimal(0)
+    store.processTick(2.0) // 2s * 5 chars/s = +10 chars -> 45 chars -> auto-broker sells 40 chars
+
+    expect(store.funds.current.toNumber()).toBeGreaterThan(0)
+  })
+
+  it('Phase 2 (Workstation & Tokenizer): Buying Workstation ($25) unlocks Tokenizer BPE and Oscilloscope', () => {
+    const store = useGameStore()
+    store.funds.current = new Decimal(25)
+
     const boughtCpu = store.buyHardware('used_cpu')
     expect(boughtCpu).toBe(true)
     expect(store.hardware.used_cpu.count).toBe(1)
+    expect(store.currentPhase).toBe(2)
+    expect(store.unlockedFeatures.tokenizerUnlocked).toBe(true)
+    expect(store.unlockedFeatures.oscilloscope).toBe(true)
     expect(store.totalRawCompute.toNumber()).toBeCloseTo(0.05)
 
-    // Auto-tokenization now functions: 20 chars -> 5 tokens via 0.05 TFLOPS
-    store.rawText.current = new Decimal(20)
-    store.processTick(1.0) // 1 second: 0.05 TFLOPS * 50 tokens/s = 2.5 tokens
+    // Auto-tokenization now converts raw text into tokens
+    store.rawText.current = new Decimal(40)
+    store.processTick(1.0) // 0.05 TFLOPS * 50 tokens/s = 2.5 tokens (10 chars consumed)
 
     expect(store.tokens.current.toNumber()).toBeGreaterThan(0)
-    expect(store.rawText.current.toNumber()).toBeLessThan(20)
+    expect(store.rawText.current.toNumber()).toBeLessThan(40)
   })
 
-  it('progressively unlocks Training allocation when enough tokens are served', () => {
+  it('Phase 3 (Model & Tri-Allocation): Serving 25 tokens unlocks Neural Training and Model Telemetry', () => {
     const store = useGameStore()
     store.hardware.used_cpu.count = 1
+    store.unlockedFeatures.tokenizerUnlocked = true
+    store.gridCapacityWatts = new Decimal(500)
+    store.coolingCapacityWatts = new Decimal(300)
     expect(store.unlockedFeatures.trainingAllocation).toBe(false)
 
     // Serve 30 tokens through inference
     store.tokens.current = new Decimal(30)
     store.allocations = { inferencePercent: 100, trainingPercent: 0, researchPercent: 0 }
 
-    // Run tick with enough compute to serve tokens
-    store.hardware.gtx_gpu.count = 1 // 0.5 TFLOPS -> fast inference
+    // Add GPU for fast inference
+    store.hardware.gtx_gpu.count = 1
     store.processTick(3.0)
 
     expect(store.unlockedFeatures.trainingAllocation).toBe(true)
+    expect(store.currentPhase).toBe(3)
   })
 
   it('increases API token sale price based on accumulated model parameters', () => {
     const store = useGameStore()
-    // At 0 parameters, quality multiplier is 1.0
     expect(store.modelQualityMultiplier).toBe(1.0)
 
     // At 100 parameters: 1 + 0.25 * log10(100) = 1.5
@@ -129,14 +199,17 @@ describe('GameStore Core Gameplay & Bootstrap Economy', () => {
 
   it('progressively unlocks Research allocation when parameters reach 500', () => {
     const store = useGameStore()
+    store.unlockedFeatures.tokenizerUnlocked = true
     store.unlockedFeatures.trainingAllocation = true
+    store.gridCapacityWatts = new Decimal(500)
+    store.coolingCapacityWatts = new Decimal(300)
     expect(store.unlockedFeatures.researchAllocation).toBe(false)
 
     store.tokens.current = new Decimal(100)
     store.hardware.gtx_gpu.count = 1
     store.allocations = { inferencePercent: 0, trainingPercent: 100, researchPercent: 0 }
 
-    // Training 1 token = 100 params -> 6 tokens = 600 params
+    // 1 token trained = 100 params -> 5 tokens * 100 = 500 params
     store.processTick(1.0)
 
     expect(store.parameters.toNumber()).toBeGreaterThanOrEqual(500)
@@ -163,31 +236,36 @@ describe('GameStore Core Gameplay & Bootstrap Economy', () => {
     expect(store.allocations.researchPercent).toBe(20)
   })
 
-  it('serializes and deserializes state accurately without data loss', () => {
+  it('serializes and deserializes progressive game state accurately', () => {
     const store = useGameStore()
+    store.currentPhase = 2
+    store.totalCharsRead = new Decimal(1250)
     store.funds.current = new Decimal(1337.5)
     store.parameters = new Decimal(42000)
-    store.hardware.gtx_gpu.count = 3
+    store.hardware.potato_pc.count = 1
+    store.hardware.gtx_gpu.count = 2
     store.upgrades.fast_bpe_tokenizer.purchased = true
+    store.unlockedFeatures.tokenizerUnlocked = true
     store.unlockedFeatures.trainingAllocation = true
-    store.unlockedFeatures.researchAllocation = true
 
     const fullState = store.getFullState()
     const serialized = serializeGameState(fullState)
     const deserialized = deserializeGameState(serialized, fullState)
 
     expect(deserialized).not.toBeNull()
+    expect(deserialized?.currentPhase).toBe(2)
+    expect(deserialized?.totalCharsRead?.toNumber()).toBe(1250)
     expect(deserialized?.funds?.current.toNumber()).toBe(1337.5)
     expect(deserialized?.parameters?.toNumber()).toBe(42000)
-    expect(deserialized?.hardware?.gtx_gpu.count).toBe(3)
-    expect(deserialized?.upgrades?.fast_bpe_tokenizer.purchased).toBe(true)
-    expect(deserialized?.unlockedFeatures?.trainingAllocation).toBe(true)
+    expect(deserialized?.hardware?.potato_pc.count).toBe(1)
+    expect(deserialized?.hardware?.gtx_gpu.count).toBe(2)
+    expect(deserialized?.unlockedFeatures?.tokenizerUnlocked).toBe(true)
   })
 
-  it('simulates offline progress up to 24h cap without exceeding buffers', () => {
+  it('simulates offline progress up to 24h cap without crashing', () => {
     const store = useGameStore()
     store.hardware.used_cpu.count = 1
-    store.upgrades.crawler_daemon_v1.purchased = true
+    store.unlockedFeatures.tokenizerUnlocked = true
     store.lastTickTimestamp = Date.now() - 3600 * 1000 // 1 hour offline
 
     store.calculateOfflineProgress()

@@ -1,16 +1,19 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Terminal, Zap, Cpu, DollarSign, Save, RotateCcw, Check } from 'lucide-vue-next'
 import { formatMoney, formatWatts, formatFlops } from '@/utils/format'
 import type { PowerState } from '@/types/game'
 import type Decimal from 'break_infinity.js'
 
-defineProps<{
+const props = defineProps<{
   version: string
+  currentPhase: number
   powerState: PowerState
   effectiveCompute: Decimal
   fundsCurrent: Decimal
   fundsRate: Decimal
+  dataBrokerUnlocked: boolean
+  hasHardware: boolean
 }>()
 
 const emit = defineEmits<{
@@ -33,30 +36,68 @@ function confirmReset() {
   showResetConfirm.value = false
   emit('reset')
 }
+
+const phaseLabel = computed(() => {
+  switch (props.currentPhase) {
+    case 0:
+      return 'Phase 0 // Scribe Humain'
+    case 1:
+      return 'Phase 1 // Scripts & PC Poubelle'
+    case 2:
+      return 'Phase 2 // Station & Tokenizer'
+    case 3:
+      return 'Phase 3 // Datacenter & Tri-Allocation'
+    default:
+      return 'Phase Active'
+  }
+})
+
+const phaseBadgeClass = computed(() => {
+  switch (props.currentPhase) {
+    case 0:
+      return 'bg-[#38BDF8]/10 text-[#38BDF8] border-[#38BDF8]/30'
+    case 1:
+      return 'bg-[#FFB800]/10 text-[#FFB800] border-[#FFB800]/30'
+    case 2:
+      return 'bg-[#00FF66]/10 text-[#00FF66] border-[#00FF66]/30'
+    case 3:
+      return 'bg-[#A855F7]/10 text-[#A855F7] border-[#A855F7]/30'
+    default:
+      return 'bg-[#161B22] text-[#8B949E] border-[#21262D]'
+  }
+})
 </script>
 
 <template>
-  <header class="shrink-0 border-b border-[#21262D] bg-[#0D1117]/90 backdrop-blur-md px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 z-20">
+  <header class="shrink-0 border-b border-[#21262D] bg-[#0D1117]/90 backdrop-blur-md px-4 md:px-6 py-3 flex flex-wrap items-center justify-between gap-4 z-20 transition-all duration-300">
     <!-- Brand & Project Title -->
     <div class="flex items-center gap-3">
       <div class="p-2 rounded-lg bg-[#00FF66]/10 border border-[#00FF66]/30 text-[#00FF66] shadow-[0_0_12px_rgba(0,255,102,0.2)]">
         <Terminal class="w-5 h-5" />
       </div>
       <div>
-        <h1 class="text-sm md:text-base font-bold tracking-widest text-[#F0F6FC] flex items-center gap-2 font-mono">
-          IDLE AGI
-          <span class="text-[10px] px-1.5 py-0.2 rounded bg-[#161B22] border border-[#21262D] text-[#8B949E] font-normal">
+        <div class="flex items-center gap-2">
+          <h1 class="text-sm md:text-base font-bold tracking-widest text-[#F0F6FC] font-mono">
+            IDLE AGI
+          </h1>
+          <span class="text-[10px] px-1.5 py-0.2 rounded bg-[#161B22] border border-[#21262D] text-[#8B949E] font-mono">
             v{{ version }}
           </span>
-        </h1>
+          <span class="text-[10px] px-2 py-0.5 rounded border font-mono font-semibold" :class="phaseBadgeClass">
+            {{ phaseLabel }}
+          </span>
+        </div>
         <p class="text-[11px] text-[#8B949E] font-mono">Project Singularity Loop // Active Terminal</p>
       </div>
     </div>
 
-    <!-- Quick Metrics Bar -->
-    <div class="flex flex-wrap items-center gap-4 md:gap-6 text-xs font-mono">
-      <!-- Power Grid -->
-      <div class="flex items-center gap-2 bg-[#161B22]/70 border border-[#21262D] px-3 py-1.5 rounded">
+    <!-- Quick Metrics Bar (Progressive disclosure) -->
+    <div class="flex flex-wrap items-center gap-3 md:gap-5 text-xs font-mono">
+      <!-- Power Grid (Unlocked when hardware is present) -->
+      <div
+        v-if="hasHardware"
+        class="flex items-center gap-2 bg-[#161B22]/70 border border-[#21262D] px-3 py-1.5 rounded animate-fadeIn"
+      >
         <Zap class="w-4 h-4" :class="powerState.isOverloaded ? 'text-[#EF4444] animate-bounce' : 'text-[#FFB800]'" />
         <div class="flex flex-col">
           <span class="text-[9px] text-[#8B949E] uppercase">Réseau Électrique</span>
@@ -66,8 +107,11 @@ function confirmReset() {
         </div>
       </div>
 
-      <!-- Compute -->
-      <div class="flex items-center gap-2 bg-[#161B22]/70 border border-[#21262D] px-3 py-1.5 rounded">
+      <!-- Compute (Unlocked when hardware is present) -->
+      <div
+        v-if="hasHardware"
+        class="flex items-center gap-2 bg-[#161B22]/70 border border-[#21262D] px-3 py-1.5 rounded animate-fadeIn"
+      >
         <Cpu class="w-4 h-4 text-[#38BDF8]" />
         <div class="flex flex-col">
           <span class="text-[9px] text-[#8B949E] uppercase">Compute Actif</span>
@@ -75,14 +119,17 @@ function confirmReset() {
         </div>
       </div>
 
-      <!-- Funds & Cash Rate -->
-      <div class="flex items-center gap-2 bg-[#161B22]/70 border border-[#21262D] px-3 py-1.5 rounded">
+      <!-- Funds & Cash Rate (Unlocked when Data Broker is discovered) -->
+      <div
+        v-if="dataBrokerUnlocked"
+        class="flex items-center gap-2 bg-[#161B22]/70 border border-[#00FF66]/30 px-3 py-1.5 rounded shadow-sm animate-fadeIn"
+      >
         <DollarSign class="w-4 h-4 text-[#00FF66]" />
         <div class="flex flex-col">
-          <span class="text-[9px] text-[#8B949E] uppercase">Liquidités ($)</span>
+          <span class="text-[9px] text-[#8B949E] uppercase">Trésorerie ($)</span>
           <span class="font-bold text-[#00FF66] flex items-center gap-1">
             {{ formatMoney(fundsCurrent) }}
-            <span class="text-[10px] text-[#00FF66]/80 font-normal">
+            <span v-if="fundsRate.gt(0)" class="text-[10px] text-[#00FF66]/80 font-normal">
               (+{{ formatMoney(fundsRate) }}/s)
             </span>
           </span>
