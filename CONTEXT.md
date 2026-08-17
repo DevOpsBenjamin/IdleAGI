@@ -61,9 +61,16 @@ Ce document constitue le glossaire canonique et le modèle de domaine du jeu inc
 - **Définition** : Complexité intrinsèque du modèle IA ($10^6$ à $10^{12+}$ paramètres).
 - **Rôle** : Stock permanent qui augmente avec l'entraînement, débloquant de nouveaux modules cognitifs et augmentant la valeur par token.
 
-### Alignment & Entropy ($0-100\%$)
-- **Définition** : Jauge d'équilibre mesurant la stabilité éthique et la dérive cognitive du modèle.
-- **Rôle** : Une entropie excessive provoque des hallucinations et des pénalités d'efficacité ; régulée via RLHF, benchmarks et filtres de sécurité.
+### Cognitive Model : Alignment, Entropy ($0-100\%$) & RLHF
+- **Entropie Cognitive ($E$)** : Valeur flottante ($0.00$ à $1.00$) modélisant l'instabilité synaptique, le bruit et la dérive cognitive générée par l'entraînement brut non supervisé.
+- **Alignement ($A = 1.0 - E$)** : Jauge complémentaire mesurant la factualité, la sécurité et la conformité éthique du modèle.
+- **Équation de Dérive ($\Delta E$)** : $\Delta E = k_{\text{drift}} \times (\text{Training\%}/100) \times (\text{EffectiveCompute}/100)^{0.5} \times (1.0 - \mu_{\text{safety\_reduction}}) \times \Delta t$ ($k_{\text{drift}} = 0.015$).
+- **Action de Régulation Manuelle (Human RLHF Batch)** : Action tactile consommant des Funds ($\text{Cost} = 50 \times (1.10)^{\text{count}}$) pour dissiper $-15\%$ d'entropie instantanément.
+- **Régimes Opérationnels** :
+  - `nominal` ($E < 30\%$) : Rentabilité API 100% ($\mu_{\text{api}} = 1.0$), R&D standard ($\mu_{\text{research}} = 1.0$), pensées STDOUT cohérentes.
+  - `divergent` ($30\% \le E < 70\%$) : Bonus de créativité R&D jusqu'à $+25\%$ ($\mu_{\text{research}} = 1.0 + 0.25 \times \frac{E - 0.30}{0.40}$), léger rejet API ($\mu_{\text{api}} = 1.0 - 0.15 \times \frac{E - 0.30}{0.40}$), pensées émergentes.
+  - `critical_hallucination` ($E \ge 70\%$) : Rejet massif des requêtes API ($\mu_{\text{api}} \le 0.50 \to 0.10$), pensées STDOUT glitchées et corrompues.
+- **Modules Logiciels de Sécurité R&D** : *Constitutional AI Ruleset* (-20% dérive), *Automated RLHF Pipeline* (-0.5% entropie/s), *Direct Preference Optimization* (-30% dérive), *Safety Benchmarks* (plafonnement du malus API à -20%).
 
 ---
 
