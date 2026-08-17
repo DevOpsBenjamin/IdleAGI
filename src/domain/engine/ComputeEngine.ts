@@ -8,6 +8,10 @@ export interface PcieSlotsState {
   freeSlots: number
 }
 
+export type GpuInstallResult =
+  | { canInstall: true }
+  | { canInstall: false; reason: 'no_pcie_slots' | 'host_tier_too_low' }
+
 export class ComputeEngine {
   /**
    * Calculate total raw compute (TFLOPS) from all active hardware nodes.
@@ -96,16 +100,45 @@ export class ComputeEngine {
   }
 
   /**
-   * Check if a GPU can be physically installed based on available PCIe slots.
+   * Check if a GPU can be installed given host tier constraints (minHostTier) and PCIe slots availability.
    */
   public static canInstallGpu(
     hardware: Record<string, HardwareNode>,
     gpuNode: HardwareNode | undefined
-  ): boolean {
-    if (!gpuNode || gpuNode.category !== 'gpu') return true
-    const slots = this.calculatePcieSlots(hardware)
-    const required = gpuNode.pcieSlotsRequired ?? 1
-    return slots.freeSlots >= required
+  ): GpuInstallResult {
+    if (!gpuNode || gpuNode.category !== 'gpu') return { canInstall: true }
+
+    const reqTier = gpuNode.minHostTier ?? 0
+    const reqSlots = gpuNode.pcieSlotsRequired ?? 1
+
+    // 1. Check if total overall slots are sufficient
+    const overall = this.calculatePcieSlots(hardware)
+    if (overall.freeSlots < reqSlots) {
+      return { canInstall: false, reason: 'no_pcie_slots' }
+    }
+
+    // 2. Check cumulative capacity condition for all tiers k <= reqTier
+    for (let k = 0; k <= reqTier; k++) {
+      let slotsProvidedAtTier = 0
+      let slotsUsedAtTier = 0
+
+      for (const node of Object.values(hardware)) {
+        if (node.count > 0) {
+          if (node.category === 'host' && node.tier >= k && node.pcieSlotsProvided) {
+            slotsProvidedAtTier += node.pcieSlotsProvided * node.count
+          }
+          if (node.category === 'gpu' && (node.minHostTier ?? 0) >= k && node.pcieSlotsRequired) {
+            slotsUsedAtTier += node.pcieSlotsRequired * node.count
+          }
+        }
+      }
+
+      if (slotsUsedAtTier + reqSlots > slotsProvidedAtTier) {
+        return { canInstall: false, reason: 'host_tier_too_low' }
+      }
+    }
+
+    return { canInstall: true }
   }
 
   /**

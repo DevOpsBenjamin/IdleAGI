@@ -48,6 +48,7 @@ export function serializeHardwareNode(node: HardwareNode): SerializedHardwareNod
     powerWatts: node.powerWatts.toString(),
     pcieSlotsProvided: node.pcieSlotsProvided,
     pcieSlotsRequired: node.pcieSlotsRequired,
+    minHostTier: node.minHostTier,
     description: node.description,
     tier: node.tier ?? 1,
   }
@@ -72,6 +73,7 @@ export function deserializeHardwareNode(
     powerWatts: new Decimal(raw.powerWatts ?? fallback.powerWatts),
     pcieSlotsProvided: raw.pcieSlotsProvided ?? fallback.pcieSlotsProvided,
     pcieSlotsRequired: raw.pcieSlotsRequired ?? fallback.pcieSlotsRequired,
+    minHostTier: typeof raw.minHostTier === 'number' ? raw.minHostTier : fallback.minHostTier,
     description: raw.description ?? fallback.description,
     tier: raw.tier ?? fallback.tier ?? 1,
   }

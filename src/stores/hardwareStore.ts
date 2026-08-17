@@ -92,10 +92,9 @@ export const useHardwareStore = defineStore('hardware', () => {
     }
 
     if (node.category === 'gpu') {
-      const slots = ComputeEngine.calculatePcieSlots(hardware.value)
-      const required = node.pcieSlotsRequired ?? 1
-      if (slots.freeSlots < required) {
-        return { success: false, cost, reason: 'no_pcie_slots' }
+      const check = ComputeEngine.canInstallGpu(hardware.value, node)
+      if (!check.canInstall) {
+        return { success: false, cost, reason: check.reason }
       }
     }
 

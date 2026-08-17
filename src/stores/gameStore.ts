@@ -223,7 +223,14 @@ export const useGameStore = defineStore('game', () => {
       return true
     }
 
-    if (result.reason === 'no_pcie_slots') {
+    if (result.reason === 'host_tier_too_low') {
+      const node = hardwareStore.hardware[id]
+      const minTier = node?.minHostTier ?? 1
+      terminal.addLog(
+        `Impossible d’installer ce GPU : nécessite une station hôte de Tier ${minTier}+ avec un slot PCIe libre !`,
+        'warn'
+      )
+    } else if (result.reason === 'no_pcie_slots') {
       terminal.addLog(
         'Impossible d’installer ce GPU : aucun slot PCIe disponible ! Achetez ou améliorez une station hôte pour obtenir des slots supplémentaires.',
         'warn'

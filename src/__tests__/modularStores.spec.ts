@@ -101,6 +101,17 @@ describe('Modular Pinia Stores Unit Tests', () => {
       const failedGpu2 = store.buyHardware('gtx_750ti', new Decimal(100))
       expect(failedGpu2.success).toBe(false)
       expect(failedGpu2.reason).toBe('no_pcie_slots')
+
+      // Core 2 Quad (Tier 0) cannot host RTX 3060 (requires Tier 1+ host)
+      store.buyHardware('core2_quad', new Decimal(100)) // 2nd core2quad -> freeSlots = 1 (Tier 0)
+      const failedRtx = store.buyHardware('rtx_3060', new Decimal(500))
+      expect(failedRtx.success).toBe(false)
+      expect(failedRtx.reason).toBe('host_tier_too_low')
+
+      // Buying Gaming PC (Tier 1) enables buying RTX 3060
+      store.buyHardware('gaming_pc', new Decimal(500))
+      const successRtx = store.buyHardware('rtx_3060', new Decimal(500))
+      expect(successRtx.success).toBe(true)
     })
   })
 

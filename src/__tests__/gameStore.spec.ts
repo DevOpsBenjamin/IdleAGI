@@ -175,7 +175,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
 
   it('Phase 3 (Model & Tri-Allocation): Serving 25 tokens unlocks Neural Training and Model Telemetry', () => {
     const store = useGameStore()
-    store.hardware.core2_quad.count = 1
+    store.hardware.gaming_pc.count = 1
     store.unlockedFeatures.tokenizerUnlocked = true
     store.gridCapacityWatts = new Decimal(500)
     store.coolingCapacityWatts = new Decimal(300)
@@ -215,7 +215,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(store.unlockedFeatures.researchAllocation).toBe(false)
 
     store.tokens.current = new Decimal(100)
-    store.hardware.core2_quad.count = 1
+    store.hardware.gaming_pc.count = 1
     store.hardware.rtx_3060.count = 1
     store.allocations = { inferencePercent: 0, trainingPercent: 100, researchPercent: 0 }
 

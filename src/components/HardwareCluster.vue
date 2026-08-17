@@ -4,7 +4,7 @@ import { HardDrive, Plus, Zap, Cpu, MemoryStick, Activity, Layers, Server } from
 import { formatMoney, formatFlops, formatWatts, formatVram, formatBandwidth } from '@/utils/format'
 import type { HardwareNode } from '@/types/game'
 import type Decimal from 'break_infinity.js'
-import type { PcieSlotsState } from '@/domain/engine/ComputeEngine'
+import { ComputeEngine, type PcieSlotsState } from '@/domain/engine/ComputeEngine'
 
 const props = defineProps<{
   hardwareList: HardwareNode[]
@@ -19,6 +19,14 @@ const emit = defineEmits<{
 }>()
 
 const activeTab = ref<'all' | 'host' | 'gpu'>('all')
+
+const hardwareRecord = computed(() => {
+  const map: Record<string, HardwareNode> = {}
+  for (const node of props.hardwareList) {
+    map[node.id] = node
+  }
+  return map
+})
 
 const visibleHardware = computed(() => {
   return props.hardwareList.filter((hw) => {
@@ -41,16 +49,24 @@ const visibleHardware = computed(() => {
 function canBuyNode(hw: HardwareNode): boolean {
   const cost = props.getHardwareCost(hw.id)
   if (props.fundsCurrent.lt(cost)) return false
-  if (hw.category === 'gpu' && props.pcieSlots) {
-    const required = hw.pcieSlotsRequired ?? 1
-    if (props.pcieSlots.freeSlots < required) return false
+  if (hw.category === 'gpu') {
+    const check = ComputeEngine.canInstallGpu(hardwareRecord.value, hw)
+    if (!check.canInstall) return false
   }
   return true
 }
 
 function getBuyButtonLabel(hw: HardwareNode): string {
-  if (hw.category === 'gpu' && props.pcieSlots && props.pcieSlots.freeSlots < (hw.pcieSlotsRequired ?? 1)) {
-    return 'Slot PCIe requis'
+  if (hw.category === 'gpu') {
+    const check = ComputeEngine.canInstallGpu(hardwareRecord.value, hw)
+    if (!check.canInstall) {
+      if (check.reason === 'host_tier_too_low') {
+        return `Hôte T${hw.minHostTier ?? 0}+ requis`
+      }
+      if (check.reason === 'no_pcie_slots') {
+        return 'Slot PCIe requis'
+      }
+    }
   }
   return 'Acquérir'
 }
@@ -153,8 +169,8 @@ function getBuyButtonLabel(hw: HardwareNode): string {
               <span v-if="hw.category === 'host' && (hw.pcieSlotsProvided ?? 0) > 0" class="text-[#38BDF8] font-bold">
                 • +{{ hw.pcieSlotsProvided }} Slot PCIe
               </span>
-              <span v-else-if="hw.category === 'gpu'" class="text-[#FFB800]">
-                • {{ hw.pcieSlotsRequired ?? 1 }} Slot requis
+              <span v-else-if="hw.category === 'gpu'" class="text-[#FFB800] font-bold">
+                • {{ hw.pcieSlotsRequired ?? 1 }} Slot (Hôte T{{ hw.minHostTier ?? 0 }}+)
               </span>
             </div>
           </div>
