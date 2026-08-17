@@ -2,6 +2,12 @@ import Decimal from 'break_infinity.js'
 import type { HardwareNode } from '@/types/hardware'
 import type { ThermalState, PowerState } from '@/types/systems'
 
+export interface PcieSlotsState {
+  totalSlots: number
+  usedSlots: number
+  freeSlots: number
+}
+
 export class ComputeEngine {
   /**
    * Calculate total raw compute (TFLOPS) from all active hardware nodes.
@@ -63,6 +69,43 @@ export class ComputeEngine {
     const bw = totalBandwidthGBs instanceof Decimal ? totalBandwidthGBs.toNumber() : totalBandwidthGBs
     if (bw <= 1) return 1.0
     return 1.0 + 0.20 * Math.log10(bw)
+  }
+
+  /**
+   * Calculate PCIe slots provided, used, and free.
+   */
+  public static calculatePcieSlots(hardware: Record<string, HardwareNode>): PcieSlotsState {
+    let totalSlots = 0
+    let usedSlots = 0
+
+    for (const node of Object.values(hardware)) {
+      if (node.count > 0) {
+        if (node.category === 'host' && node.pcieSlotsProvided) {
+          totalSlots += node.pcieSlotsProvided * node.count
+        } else if (node.category === 'gpu' && node.pcieSlotsRequired) {
+          usedSlots += node.pcieSlotsRequired * node.count
+        }
+      }
+    }
+
+    return {
+      totalSlots,
+      usedSlots,
+      freeSlots: Math.max(0, totalSlots - usedSlots),
+    }
+  }
+
+  /**
+   * Check if a GPU can be physically installed based on available PCIe slots.
+   */
+  public static canInstallGpu(
+    hardware: Record<string, HardwareNode>,
+    gpuNode: HardwareNode | undefined
+  ): boolean {
+    if (!gpuNode || gpuNode.category !== 'gpu') return true
+    const slots = this.calculatePcieSlots(hardware)
+    const required = gpuNode.pcieSlotsRequired ?? 1
+    return slots.freeSlots >= required
   }
 
   /**

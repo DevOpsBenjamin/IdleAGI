@@ -79,6 +79,28 @@ describe('Modular Pinia Stores Unit Tests', () => {
 
       // Next cost scaled by 1.25
       expect(store.getHardwareCost('potato_pc').toNumber()).toBe(12.5)
+
+      // Buying GPU without PCIe host slots fails
+      const failedGpu = store.buyHardware('gtx_750ti', new Decimal(100))
+      expect(failedGpu.success).toBe(false)
+      expect(failedGpu.reason).toBe('no_pcie_slots')
+
+      // Buy Core 2 Quad (provides 1 slot PCIe)
+      const successHost = store.buyHardware('core2_quad', new Decimal(50))
+      expect(successHost.success).toBe(true)
+      expect(store.pcieSlots.totalSlots).toBe(1)
+      expect(store.pcieSlots.freeSlots).toBe(1)
+
+      // Now GPU purchase succeeds and consumes the slot
+      const successGpu = store.buyHardware('gtx_750ti', new Decimal(100))
+      expect(successGpu.success).toBe(true)
+      expect(store.pcieSlots.freeSlots).toBe(0)
+      expect(store.pcieSlots.usedSlots).toBe(1)
+
+      // Second GPU fails due to slot saturation
+      const failedGpu2 = store.buyHardware('gtx_750ti', new Decimal(100))
+      expect(failedGpu2.success).toBe(false)
+      expect(failedGpu2.reason).toBe('no_pcie_slots')
     })
   })
 
