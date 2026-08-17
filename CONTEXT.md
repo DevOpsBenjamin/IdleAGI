@@ -22,14 +22,14 @@ Ce document constitue le glossaire canonique et le modèle de domaine du jeu inc
 - **Débit** : Mesuré en $Tokens/s$.
 
 ### Compute ($TFLOPS$) & Architecture Matérielle (Hôtes vs GPUs)
-- **Systèmes Hôtes (`host`)** : Stations et tours fournissant l'orchestration CPU, la RAM système (dimensionnant le buffer de données brutes) et les **Slots PCIe** (`pcieSlotsProvided`).
-- **Accélérateurs Dédiés (`gpu`)** : Cartes graphiques et puces Tensor branchées sur les slots PCIe disponibles (`pcieSlotsRequired`), fournissant la puissance de calcul brute ($TFLOPS$), la VRAM et la bande passante mémoire.
+- **Système Hôte Actif (`host`, `maxCount: 1`)** : Le joueur fait évoluer **une seule station hôte active** (Pentium II $\to$ Core 2 Quad $\to$ Tour Gaming $\to$ Threadripper $\to$ Châssis EPYC). L'acquisition de la station supérieure requiert obligatoirement d'avoir saturé la RAM de la station actuelle (Gating).
+- **Accélérateurs Dédiés (`gpu`)** : Cartes graphiques et puces Tensor branchées sur les slots PCIe disponibles (`pcieSlotsRequired`), fournissant la puissance de calcul brute ($TFLOPS$), la VRAM et la bande passante mémoire. Révélés progressivement selon la compatibilité de palier de l'hôte.
 - **Rôle** : Puissance distribuée dynamiquement entre les 3 canaux d'allocation (Inférence, Entraînement, R&D).
 
-### VRAM & RAM (Capacité mémoire & Extensions de RAM)
+### VRAM & RAM (Capacité mémoire & Gating de RAM)
 - **Définition** : Capacité mémoire physique disponible ($GB$, $TB$, $PB$).
 - **Rôle** : Plafonne la taille maximale du modèle entraînable (nombre de Paramètres, $1\text{ paramètre FP16} \approx 2\text{ octets}$) et la fenêtre de contexte maximale.
-- **Extensions de RAM (Kits & Barrettes)** : Permet d'étendre la RAM des stations hôtes de manière modulaire (256 Mo $\to$ 8 Go $\to$ 16 Go $\to$ 32 Go $\to$ 64 Go $\to$ 128 Go $\to$ 256 Go) pour agrandir les buffers de données brutes (`rawText.max`) et de tokens (`tokens.max`) à moindre coût avant d'acheter une nouvelle tour.
+- **Extensions de RAM (Kits & Barrettes)** : Permet d'étendre la RAM des stations hôtes de manière modulaire (256 Mo $\to$ 8 Go $\to$ 16 Go $\to$ 32 Go $\to$ 64 Go $\to$ 128 Go $\to$ 256 Go) pour agrandir les buffers de données brutes (`rawText.max`) et de tokens (`tokens.max`). L'achat des kits d'un palier est la clé obligatoire pour débloquer la tour suivante.
 
 ### Memory Bandwidth (Bande Passante Mémoire - $\text{GB/s}$)
 - **Définition** : Débit de transfert brut entre la mémoire (SDRAM, DDR, GDDR, HBM) et les unités de calcul.

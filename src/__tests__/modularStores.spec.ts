@@ -77,16 +77,23 @@ describe('Modular Pinia Stores Unit Tests', () => {
       expect(store.hardware.potato_pc.count).toBe(1)
       expect(store.hasPotatoPc).toBe(true)
 
-      // Next cost scaled by 1.25
-      expect(store.getHardwareCost('potato_pc').toNumber()).toBe(12.5)
+      // Potato PC has maxCount: 1, so second buy fails with max_count_reached
+      const secondPotatoBuy = store.buyHardware('potato_pc', new Decimal(20))
+      expect(secondPotatoBuy.success).toBe(false)
+      expect(secondPotatoBuy.reason).toBe('max_count_reached')
 
       // Buying GPU without PCIe host slots fails
       const failedGpu = store.buyHardware('gtx_750ti', new Decimal(100))
       expect(failedGpu.success).toBe(false)
       expect(failedGpu.reason).toBe('no_pcie_slots')
 
-      // Buy Core 2 Quad (provides 1 slot PCIe)
-      const successHost = store.buyHardware('core2_quad', new Decimal(50))
+      // Buying Core 2 Quad without RAM upgrade fails
+      const failedHostNoRam = store.buyHardware('core2_quad', new Decimal(50))
+      expect(failedHostNoRam.success).toBe(false)
+      expect(failedHostNoRam.reason).toBe('missing_ram_upgrade')
+
+      // Buy Core 2 Quad with RAM upgrade installed
+      const successHost = store.buyHardware('core2_quad', new Decimal(50), ['ram_sdram_256mb'])
       expect(successHost.success).toBe(true)
       expect(store.pcieSlots.totalSlots).toBe(1)
       expect(store.pcieSlots.freeSlots).toBe(1)
@@ -102,14 +109,9 @@ describe('Modular Pinia Stores Unit Tests', () => {
       expect(failedGpu2.success).toBe(false)
       expect(failedGpu2.reason).toBe('no_pcie_slots')
 
-      // Core 2 Quad (Tier 0) cannot host RTX 3060 (requires Tier 1+ host)
-      store.buyHardware('core2_quad', new Decimal(100)) // 2nd core2quad -> freeSlots = 1 (Tier 0)
-      const failedRtx = store.buyHardware('rtx_3060', new Decimal(500))
-      expect(failedRtx.success).toBe(false)
-      expect(failedRtx.reason).toBe('host_tier_too_low')
-
-      // Buying Gaming PC (Tier 1) enables buying RTX 3060
-      store.buyHardware('gaming_pc', new Decimal(500))
+      // Buying Gaming PC with RAM upgrades enables buying RTX 3060
+      const successGamingPc = store.buyHardware('gaming_pc', new Decimal(500), ['ram_ddr2_8gb', 'ram_ddr3_16gb'])
+      expect(successGamingPc.success).toBe(true)
       const successRtx = store.buyHardware('rtx_3060', new Decimal(500))
       expect(successRtx.success).toBe(true)
     })

@@ -162,6 +162,7 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
   it('Phase 2 (Workstation & Tokenizer): Buying Workstation ($45) unlocks Tokenizer BPE and Oscilloscope', () => {
     const store = useGameStore()
     store.funds.current = new Decimal(45)
+    store.upgrades.ram_sdram_256mb.purchased = true
 
     const boughtCpu = store.buyHardware('core2_quad')
     expect(boughtCpu).toBe(true)

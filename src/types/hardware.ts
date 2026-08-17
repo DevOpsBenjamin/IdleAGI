@@ -18,6 +18,8 @@ export interface HardwareNode {
   pcieSlotsProvided?: number
   pcieSlotsRequired?: number
   minHostTier?: number
+  maxCount?: number
+  requiredUpgrades?: string[]
   description?: string
   tier: number
 }
@@ -37,6 +39,8 @@ export interface SerializedHardwareNode {
   pcieSlotsProvided?: number
   pcieSlotsRequired?: number
   minHostTier?: number
+  maxCount?: number
+  requiredUpgrades?: string[]
   description?: string
   tier: number
 }

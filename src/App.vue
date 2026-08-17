@@ -19,6 +19,8 @@ const { fps, currentTps } = useGameLoop()
 
 const hardwareArray = computed(() => Object.values(store.hardware))
 const upgradesArray = computed(() => Object.values(store.upgrades))
+const ramUpgradesArray = computed(() => Object.values(store.upgrades).filter((u) => u.category === 'hardware'))
+const purchasedUpgradeIds = computed(() => Object.values(store.upgrades).filter((u) => u.purchased).map((u) => u.id))
 const hasHardware = computed(() => store.hasPotatoPc || store.hasWorkstation || store.totalRawCompute.gt(0))
 const hasCpu = computed(() => store.hasWorkstation)
 
@@ -178,11 +180,16 @@ onUnmounted(() => {
             <HardwareCluster
               v-if="store.unlockedFeatures.hardwareSection"
               :hardware-list="hardwareArray"
+              :ram-upgrades-list="ramUpgradesArray"
               :funds-current="store.funds.current"
               :current-phase="store.currentPhase"
               :pcie-slots="store.pcieSlots"
+              :active-host-node="store.activeHostNode"
+              :next-host-node="store.nextHostNode"
+              :purchased-upgrade-ids="purchasedUpgradeIds"
               :get-hardware-cost="(id) => store.getHardwareCost(id)"
               @buy-hardware="(id) => store.buyHardware(id)"
+              @buy-upgrade="(id) => store.buyUpgrade(id)"
             />
           </Transition>
 

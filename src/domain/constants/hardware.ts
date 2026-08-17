@@ -3,13 +3,14 @@ import type { HardwareNode } from '@/types/hardware'
 
 export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
   // ==========================================
-  // STATIONS HÔTES (CPU & RAM SYSTÈME & SLOTS PCIE)
+  // STATIONS HÔTES (STATION UNIQUE ÉVOLUTIVE)
   // ==========================================
   potato_pc: {
     id: 'potato_pc',
     name: "Grille-Pain du Grenier (Pentium II 450 MHz Deschutes)",
     category: 'host',
     count: 0,
+    maxCount: 1,
     baseCost: new Decimal(10), // $10.00
     costMult: 1.25,
     tflops: new Decimal(0.001), // 1 GFLOPS
@@ -26,6 +27,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     name: "Chauffage d'Appoint (Core 2 Quad Q6600 @ 2.4 GHz)",
     category: 'host',
     count: 0,
+    maxCount: 1,
+    requiredUpgrades: ['ram_sdram_256mb'],
     baseCost: new Decimal(45), // $45.00
     costMult: 1.20,
     tflops: new Decimal(0.04), // 40 GFLOPS
@@ -42,6 +45,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     name: "Tour Tuning RGB du BonCoin (i7-6700K Skylake Décapsulé)",
     category: 'host',
     count: 0,
+    maxCount: 1,
+    requiredUpgrades: ['ram_ddr2_8gb', 'ram_ddr3_16gb'],
     baseCost: new Decimal(220), // $220.00
     costMult: 1.16,
     tflops: new Decimal(0.15), // 150 GFLOPS
@@ -58,6 +63,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     name: "Centrale Turbine d'Avion (Threadripper 3990X 64 Cœurs)",
     category: 'host',
     count: 0,
+    maxCount: 1,
+    requiredUpgrades: ['ram_ddr4_32gb', 'ram_ddr4_64gb'],
     baseCost: new Decimal(1200), // $1,200.00
     costMult: 1.18,
     tflops: new Decimal(1.2),   // 1.2 TFLOPS CPU
@@ -74,6 +81,8 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
     name: "Armoire Climatysée 4U (Double AMD EPYC 9654 192 Cœurs)",
     category: 'host',
     count: 0,
+    maxCount: 1,
+    requiredUpgrades: ['ram_ddr5_128gb', 'ram_ddr5_256gb'],
     baseCost: new Decimal(6500), // $6,500.00
     costMult: 1.25,
     tflops: new Decimal(4.5),    // 4.5 TFLOPS CPU
@@ -201,6 +210,8 @@ export function createInitialHardware(): Record<string, HardwareNode> {
       name: node.name,
       category: node.category,
       count: node.count,
+      maxCount: node.maxCount,
+      requiredUpgrades: node.requiredUpgrades ? [...node.requiredUpgrades] : undefined,
       baseCost: new Decimal(node.baseCost),
       costMult: node.costMult,
       tflops: new Decimal(node.tflops),
