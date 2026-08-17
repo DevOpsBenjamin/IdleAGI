@@ -54,7 +54,7 @@ export class MilestoneTracker {
       unlockedFeatures.hardwareSection = true
       milestones.potatoPcUnlocked = true
       events.push({
-        message: 'Petites annonces repérées : Un vieux PC d’occasion est en vente pour $10.00.',
+        message: 'Petites annonces repérées : Une tour Pentium II de 1999 (64 Mo SDRAM) est en vente pour $10.00.',
         type: 'event',
       })
     }

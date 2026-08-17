@@ -19,24 +19,24 @@ describe('ComputeEngine Domain Unit Tests', () => {
     const hw = createInitialHardware()
     expect(ComputeEngine.calculateRawCompute(hw).toNumber()).toBe(0)
 
-    hw.potato_pc.count = 2 // 2 * 0.01 = 0.02
+    hw.potato_pc.count = 2 // 2 * 0.001 = 0.002
     hw.used_cpu.count = 1   // 1 * 0.05 = 0.05
     hw.gtx_gpu.count = 2    // 2 * 0.5 = 1.0
 
     const raw = ComputeEngine.calculateRawCompute(hw)
-    expect(raw.toNumber()).toBeCloseTo(1.07)
+    expect(raw.toNumber()).toBeCloseTo(1.052)
   })
 
   it('calculates total power draw and vram correctly', () => {
     const hw = createInitialHardware()
-    hw.potato_pc.count = 1 // 45W, 1GB
-    hw.gtx_gpu.count = 2   // 2 * 180 = 360W, 2 * 8 = 16GB
+    hw.potato_pc.count = 1 // 35W, 0.064GB
+    hw.gtx_gpu.count = 2   // 2 * 150 = 300W, 2 * 6 = 12GB
 
     const power = ComputeEngine.calculatePowerDraw(hw)
-    expect(power.toNumber()).toBe(405)
+    expect(power.toNumber()).toBe(335)
 
     const vram = ComputeEngine.calculateVram(hw)
-    expect(vram.toNumber()).toBe(17)
+    expect(vram.toNumber()).toBeCloseTo(12.064)
   })
 
   it('calculates thermal state and throttling correctly', () => {

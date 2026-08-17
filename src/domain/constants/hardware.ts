@@ -4,19 +4,19 @@ import type { HardwareNode } from '@/types/hardware'
 export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
   potato_pc: {
     id: 'potato_pc',
-    name: "Vieux PC Poubelle (Pentium Dual-Core)",
+    name: "Relique du Grenier (Pentium II 450 MHz, 64 Mo SDRAM)",
     count: 0,
     baseCost: new Decimal(10), // $10.00
     costMult: 1.25,
-    tflops: new Decimal(0.01), // 10 GFLOPS
-    vram: new Decimal(1),      // 1 GB (Buffer Raw Text max: 500 chars)
-    powerWatts: new Decimal(45),
-    description: "Un ordinateur poussif et bruyant trouvé sur une petite annonce. Permet d'exécuter vos premiers scripts d'automatisation.",
+    tflops: new Decimal(0.001), // 1 GFLOPS (authentique relique an 1999)
+    vram: new Decimal(0.064),   // 64 Mo SDRAM
+    powerWatts: new Decimal(35),
+    description: "Tour beige jaunie trouvée à la brocante. Disque dur IDE 5400 RPM crémeux et lecteur disquette 3.5\". Une antiquité, mais suffisante pour faire tourner vos scripts Python.",
     tier: 0,
   },
   used_cpu: {
     id: 'used_cpu',
-    name: "Station Tour Multi-Cœur (Core i5)",
+    name: "Station Tour d'Occasion (Core 2 Quad, 4 Go RAM)",
     count: 0,
     baseCost: new Decimal(25), // $25.00
     costMult: 1.15,
@@ -28,19 +28,19 @@ export const INITIAL_HARDWARE_CONFIG: Record<string, HardwareNode> = {
   },
   gtx_gpu: {
     id: 'gtx_gpu',
-    name: 'GPU Grand Public (GTX 1080)',
+    name: 'GPU Grand Public (GTX 1060 6 Go)',
     count: 0,
     baseCost: new Decimal(120),
     costMult: 1.18,
     tflops: new Decimal(0.5),  // 500 GFLOPS
-    vram: new Decimal(8),      // 8 GB
-    powerWatts: new Decimal(180),
+    vram: new Decimal(6),      // 6 GB
+    powerWatts: new Decimal(150),
     description: "Carte graphique grand public accélérant grandement la tokenisation et l'inférence.",
     tier: 1,
   },
   server_blade: {
     id: 'server_blade',
-    name: 'Lame de Serveur Datacenter (A100)',
+    name: 'Lame de Serveur Datacenter (A100 80 Go)',
     count: 0,
     baseCost: new Decimal(2000),
     costMult: 1.22,
