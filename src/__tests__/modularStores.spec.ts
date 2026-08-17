@@ -97,6 +97,23 @@ describe('Modular Pinia Stores Unit Tests', () => {
       // Already purchased returns false
       const repeat = store.buyUpgrade('human_speed_reading', new Decimal(10), new Decimal(10))
       expect(repeat.success).toBe(false)
+
+      // Script requires scriptsSection unlocked
+      const failedScript = store.buyUpgrade(
+        'script_simple_scraper',
+        new Decimal(10),
+        new Decimal(0),
+        { scriptsSection: false }
+      )
+      expect(failedScript.success).toBe(false)
+
+      const successScript = store.buyUpgrade(
+        'script_simple_scraper',
+        new Decimal(10),
+        new Decimal(0),
+        { scriptsSection: true }
+      )
+      expect(successScript.success).toBe(true)
     })
   })
 

@@ -10,6 +10,7 @@ const props = defineProps<{
   fundsCurrent: Decimal
   researchPointsCurrent: Decimal
   currentPhase: number
+  dataBrokerUnlocked: boolean
   scriptsUnlocked: boolean
   tokenizerUnlocked: boolean
 }>()
@@ -20,25 +21,34 @@ const emit = defineEmits<{
 
 const visibleUpgrades = computed(() => {
   return props.upgradesList.filter((up) => {
-    // Human skills are always visible
+    // Already purchased upgrades stay visible as completed
+    if (up.purchased) return true
+
+    // Human reading skills are always visible in Phase 0
     if (up.category === 'human') return true
 
-    // Scripts require the Potato PC / scriptsUnlocked
-    if (up.id.startsWith('script_') || up.id === 'broker_negotiation') {
-      return props.scriptsUnlocked || props.fundsCurrent.gte(2) || up.purchased
+    // Data broker negotiation requires dataBrokerUnlocked
+    if (up.id === 'broker_negotiation') {
+      return props.dataBrokerUnlocked
     }
 
-    // Advanced tokenizing / datacenter upgrades require Phase 2 / tokenizer
-    if (up.category === 'tokenizer' || up.id === 'ram_buffer_expansion_1' || up.id === 'cooling_optimization_v1') {
-      return props.tokenizerUnlocked || up.purchased
+    // Python Scripts strictly require owning a PC / scriptsUnlocked
+    if (up.id.startsWith('script_')) {
+      return props.scriptsUnlocked
     }
 
-    // Datacenter tier 2/3
-    if (up.id === 'api_tier_pricing' || up.id === 'crawler_daemon_v2') {
-      return props.tokenizerUnlocked || up.purchased
+    // Advanced tokenizing and datacenter upgrades require Phase 2 / tokenizerUnlocked
+    if (
+      up.category === 'tokenizer' ||
+      up.id === 'ram_buffer_expansion_1' ||
+      up.id === 'cooling_optimization_v1' ||
+      up.id === 'api_tier_pricing' ||
+      up.id === 'crawler_daemon_v2'
+    ) {
+      return props.tokenizerUnlocked
     }
 
-    return true
+    return false
   })
 })
 

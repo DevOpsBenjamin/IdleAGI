@@ -11,6 +11,7 @@ export interface SoftwareUpgrade {
   readonly currency: CurrencyType
   purchased: boolean
   readonly category: UpgradeCategory
+  readonly requiredFeature?: string
 }
 
 export interface SerializedSoftwareUpgrade {
@@ -21,4 +22,5 @@ export interface SerializedSoftwareUpgrade {
   currency: CurrencyType
   purchased: boolean
   category: UpgradeCategory
+  requiredFeature?: string
 }

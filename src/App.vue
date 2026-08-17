@@ -182,6 +182,7 @@ onUnmounted(() => {
             :funds-current="store.funds.current"
             :research-points-current="store.researchPoints.current"
             :current-phase="store.currentPhase"
+            :data-broker-unlocked="store.unlockedFeatures.dataBroker"
             :scripts-unlocked="store.unlockedFeatures.scriptsSection"
             :tokenizer-unlocked="store.unlockedFeatures.tokenizerUnlocked"
             @buy-upgrade="(id) => store.buyUpgrade(id)"

@@ -234,7 +234,8 @@ export const useGameStore = defineStore('game', () => {
     const result = upgradesStore.buyUpgrade(
       id,
       resources.funds.current,
-      resources.researchPoints.current
+      resources.researchPoints.current,
+      features.unlockedFeatures
     )
 
     if (result.success && result.upgrade) {

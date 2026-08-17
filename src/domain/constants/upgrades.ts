@@ -29,6 +29,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'monetization',
+    requiredFeature: 'dataBroker',
   },
 
   // Phase 1 : Potato PC Scripts
@@ -40,6 +41,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'scraping',
+    requiredFeature: 'scriptsSection',
   },
   script_cron_autobroker: {
     id: 'script_cron_autobroker',
@@ -49,6 +51,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'monetization',
+    requiredFeature: 'scriptsSection',
   },
   script_regex_cleaner: {
     id: 'script_regex_cleaner',
@@ -58,6 +61,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'scraping',
+    requiredFeature: 'scriptsSection',
   },
   script_ram_expansion_512: {
     id: 'script_ram_expansion_512',
@@ -67,6 +71,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'hardware',
+    requiredFeature: 'scriptsSection',
   },
   script_multi_curl: {
     id: 'script_multi_curl',
@@ -76,6 +81,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'scraping',
+    requiredFeature: 'scriptsSection',
   },
 
   // Phase 2 & 3 : Tokenizer & Datacenter
@@ -87,6 +93,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'tokenizer',
+    requiredFeature: 'tokenizerUnlocked',
   },
   ram_buffer_expansion_1: {
     id: 'ram_buffer_expansion_1',
@@ -96,6 +103,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'hardware',
+    requiredFeature: 'tokenizerUnlocked',
   },
   cooling_optimization_v1: {
     id: 'cooling_optimization_v1',
@@ -105,6 +113,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'hardware',
+    requiredFeature: 'tokenizerUnlocked',
   },
   api_tier_pricing: {
     id: 'api_tier_pricing',
@@ -114,6 +123,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'monetization',
+    requiredFeature: 'tokenizerUnlocked',
   },
   crawler_daemon_v2: {
     id: 'crawler_daemon_v2',
@@ -123,6 +133,7 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     currency: 'funds',
     purchased: false,
     category: 'scraping',
+    requiredFeature: 'tokenizerUnlocked',
   },
 }
 
@@ -137,6 +148,7 @@ export function createInitialUpgrades(): Record<string, SoftwareUpgrade> {
       currency: up.currency,
       purchased: up.purchased,
       category: up.category,
+      requiredFeature: up.requiredFeature,
     }
   }
   return cloned
