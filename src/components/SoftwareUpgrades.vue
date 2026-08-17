@@ -27,28 +27,21 @@ const visibleUpgrades = computed(() => {
     // Human reading skills are always visible in Phase 0
     if (up.category === 'human') return true
 
-    // Data broker negotiation requires dataBrokerUnlocked
-    if (up.id === 'broker_negotiation') {
+    // Feature requirement checks
+    if (up.requiredFeature === 'dataBroker') {
       return props.dataBrokerUnlocked
     }
-
-    // Python Scripts strictly require owning a PC / scriptsUnlocked
-    if (up.id.startsWith('script_')) {
+    if (up.requiredFeature === 'scriptsSection') {
       return props.scriptsUnlocked
     }
-
-    // Advanced tokenizing and datacenter upgrades require Phase 2 / tokenizerUnlocked
-    if (
-      up.category === 'tokenizer' ||
-      up.id === 'ram_buffer_expansion_1' ||
-      up.id === 'cooling_optimization_v1' ||
-      up.id === 'api_tier_pricing' ||
-      up.id === 'crawler_daemon_v2'
-    ) {
+    if (up.requiredFeature === 'tokenizerUnlocked') {
       return props.tokenizerUnlocked
     }
+    if (up.requiredFeature === 'trainingAllocation') {
+      return props.currentPhase >= 3
+    }
 
-    return false
+    return !up.requiredFeature
   })
 })
 

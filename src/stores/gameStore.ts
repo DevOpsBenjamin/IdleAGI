@@ -245,11 +245,28 @@ export const useGameStore = defineStore('game', () => {
       features.unlockFeature('autoScraping')
     } else if (id === 'script_cron_autobroker') {
       features.unlockFeature('autoBroker')
-    } else if (id === 'script_ram_expansion_512') {
+    } else if (id === 'ram_sdram_256mb') {
       resources.rawText.max = Decimal.max(resources.rawText.max, 1500)
-    } else if (id === 'ram_buffer_expansion_1') {
-      resources.rawText.max = Decimal.max(resources.rawText.max, 5000)
-      resources.tokens.max = Decimal.max(resources.tokens.max, 2500)
+    } else if (id === 'script_ram_expansion_512') {
+      resources.rawText.max = Decimal.max(resources.rawText.max, 2500)
+    } else if (id === 'ram_ddr2_8gb') {
+      resources.rawText.max = Decimal.max(resources.rawText.max, 6000)
+      resources.tokens.max = Decimal.max(resources.tokens.max, 3000)
+    } else if (id === 'ram_ddr3_16gb') {
+      resources.rawText.max = Decimal.max(resources.rawText.max, 15000)
+      resources.tokens.max = Decimal.max(resources.tokens.max, 8000)
+    } else if (id === 'ram_ddr4_32gb') {
+      resources.rawText.max = Decimal.max(resources.rawText.max, 40000)
+      resources.tokens.max = Decimal.max(resources.tokens.max, 25000)
+    } else if (id === 'ram_ddr4_64gb') {
+      resources.rawText.max = Decimal.max(resources.rawText.max, 100000)
+      resources.tokens.max = Decimal.max(resources.tokens.max, 75000)
+    } else if (id === 'ram_ddr5_128gb') {
+      resources.rawText.max = Decimal.max(resources.rawText.max, 300000)
+      resources.tokens.max = Decimal.max(resources.tokens.max, 250000)
+    } else if (id === 'ram_ddr5_256gb') {
+      resources.rawText.max = Decimal.max(resources.rawText.max, 1000000)
+      resources.tokens.max = Decimal.max(resources.tokens.max, 1000000)
     } else if (id === 'cooling_optimization_v1') {
       hardwareStore.coolingCapacityWatts = hardwareStore.coolingCapacityWatts.add(200)
     }
