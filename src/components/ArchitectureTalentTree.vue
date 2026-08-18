@@ -5,14 +5,14 @@ import {
   Cpu,
   Sparkles,
   X,
-  Check,
-  Lock,
   Database,
   Flame,
   Binary,
   Layers,
 } from 'lucide-vue-next'
 import type { TalentNode, TalentBranch, TalentNodeStatus } from '@/types/prestige'
+import TalentNodeCard from './talent/TalentNodeCard.vue'
+import TalentInspector from './talent/TalentInspector.vue'
 
 const props = defineProps<{
   isOpen: boolean
@@ -220,66 +220,14 @@ onUnmounted(() => {
                   </div>
 
                   <div class="flex flex-col gap-3">
-                    <button
+                    <TalentNodeCard
                       v-for="talent in talentsByTier.tier1"
                       :key="talent.id"
-                      type="button"
-                      @click="selectTalent(talent.id)"
-                      class="text-left p-3 rounded-xl border transition-all relative overflow-hidden cursor-pointer active:scale-98 touch-manipulation group"
-                      :class="[
-                        selectedTalentId === talent.id
-                          ? 'ring-2 ring-[#38BDF8] shadow-[0_0_15px_rgba(56,189,248,0.25)]'
-                          : '',
-                        talent.purchased
-                          ? 'bg-[#161B22]/90 border-[#38BDF8]/60 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
-                          : getNodeStatus(talent.id) === 'available'
-                            ? 'bg-[#00FF66]/5 border-[#00FF66]/60 animate-pulse hover:bg-[#00FF66]/10'
-                            : getNodeStatus(talent.id) === 'insufficient_ap'
-                              ? 'bg-[#FFB800]/5 border-[#FFB800]/40'
-                              : 'bg-[#161B22]/30 border-[#21262D] opacity-60',
-                      ]"
-                    >
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="flex items-center gap-2">
-                          <span class="text-lg">{{ talent.icon }}</span>
-                          <div>
-                            <div class="text-xs font-bold text-[#F0F6FC] leading-snug group-hover:text-[#38BDF8] transition-colors">
-                              {{ talent.name }}
-                            </div>
-                            <div class="text-[10px] text-[#8B949E]">
-                              {{ talent.branch.toUpperCase() }}
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Status Badge -->
-                        <span
-                          v-if="talent.purchased"
-                          class="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-[9px] font-bold flex items-center gap-1"
-                        >
-                          <Check class="w-3 h-3" />
-                          ACTIF
-                        </span>
-                        <span
-                          v-else-if="getNodeStatus(talent.id) === 'available'"
-                          class="px-1.5 py-0.5 rounded bg-[#00FF66]/20 border border-[#00FF66]/50 text-[#00FF66] text-[9px] font-bold"
-                        >
-                          {{ talent.cost }} AP
-                        </span>
-                        <span
-                          v-else-if="getNodeStatus(talent.id) === 'insufficient_ap'"
-                          class="px-1.5 py-0.5 rounded bg-[#FFB800]/20 border border-[#FFB800]/40 text-[#FFB800] text-[9px] font-bold"
-                        >
-                          {{ talent.cost }} AP
-                        </span>
-                        <span
-                          v-else
-                          class="px-1.5 py-0.5 rounded bg-[#21262D] text-[#8B949E] text-[9px] font-bold flex items-center gap-0.5"
-                        >
-                          <Lock class="w-2.5 h-2.5" />
-                        </span>
-                      </div>
-                    </button>
+                      :talent="talent"
+                      :is-selected="selectedTalentId === talent.id"
+                      :status="getNodeStatus(talent.id)"
+                      @select="selectTalent"
+                    />
                   </div>
                 </div>
 
@@ -294,66 +242,14 @@ onUnmounted(() => {
                   </div>
 
                   <div class="flex flex-col gap-3">
-                    <button
+                    <TalentNodeCard
                       v-for="talent in talentsByTier.tier2"
                       :key="talent.id"
-                      type="button"
-                      @click="selectTalent(talent.id)"
-                      class="text-left p-3 rounded-xl border transition-all relative overflow-hidden cursor-pointer active:scale-98 touch-manipulation group"
-                      :class="[
-                        selectedTalentId === talent.id
-                          ? 'ring-2 ring-[#38BDF8] shadow-[0_0_15px_rgba(56,189,248,0.25)]'
-                          : '',
-                        talent.purchased
-                          ? 'bg-[#161B22]/90 border-[#38BDF8]/60 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
-                          : getNodeStatus(talent.id) === 'available'
-                            ? 'bg-[#00FF66]/5 border-[#00FF66]/60 animate-pulse hover:bg-[#00FF66]/10'
-                            : getNodeStatus(talent.id) === 'insufficient_ap'
-                              ? 'bg-[#FFB800]/5 border-[#FFB800]/40'
-                              : 'bg-[#161B22]/30 border-[#21262D] opacity-60',
-                      ]"
-                    >
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="flex items-center gap-2">
-                          <span class="text-lg">{{ talent.icon }}</span>
-                          <div>
-                            <div class="text-xs font-bold text-[#F0F6FC] leading-snug group-hover:text-[#38BDF8] transition-colors">
-                              {{ talent.name }}
-                            </div>
-                            <div class="text-[10px] text-[#8B949E]">
-                              {{ talent.branch.toUpperCase() }}
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Status Badge -->
-                        <span
-                          v-if="talent.purchased"
-                          class="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-[9px] font-bold flex items-center gap-1"
-                        >
-                          <Check class="w-3 h-3" />
-                          ACTIF
-                        </span>
-                        <span
-                          v-else-if="getNodeStatus(talent.id) === 'available'"
-                          class="px-1.5 py-0.5 rounded bg-[#00FF66]/20 border border-[#00FF66]/50 text-[#00FF66] text-[9px] font-bold"
-                        >
-                          {{ talent.cost }} AP
-                        </span>
-                        <span
-                          v-else-if="getNodeStatus(talent.id) === 'insufficient_ap'"
-                          class="px-1.5 py-0.5 rounded bg-[#FFB800]/20 border border-[#FFB800]/40 text-[#FFB800] text-[9px] font-bold"
-                        >
-                          {{ talent.cost }} AP
-                        </span>
-                        <span
-                          v-else
-                          class="px-1.5 py-0.5 rounded bg-[#21262D] text-[#8B949E] text-[9px] font-bold flex items-center gap-0.5"
-                        >
-                          <Lock class="w-2.5 h-2.5" />
-                        </span>
-                      </div>
-                    </button>
+                      :talent="talent"
+                      :is-selected="selectedTalentId === talent.id"
+                      :status="getNodeStatus(talent.id)"
+                      @select="selectTalent"
+                    />
                   </div>
                 </div>
 
@@ -362,196 +258,33 @@ onUnmounted(() => {
                   <div class="flex items-center justify-between pb-2 border-b border-[#21262D]">
                     <span class="text-xs font-bold uppercase text-[#A855F7] tracking-wider flex items-center gap-1.5">
                       <span class="w-2 h-2 rounded-full bg-[#A855F7]"></span>
-                      Tier 3 // Maîtrise ASI
+                      Tier 3 // Maîtrise
                     </span>
-                    <span class="text-[10px] text-[#8B949E]">4-5 AP</span>
+                    <span class="text-[10px] text-[#8B949E]">3 AP</span>
                   </div>
 
                   <div class="flex flex-col gap-3">
-                    <button
+                    <TalentNodeCard
                       v-for="talent in talentsByTier.tier3"
                       :key="talent.id"
-                      type="button"
-                      @click="selectTalent(talent.id)"
-                      class="text-left p-3 rounded-xl border transition-all relative overflow-hidden cursor-pointer active:scale-98 touch-manipulation group"
-                      :class="[
-                        selectedTalentId === talent.id
-                          ? 'ring-2 ring-[#38BDF8] shadow-[0_0_15px_rgba(56,189,248,0.25)]'
-                          : '',
-                        talent.purchased
-                          ? 'bg-[#161B22]/90 border-[#38BDF8]/60 shadow-[0_0_10px_rgba(56,189,248,0.1)]'
-                          : getNodeStatus(talent.id) === 'available'
-                            ? 'bg-[#00FF66]/5 border-[#00FF66]/60 animate-pulse hover:bg-[#00FF66]/10'
-                            : getNodeStatus(talent.id) === 'insufficient_ap'
-                              ? 'bg-[#FFB800]/5 border-[#FFB800]/40'
-                              : 'bg-[#161B22]/30 border-[#21262D] opacity-60',
-                      ]"
-                    >
-                      <div class="flex items-start justify-between gap-2">
-                        <div class="flex items-center gap-2">
-                          <span class="text-lg">{{ talent.icon }}</span>
-                          <div>
-                            <div class="text-xs font-bold text-[#F0F6FC] leading-snug group-hover:text-[#38BDF8] transition-colors">
-                              {{ talent.name }}
-                            </div>
-                            <div class="text-[10px] text-[#8B949E]">
-                              {{ talent.branch.toUpperCase() }}
-                            </div>
-                          </div>
-                        </div>
-
-                        <!-- Status Badge -->
-                        <span
-                          v-if="talent.purchased"
-                          class="px-1.5 py-0.5 rounded bg-[#38BDF8]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-[9px] font-bold flex items-center gap-1"
-                        >
-                          <Check class="w-3 h-3" />
-                          ACTIF
-                        </span>
-                        <span
-                          v-else-if="getNodeStatus(talent.id) === 'available'"
-                          class="px-1.5 py-0.5 rounded bg-[#00FF66]/20 border border-[#00FF66]/50 text-[#00FF66] text-[9px] font-bold"
-                        >
-                          {{ talent.cost }} AP
-                        </span>
-                        <span
-                          v-else-if="getNodeStatus(talent.id) === 'insufficient_ap'"
-                          class="px-1.5 py-0.5 rounded bg-[#FFB800]/20 border border-[#FFB800]/40 text-[#FFB800] text-[9px] font-bold"
-                        >
-                          {{ talent.cost }} AP
-                        </span>
-                        <span
-                          v-else
-                          class="px-1.5 py-0.5 rounded bg-[#21262D] text-[#8B949E] text-[9px] font-bold flex items-center gap-0.5"
-                        >
-                          <Lock class="w-2.5 h-2.5" />
-                        </span>
-                      </div>
-                    </button>
+                      :talent="talent"
+                      :is-selected="selectedTalentId === talent.id"
+                      :status="getNodeStatus(talent.id)"
+                      @select="selectTalent"
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Right Area: Selected Talent Inspector & Purchase Panel (4 cols on lg) -->
-            <div class="lg:col-span-4 bg-[#07090E]/60 p-4 md:p-6 flex flex-col justify-between overflow-y-auto">
-              <div v-if="selectedTalent" class="flex flex-col gap-4">
-                <!-- Inspector Header -->
-                <div class="flex items-start justify-between gap-3 border-b border-[#21262D] pb-4">
-                  <div class="flex items-center gap-3">
-                    <div class="p-3 rounded-xl bg-[#161B22] border border-[#38BDF8]/30 text-2xl">
-                      {{ selectedTalent.icon }}
-                    </div>
-                    <div>
-                      <h3 class="text-sm font-bold text-[#F0F6FC]">
-                        {{ selectedTalent.name }}
-                      </h3>
-                      <div class="flex items-center gap-2 mt-0.5">
-                        <span class="text-[10px] px-1.5 py-0.2 rounded bg-[#161B22] border border-[#21262D] text-[#38BDF8] uppercase">
-                          {{ selectedTalent.branch }}
-                        </span>
-                        <span class="text-[10px] text-[#8B949E]">
-                          Palier {{ selectedTalent.tier }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="text-right">
-                    <div class="text-sm font-bold text-[#00FF66]">
-                      {{ selectedTalent.cost }} AP
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Description & Effect -->
-                <div class="flex flex-col gap-3">
-                  <div class="bg-[#161B22]/70 border border-[#21262D] p-3.5 rounded-xl flex flex-col gap-1.5">
-                    <span class="text-[10px] text-[#8B949E] uppercase font-bold tracking-wider">
-                      Effet Permanent
-                    </span>
-                    <p class="text-xs text-[#00FF66] font-semibold leading-relaxed">
-                      {{ selectedTalent.description }}
-                    </p>
-                  </div>
-
-                  <!-- Lore / Flavor Text -->
-                  <div v-if="selectedTalent.lore" class="p-3 rounded-xl bg-[#0D1117] border border-[#21262D] text-[11px] text-[#8B949E] italic leading-relaxed">
-                    « {{ selectedTalent.lore }} »
-                  </div>
-
-                  <!-- Prerequisites List -->
-                  <div v-if="selectedTalent.requires && selectedTalent.requires.length > 0" class="flex flex-col gap-2">
-                    <span class="text-[10px] text-[#8B949E] uppercase font-bold tracking-wider">
-                      Prérequis de Recherche
-                    </span>
-                    <div class="flex flex-col gap-1.5">
-                      <div
-                        v-for="reqId in selectedTalent.requires"
-                        :key="reqId"
-                        class="flex items-center justify-between px-3 py-1.5 rounded-lg border text-xs"
-                        :class="
-                          talents[reqId]?.purchased
-                            ? 'bg-[#38BDF8]/10 border-[#38BDF8]/30 text-[#38BDF8]'
-                            : 'bg-[#161B22] border-[#21262D] text-[#8B949E]'
-                        "
-                      >
-                        <span class="flex items-center gap-1.5">
-                          <Check v-if="talents[reqId]?.purchased" class="w-3.5 h-3.5 text-[#38BDF8]" />
-                          <Lock v-else class="w-3.5 h-3.5 text-[#8B949E]" />
-                          {{ talents[reqId]?.name ?? reqId }}
-                        </span>
-                        <span class="text-[10px] font-bold">
-                          {{ talents[reqId]?.purchased ? 'VALIDÉ' : 'REQUIS' }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-                <!-- Purchase Action Button (Mobile-First touch target >= 48px) -->
-              <div class="pt-4 border-t border-[#21262D] mt-4">
-                <button
-                  v-if="selectedTalentStatus === 'purchased'"
-                  type="button"
-                  disabled
-                  class="w-full min-h-[48px] py-3 px-4 rounded-xl bg-[#38BDF8]/15 border border-[#38BDF8]/40 text-[#38BDF8] text-xs font-bold flex items-center justify-center gap-2 cursor-default select-none"
-                >
-                  <Check class="w-4 h-4" />
-                  <span>TALENT DÉJÀ ACTIVÉ</span>
-                </button>
-
-                <button
-                  v-else-if="selectedTalentStatus === 'available'"
-                  type="button"
-                  @click="selectedTalent && handleBuy(selectedTalent.id)"
-                  class="w-full min-h-[48px] py-3 px-4 rounded-xl bg-[#00FF66] hover:bg-[#00DD55] text-black text-xs font-bold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,255,102,0.4)] transition-all cursor-pointer select-none active:scale-95 touch-manipulation"
-                >
-                  <Sparkles class="w-4 h-4" />
-                  <span>DÉBLOQUER CE TALENT (-{{ selectedTalent?.cost }} AP)</span>
-                </button>
-
-                <button
-                  v-else-if="selectedTalentStatus === 'insufficient_ap'"
-                  type="button"
-                  disabled
-                  class="w-full min-h-[48px] py-3 px-4 rounded-xl bg-[#FFB800]/10 border border-[#FFB800]/30 text-[#FFB800] text-xs font-bold flex items-center justify-center gap-2 opacity-80 cursor-not-allowed select-none"
-                >
-                  <span>AP INSUFFISANTS (Manque {{ (selectedTalent?.cost ?? 0) - architecturePoints }} AP)</span>
-                </button>
-
-                <button
-                  v-else
-                  type="button"
-                  disabled
-                  class="w-full min-h-[48px] py-3 px-4 rounded-xl bg-[#161B22] border border-[#21262D] text-[#8B949E] text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed select-none"
-                >
-                  <Lock class="w-4 h-4" />
-                  <span>PRÉREQUIS MANQUANTS</span>
-                </button>
-              </div>
-            </div>
+            <!-- Right Area: Inspector & Buy Panel (4 cols on lg) -->
+            <TalentInspector
+              :selected-talent="selectedTalent"
+              :status="selectedTalentStatus"
+              :talents="talents"
+              :architecture-points="architecturePoints"
+              @buy="handleBuy"
+            />
           </div>
         </div>
       </div>
