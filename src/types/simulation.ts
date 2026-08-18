@@ -1,6 +1,8 @@
 import type Decimal from 'break_infinity.js'
 import type { AllocationPreset, AllocationState } from './systems'
 import type { CognitiveStatus } from './cognitive'
+import type { ParadigmId } from './paradigm'
+import type { SingularityEndingId } from './singularity'
 import type { LogType } from './logs'
 
 export type ScenarioAction =
@@ -12,6 +14,11 @@ export type ScenarioAction =
   | { type: 'buy_talent'; talentId: string }
   | { type: 'trigger_prestige' }
   | { type: 'perform_rlhf' }
+  | { type: 'trigger_tier2_prestige' }
+  | { type: 'select_paradigm'; paradigmId: ParadigmId }
+  | { type: 'unlock_paradigm'; paradigmId: ParadigmId }
+  | { type: 'toggle_synthetic' }
+  | { type: 'trigger_singularity'; endingId: SingularityEndingId }
   | { type: 'set_allocations'; allocations: AllocationState }
   | { type: 'set_preset'; preset: AllocationPreset }
   | { type: 'wait_seconds'; seconds: number }
@@ -61,6 +68,15 @@ export interface ScenarioStateAccessor {
   readonly rlhfBatchCount?: number
   readonly apiMultiplier?: number
   readonly researchMultiplier?: number
+  readonly insights?: number
+  readonly totalInsights?: number
+  readonly activeParadigmId?: string
+  readonly isSyntheticActive?: boolean
+  readonly syntheticRatio?: number
+  readonly chronoCores?: number
+  readonly singularitiesCompleted?: number
+  readonly discoveredEndings?: SingularityEndingId[]
+  readonly globalAscensionMultiplier?: number
 }
 
 export interface SimulationOptions {
@@ -88,3 +104,4 @@ export interface ScenarioExecutionResult {
   stepIndex?: number
   lastAction?: ScenarioAction
 }
+

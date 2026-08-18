@@ -19,10 +19,11 @@ import { GameSaveManager } from './helpers/gameSaveManager'
 import { GameStateHydrator, type StoreCollection } from './helpers/gameStateHydrator'
 import { GameActionHandler } from './helpers/gameActionHandler'
 import { SyntheticDataEngine } from '@/domain/engine/SyntheticDataEngine'
+import { SaveFormatCodec } from '@/domain/engine/SaveFormatCodec'
 import { SINGULARITY_ENDINGS } from '@/domain/constants/singularity'
 import type { ParadigmId } from '@/types/paradigm'
 import type { SingularityEndingId } from '@/types/singularity'
-import type { SerializedSaveEnvelope } from '@/types/save'
+import type { SerializedSaveEnvelope, SaveMetadata } from '@/types/save'
 
 export { MAX_OFFLINE_SECONDS, RAW_TEXT_SNIPPETS }
 
@@ -199,6 +200,21 @@ export const useGameStore = defineStore('game', () => {
     saveToLocalStorage()
     terminal.addLog('💾 Sauvegarde restaurée avec succès.', 'success')
     return true
+  }
+
+  function exportSaveString(customMetadata?: Partial<SaveMetadata>): string {
+    return SaveFormatCodec.encode(getFullState(), customMetadata)
+  }
+
+  function importSaveString(saveString: string): { success: boolean; error?: string } {
+    const res = SaveFormatCodec.decode(saveString)
+    if (!res.valid || !res.parsedState) {
+      return { success: false, error: res.error || 'Sauvegarde invalide' }
+    }
+    GameStateHydrator.hydrateStores(res.parsedState as Partial<GameState>, stores)
+    saveToLocalStorage()
+    terminal.addLog('💾 Sauvegarde importée et restaurée avec succès.', 'success')
+    return { success: true }
   }
 
 
@@ -391,6 +407,8 @@ export const useGameStore = defineStore('game', () => {
     globalAscensionMultiplier: computed(() => singularityStore.globalAscensionMultiplier),
     triggerSingularityAscension,
     restoreSaveEnvelope,
+    exportSaveString,
+    importSaveString,
     addLog: terminal.addLog,
     clearLogs: terminal.clearLogs,
     manualScrape,
