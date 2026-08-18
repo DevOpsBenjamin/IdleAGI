@@ -13,6 +13,8 @@ import type {
   TalentNode,
   CognitiveState,
   SerializedCognitiveState,
+  ParadigmState,
+  SerializedParadigmState,
 } from '@/types'
 import { TALENT_TREE_NODES } from '@/domain/constants/talents'
 
@@ -170,6 +172,39 @@ export function deserializeCognitiveState(
   }
 }
 
+export function serializeParadigmState(paradigm: ParadigmState): SerializedParadigmState {
+  return {
+    insights: paradigm.insights,
+    totalInsightsEarned: paradigm.totalInsightsEarned,
+    activeParadigm: paradigm.activeParadigm,
+    unlockedParadigms: [...paradigm.unlockedParadigms],
+    tier2PrestigeCount: paradigm.tier2PrestigeCount,
+    isSyntheticActive: Boolean(paradigm.isSyntheticActive),
+    syntheticTextProduced: paradigm.syntheticTextProduced.toString(),
+    syntheticRatio: paradigm.syntheticRatio,
+    modelCollapseActive: Boolean(paradigm.modelCollapseActive),
+  }
+}
+
+export function deserializeParadigmState(
+  raw: Partial<SerializedParadigmState> | undefined
+): ParadigmState {
+  return {
+    insights: typeof raw?.insights === 'number' ? raw.insights : 0,
+    totalInsightsEarned: typeof raw?.totalInsightsEarned === 'number' ? raw.totalInsightsEarned : 0,
+    activeParadigm: raw?.activeParadigm ?? 'dense_transformer',
+    unlockedParadigms:
+      Array.isArray(raw?.unlockedParadigms) && raw.unlockedParadigms.length > 0
+        ? [...raw.unlockedParadigms]
+        : ['dense_transformer'],
+    tier2PrestigeCount: typeof raw?.tier2PrestigeCount === 'number' ? raw.tier2PrestigeCount : 0,
+    isSyntheticActive: Boolean(raw?.isSyntheticActive),
+    syntheticTextProduced: new Decimal(raw?.syntheticTextProduced ?? 0),
+    syntheticRatio: typeof raw?.syntheticRatio === 'number' ? raw.syntheticRatio : 0,
+    modelCollapseActive: Boolean(raw?.modelCollapseActive),
+  }
+}
+
 export function serializeGameState(state: GameState): string {
   const serialized: SerializedGameState = {
     version: CURRENT_SAVE_VERSION,
@@ -201,6 +236,7 @@ export function serializeGameState(state: GameState): string {
     unlockedFeatures: { ...state.unlockedFeatures },
     prestige: state.prestige ? serializePrestigeState(state.prestige) : undefined,
     cognitive: state.cognitive ? serializeCognitiveState(state.cognitive) : undefined,
+    paradigm: state.paradigm ? serializeParadigmState(state.paradigm) : undefined,
   }
 
   return JSON.stringify(serialized)
@@ -273,6 +309,9 @@ export function deserializeGameState(
         : undefined,
       cognitive: raw.cognitive
         ? deserializeCognitiveState(raw.cognitive)
+        : undefined,
+      paradigm: raw.paradigm
+        ? deserializeParadigmState(raw.paradigm)
         : undefined,
     }
   } catch (err) {

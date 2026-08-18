@@ -14,6 +14,7 @@ import type { useAllocationStore } from '../allocationStore'
 import type { useFeaturesStore } from '../featuresStore'
 import type { usePrestigeStore } from '../prestigeStore'
 import type { useCognitiveStore } from '../cognitiveStore'
+import type { useParadigmStore } from '../paradigmStore'
 
 export interface StoreCollection {
   terminal: ReturnType<typeof useTerminalStore>
@@ -24,6 +25,7 @@ export interface StoreCollection {
   features: ReturnType<typeof useFeaturesStore>
   prestigeStore: ReturnType<typeof usePrestigeStore>
   cognitiveStore: ReturnType<typeof useCognitiveStore>
+  paradigmStore: ReturnType<typeof useParadigmStore>
   meta: {
     version: Ref<string>
     gameStartTime: Ref<number>
@@ -58,6 +60,7 @@ export class GameStateHydrator {
       lastOfflineReport: stores.meta.lastOfflineReport.value,
       prestige: stores.prestigeStore.getPrestigeState(),
       cognitive: stores.cognitiveStore.getCognitiveState(),
+      paradigm: stores.paradigmStore.getParadigmState(),
     }
   }
 
@@ -86,6 +89,7 @@ export class GameStateHydrator {
     if (loaded.totalCharsRead) stores.resources.totalCharsRead = loaded.totalCharsRead
     if (loaded.prestige) stores.prestigeStore.setPrestigeState(loaded.prestige)
     if (loaded.cognitive) stores.cognitiveStore.setCognitiveState(loaded.cognitive)
+    if (loaded.paradigm) stores.paradigmStore.setParadigmState(loaded.paradigm)
   }
 
   /**
@@ -103,6 +107,7 @@ export class GameStateHydrator {
     stores.resources.totalCharsRead = new Decimal(0)
     stores.resources.resetBufferCapacities()
     stores.cognitiveStore.resetState()
+    stores.paradigmStore.resetForSoftReset()
 
     // 2. Reset hardware to initial catalog
     stores.hardwareStore.hardware = createInitialHardware()
@@ -157,6 +162,82 @@ export class GameStateHydrator {
     stores.terminal.addLog(
       '🔄 Checkpoint figé avec succès ! Poids synaptiques convertis en Points d’Architecture (AP).',
       'success'
+    )
+  }
+
+  /**
+   * Performs a Tier 2 Hard Reset (Changement de Paradigme):
+   * Resets volatile currencies, hardware, and regular upgrades while preserving AP & talents (T1),
+   * Insights (Phi), unlocked Paradigmes, and lifetime statistics.
+   */
+  public static performHardReset(stores: StoreCollection): void {
+    // 1. Reset volatile currencies & counters
+    stores.resources.rawText.current = new Decimal(0)
+    stores.resources.tokens.current = new Decimal(0)
+    stores.resources.funds.current = new Decimal(0)
+    stores.resources.parameters = new Decimal(0)
+    stores.resources.researchPoints.current = new Decimal(0)
+    stores.resources.totalTokensServed = new Decimal(0)
+    stores.resources.totalCharsRead = new Decimal(0)
+    stores.resources.resetBufferCapacities()
+    stores.cognitiveStore.resetState()
+    stores.paradigmStore.resetForHardReset()
+
+    // 2. Reset hardware to initial catalog
+    stores.hardwareStore.hardware = createInitialHardware()
+    stores.hardwareStore.gridCapacityWatts = new Decimal(100)
+    stores.hardwareStore.coolingCapacityWatts = new Decimal(50)
+
+    // 3. Reset regular upgrades
+    stores.upgradesStore.upgrades = createInitialUpgrades()
+
+    // 4. Reset allocations
+    stores.allocation.allocations = {
+      inferencePercent: 100,
+      trainingPercent: 0,
+      researchPercent: 0,
+    }
+
+    // 5. Reset phase to Phase 0
+    stores.features.setPhase(0, true)
+
+    // 6. Reset early milestones
+    stores.features.reachedMilestones = {
+      readingSkill1: false,
+      readingSkill2: false,
+      dataBrokerUnlocked: false,
+      potatoPcUnlocked: false,
+      firstPotatoPc: false,
+      firstCpu: false,
+      firstGpu: false,
+      trainingUnlocked: false,
+      researchUnlocked: false,
+      first1000Params: false,
+      first10000Params: false,
+      first1000Funds: false,
+      firstThrottling: false,
+    }
+
+    // 7. Reset early features while keeping T1 and T2 prestige unlocked
+    stores.features.unlockedFeatures = {
+      ...stores.features.unlockedFeatures,
+      dataBroker: false,
+      hardwareSection: false,
+      scriptsSection: false,
+      autoBroker: false,
+      autoScraping: false,
+      tokenizerUnlocked: false,
+      oscilloscope: false,
+      trainingAllocation: false,
+      researchAllocation: false,
+      prestigeT1: true,
+      prestigeT2: true,
+      syntheticData: true,
+    }
+
+    stores.terminal.addLog(
+      '✦ CHANGEMENT DE PARADIGME ACCOMPLI : Nouvelle matrice neuronale active. Les Insights Fondamentaux (Φ) propulsent votre nouveau run.',
+      'event'
     )
   }
 }

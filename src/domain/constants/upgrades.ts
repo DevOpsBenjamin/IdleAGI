@@ -350,6 +350,36 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     category: 'security',
     requiredFeature: 'trainingAllocation',
   },
+  safety_rlaif: {
+    id: 'safety_rlaif',
+    name: 'RLAIF (AI Feedback Alignment)',
+    description: 'Alignement par retour d’IA : repousse le seuil de Model Collapse à 85% et réduit la dérive synthétique de 40%.',
+    cost: new Decimal(10000.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'security',
+    requiredFeature: 'trainingAllocation',
+  },
+  safety_syntactic_diversity: {
+    id: 'safety_syntactic_diversity',
+    name: 'Syntactic Diversity Evaluator',
+    description: 'Évaluateur de diversité syntaxique : annule totalement le malus d’entraînement (-50%) lors d’un Model Collapse.',
+    cost: new Decimal(50000.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'security',
+    requiredFeature: 'trainingAllocation',
+  },
+  safety_synthetic_density_filter: {
+    id: 'safety_synthetic_density_filter',
+    name: 'Synthetic Density Filter',
+    description: 'Filtre de densité sémantique avancé : immunise totalement le modèle contre le Model Collapse (100% données synthétiques sécurisées).',
+    cost: new Decimal(250000.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'security',
+    requiredFeature: 'trainingAllocation',
+  },
 }
 
 export function createInitialUpgrades(): Record<string, SoftwareUpgrade> {

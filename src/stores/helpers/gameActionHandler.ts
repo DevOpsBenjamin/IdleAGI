@@ -159,6 +159,7 @@ export class GameActionHandler {
     autoBrokerAccumulator: number
   ): { newAutoBrokerAccumulator: number } {
     const cognitiveState = stores.cognitiveStore.getCognitiveState()
+    const paradigmState = stores.paradigmStore.getParadigmState()
     const tickResult = TickEngine.processTick(
       {
         rawText: stores.resources.rawText,
@@ -175,11 +176,14 @@ export class GameActionHandler {
         bandwidthSpeedMultiplier: stores.hardwareStore.bandwidthSpeedMultiplier,
         tokenGenerationMultiplier: stores.prestigeStore.talentMultipliers.tokenGenerationMultiplier,
         scrapeMultiplier: stores.prestigeStore.talentMultipliers.scrapePowerMultiplier,
+        syntheticSpeedBonus: stores.paradigmStore.syntheticSpeedBonus,
         isThrottling: stores.hardwareStore.thermalState.isThrottling,
         isOverloaded: stores.hardwareStore.powerState.isOverloaded,
         totalTokensServed: stores.resources.totalTokensServed,
+        totalCharsRead: stores.resources.totalCharsRead,
         autoBrokerAccumulator,
         cognitive: cognitiveState,
+        paradigm: paradigmState,
         onSellRawTextQuiet: (amount: number) => this.sellRawText(stores, amount, stores.upgradesStore.rawTextSellPrice * stores.prestigeStore.talentMultipliers.rawTextPriceMultiplier, true),
         onAddLog: (msg: string, type?: LogType) => stores.terminal.addLog(msg, type ?? 'info'),
       },
@@ -188,9 +192,20 @@ export class GameActionHandler {
 
     stores.resources.totalTokensServed = tickResult.updatedTotalTokensServed
     stores.resources.parameters = tickResult.updatedParameters
+    if (tickResult.updatedTotalCharsRead) {
+      stores.resources.totalCharsRead = tickResult.updatedTotalCharsRead
+    }
 
     if (tickResult.cognitiveTickResult) {
       stores.cognitiveStore.updateFromTick(tickResult.cognitiveTickResult)
+    }
+
+    if (tickResult.syntheticTickResult) {
+      stores.paradigmStore.updateSyntheticTelemetry(
+        tickResult.syntheticTickResult.updatedSyntheticProduced,
+        tickResult.syntheticTickResult.syntheticRatio,
+        tickResult.syntheticTickResult.isModelCollapseActive
+      )
     }
 
     if (stores.features.unlockedFeatures.trainingAllocation && stores.features.currentPhase < 3) {

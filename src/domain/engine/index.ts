@@ -8,4 +8,6 @@ export * from './UpgradeEffectEngine'
 export * from './HardwareUnlockEngine'
 export * from './PrestigeEngine'
 export * from './CognitiveEngine'
+export * from './ParadigmEngine'
+export * from './SyntheticDataEngine'
 

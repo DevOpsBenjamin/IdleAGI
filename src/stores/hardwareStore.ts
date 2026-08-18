@@ -5,9 +5,11 @@ import type { HardwareNode, ThermalState, PowerState } from '@/types'
 import { createInitialHardware } from '@/domain/constants/hardware'
 import { ComputeEngine, type PcieSlotsState } from '@/domain/engine/ComputeEngine'
 import { usePrestigeStore } from './prestigeStore'
+import { useParadigmStore } from './paradigmStore'
 
 export const useHardwareStore = defineStore('hardware', () => {
   const prestigeStore = usePrestigeStore()
+  const paradigmStore = useParadigmStore()
   const hardware = ref<Record<string, HardwareNode>>(createInitialHardware())
   const gridCapacityWatts = ref<Decimal>(new Decimal(100))
   const coolingCapacityWatts = ref<Decimal>(new Decimal(50))
@@ -17,11 +19,15 @@ export const useHardwareStore = defineStore('hardware', () => {
   })
 
   const totalPowerDrawWatts = computed<Decimal>(() => {
-    return ComputeEngine.calculatePowerDraw(hardware.value)
+    const raw = ComputeEngine.calculatePowerDraw(hardware.value)
+    const reduction = paradigmStore.powerReduction
+    return reduction > 0 ? raw.mul(Math.max(0.01, 1.0 - reduction)) : raw
   })
 
   const totalVramGB = computed<Decimal>(() => {
-    return ComputeEngine.calculateVram(hardware.value)
+    const raw = ComputeEngine.calculateVram(hardware.value)
+    const efficiency = paradigmStore.vramEfficiency
+    return efficiency > 1.0 ? raw.mul(efficiency) : raw
   })
 
   const totalMemoryBandwidthGBs = computed<Decimal>(() => {
@@ -40,7 +46,8 @@ export const useHardwareStore = defineStore('hardware', () => {
     return ComputeEngine.calculateThermalState(
       totalPowerDrawWatts.value,
       coolingCapacityWatts.value,
-      prestigeStore.talentMultipliers.coolingEfficiencyMultiplier
+      prestigeStore.talentMultipliers.coolingEfficiencyMultiplier,
+      paradigmStore.hasNoThrottling
     )
   })
 
