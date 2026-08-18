@@ -12,6 +12,7 @@ import { useUpgradesStore } from './upgradesStore'
 import { useAllocationStore } from './allocationStore'
 import { useFeaturesStore } from './featuresStore'
 import { usePrestigeStore } from './prestigeStore'
+import { useCognitiveStore } from './cognitiveStore'
 import { GameSaveManager } from './helpers/gameSaveManager'
 import { GameStateHydrator, type StoreCollection } from './helpers/gameStateHydrator'
 import { GameActionHandler } from './helpers/gameActionHandler'
@@ -30,6 +31,7 @@ export const useGameStore = defineStore('game', () => {
   const allocation = useAllocationStore()
   const features = useFeaturesStore()
   const prestigeStore = usePrestigeStore()
+  const cognitiveStore = useCognitiveStore()
 
   const version = ref(CURRENT_SAVE_VERSION)
   const gameStartTime = ref(Date.now())
@@ -47,6 +49,7 @@ export const useGameStore = defineStore('game', () => {
     allocation,
     features,
     prestigeStore,
+    cognitiveStore,
     meta: { version, gameStartTime, lastTickTimestamp, lastOfflineReport },
   }
 
@@ -64,6 +67,15 @@ export const useGameStore = defineStore('game', () => {
       .mul(prestigeStore.checkpointMultiplier)
       .mul(prestigeStore.talentMultipliers.tflopsMultiplier)
   })
+
+  // Cognitive computeds & impact multipliers
+  const hasSafetyBenchmarks = computed(() => upgradesStore.upgrades.safety_benchmarks?.purchased ?? false)
+  const cognitiveMultipliers = computed(() => cognitiveStore.calculateMultipliers(hasSafetyBenchmarks.value))
+  const apiMultiplier = computed(() => cognitiveMultipliers.value.apiMultiplier)
+  const researchMultiplier = computed(() => cognitiveMultipliers.value.researchMultiplier)
+  const cognitiveStatus = computed(() => cognitiveMultipliers.value.status)
+  const canPerformRlhf = computed(() => cognitiveStore.canPerformRlhf(resources.funds.current))
+  const rlhfCost = computed(() => cognitiveStore.rlhfCost)
 
   // Core Actions
   function manualScrape(amount?: number) {
@@ -116,6 +128,20 @@ export const useGameStore = defineStore('game', () => {
     const res = prestigeStore.claimPrestige(resources.parameters)
     if (res.success) {
       GameStateHydrator.performSoftReset(stores)
+      saveToLocalStorage()
+      return true
+    }
+    return false
+  }
+
+  function performRlhf(): boolean {
+    const res = cognitiveStore.performRlhf(resources.funds.current)
+    if (res.success) {
+      resources.funds.current = resources.funds.current.sub(res.cost)
+      terminal.addLog(
+        `Batch Human RLHF exécuté pour $${res.cost.toFixed(2)} : -15% d’entropie synaptique réalignée.`,
+        'success'
+      )
       saveToLocalStorage()
       return true
     }
@@ -217,6 +243,17 @@ export const useGameStore = defineStore('game', () => {
     canPrestige: computed(() => prestigeStore.canPrestige(resources.parameters)),
     pendingAP: computed(() => prestigeStore.calculatePendingAP(resources.parameters)),
     prestige: prestigeStore,
+    entropy: bridge(() => cognitiveStore.entropy, (v) => { cognitiveStore.entropy = v }),
+    alignment: bridge(() => cognitiveStore.alignment, (v) => { cognitiveStore.alignment = v }),
+    rlhfBatchCount: bridge(() => cognitiveStore.rlhfBatchCount, (v) => { cognitiveStore.rlhfBatchCount = v }),
+    totalRlhfConducted: bridge(() => cognitiveStore.totalRlhfConducted, (v) => { cognitiveStore.totalRlhfConducted = v }),
+    cognitiveStatus,
+    apiMultiplier,
+    researchMultiplier,
+    rlhfCost,
+    canPerformRlhf,
+    performRlhf,
+    cognitive: cognitiveStore,
     addLog: terminal.addLog,
     clearLogs: terminal.clearLogs,
     manualScrape,

@@ -184,8 +184,19 @@ onUnmounted(() => {
               :pending-a-p="store.pendingAP"
               :architecture-points="store.prestige.architecturePoints"
               :total-architecture-points="store.prestige.totalArchitecturePoints"
+              :entropy="store.entropy.toNumber()"
+              :alignment="store.alignment.toNumber()"
+              :cognitive-status="store.cognitiveStatus"
+              :rlhf-cost="store.rlhfCost"
+              :rlhf-batch-count="store.rlhfBatchCount"
+              :can-perform-rlhf="store.canPerformRlhf"
+              :api-multiplier="store.apiMultiplier"
+              :research-multiplier="store.researchMultiplier"
+              :is-training-active="store.allocations.trainingPercent > 0 && store.effectiveCompute.gt(0)"
+              :show-cognitive="true"
               @open-talent-tree="showTalentTreeModal = true"
               @trigger-prestige="store.triggerPrestige()"
+              @perform-rlhf="store.performRlhf()"
             />
           </Transition>
 

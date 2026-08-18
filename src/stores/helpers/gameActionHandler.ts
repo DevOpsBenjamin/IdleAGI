@@ -158,6 +158,7 @@ export class GameActionHandler {
     modelQualityMultiplier: number,
     autoBrokerAccumulator: number
   ): { newAutoBrokerAccumulator: number } {
+    const cognitiveState = stores.cognitiveStore.getCognitiveState()
     const tickResult = TickEngine.processTick(
       {
         rawText: stores.resources.rawText,
@@ -178,6 +179,7 @@ export class GameActionHandler {
         isOverloaded: stores.hardwareStore.powerState.isOverloaded,
         totalTokensServed: stores.resources.totalTokensServed,
         autoBrokerAccumulator,
+        cognitive: cognitiveState,
         onSellRawTextQuiet: (amount: number) => this.sellRawText(stores, amount, stores.upgradesStore.rawTextSellPrice * stores.prestigeStore.talentMultipliers.rawTextPriceMultiplier, true),
         onAddLog: (msg: string, type?: LogType) => stores.terminal.addLog(msg, type ?? 'info'),
       },
@@ -186,6 +188,10 @@ export class GameActionHandler {
 
     stores.resources.totalTokensServed = tickResult.updatedTotalTokensServed
     stores.resources.parameters = tickResult.updatedParameters
+
+    if (tickResult.cognitiveTickResult) {
+      stores.cognitiveStore.updateFromTick(tickResult.cognitiveTickResult)
+    }
 
     if (stores.features.unlockedFeatures.trainingAllocation && stores.features.currentPhase < 3) {
       stores.features.setPhase(3)

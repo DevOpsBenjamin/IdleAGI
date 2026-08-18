@@ -373,4 +373,95 @@ describe('GameStore Progressive Early Game & Bootstrap Lifecycle', () => {
     expect(store.gridCapacityWatts.toNumber()).toBe(1650)
     expect(store.powerState.status).toBe('nominal') // 820/1650 = 49.7%
   })
+
+  it('Phase 3 (Cognitive Dynamics): Generates entropy during training, transitions regimes, and applies Human RLHF Batch', () => {
+    const store = useGameStore()
+    store.unlockedFeatures.tokenizerUnlocked = true
+    store.unlockedFeatures.trainingAllocation = true
+    store.unlockedFeatures.researchAllocation = true
+    store.currentPhase = 3
+
+    store.hardware.workstation_pro.count = 1
+    store.hardware.rtx_3090.count = 2 // >70 TFLOPS
+    store.coolingCapacityWatts = new Decimal(2000)
+    store.gridCapacityWatts = new Decimal(2000)
+    store.tokens.current = new Decimal(10000)
+    store.funds.current = new Decimal(500)
+
+    // Set 100% training allocation
+    store.updateAllocations({ inferencePercent: 0, trainingPercent: 100, researchPercent: 0 })
+
+    expect(store.entropy.toNumber()).toBe(0.0)
+    expect(store.cognitiveStatus).toBe('nominal')
+
+    // Simulate 30 seconds of training -> entropy drifts
+    store.processTick(30)
+    expect(store.entropy.toNumber()).toBeGreaterThan(0.30)
+    expect(store.cognitiveStatus).toBe('divergent')
+    expect(store.researchMultiplier).toBeGreaterThan(1.0)
+
+    // Simulate more training to reach critical hallucination (>70%)
+    store.processTick(60)
+    expect(store.entropy.toNumber()).toBeGreaterThanOrEqual(0.70)
+    expect(store.cognitiveStatus).toBe('critical_hallucination')
+    expect(store.apiMultiplier).toBeLessThan(0.50)
+
+    // Perform Human RLHF Batch
+    const prevEntropy = store.entropy.toNumber()
+    expect(store.canPerformRlhf).toBe(true)
+    const rlhfSuccess = store.performRlhf()
+    expect(rlhfSuccess).toBe(true)
+    expect(store.entropy.toNumber()).toBeCloseTo(prevEntropy - 0.15, 3)
+    expect(store.rlhfBatchCount).toBe(1)
+    expect(store.funds.current.toNumber()).toBeCloseTo(450, 1) // 500 - 50 = 450
+  })
+
+  it('Phase 3 (Safety Upgrades): Mitigates entropy drift and caps hallucination penalties', () => {
+    const store = useGameStore()
+    store.unlockedFeatures.tokenizerUnlocked = true
+    store.unlockedFeatures.trainingAllocation = true
+    store.currentPhase = 3
+    store.funds.current = new Decimal(10000)
+
+    // Buy safety upgrades
+    expect(store.buyUpgrade('safety_constitutional_ai')).toBe(true)
+    expect(store.buyUpgrade('safety_automated_rlhf')).toBe(true)
+    expect(store.buyUpgrade('safety_dpo_optimization')).toBe(true)
+    expect(store.buyUpgrade('safety_benchmarks')).toBe(true)
+
+    // Force high entropy (90%)
+    store.cognitive.setCognitiveState({ entropy: new Decimal(0.90), alignment: new Decimal(0.10) })
+    expect(store.cognitiveStatus).toBe('critical_hallucination')
+
+    // Thanks to safety_benchmarks, API multiplier is floored at 0.80 instead of severe drop
+    expect(store.apiMultiplier).toBe(0.80)
+
+    // Passive dissipation from safety_automated_rlhf operates when not training
+    store.updateAllocations({ inferencePercent: 100, trainingPercent: 0, researchPercent: 0 })
+    store.processTick(10) // 10s * 0.005/s = -0.05
+    expect(store.entropy.toNumber()).toBeCloseTo(0.85, 3)
+  })
+
+  it('Persistence & Soft Reset: Serializes cognitive state and clears volatile entropy on prestige', () => {
+    const store = useGameStore()
+    store.unlockedFeatures.tokenizerUnlocked = true
+    store.unlockedFeatures.trainingAllocation = true
+    store.cognitive.setCognitiveState({
+      entropy: new Decimal(0.45),
+      alignment: new Decimal(0.55),
+      rlhfBatchCount: 3,
+      totalRlhfConducted: new Decimal(3),
+    })
+
+    const serialized = store.getFullState()
+    expect(serialized.cognitive?.entropy.toNumber()).toBe(0.45)
+    expect(serialized.cognitive?.rlhfBatchCount).toBe(3)
+
+    // Soft reset resets entropy
+    store.parameters = new Decimal(2000000) // 2M params -> 1 AP
+    expect(store.triggerPrestige()).toBe(true)
+    expect(store.entropy.toNumber()).toBe(0.0)
+    expect(store.alignment.toNumber()).toBe(1.0)
+    expect(store.rlhfBatchCount).toBe(0)
+  })
 })

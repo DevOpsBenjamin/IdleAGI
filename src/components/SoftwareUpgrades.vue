@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Terminal, Check, Sparkles, DollarSign, Cpu, Layers, Coffee } from 'lucide-vue-next'
+import { Terminal, Check, Sparkles, DollarSign, Cpu, Layers, Coffee, Shield } from 'lucide-vue-next'
 import { formatMoney } from '@/utils/format'
 import type { SoftwareUpgrade } from '@/types/game'
 import type Decimal from 'break_infinity.js'
@@ -73,6 +73,8 @@ function getCategoryIcon(cat: SoftwareUpgrade['category']) {
       return Layers
     case 'monetization':
       return DollarSign
+    case 'security':
+      return Shield
     case 'hardware':
       return Cpu
     default:

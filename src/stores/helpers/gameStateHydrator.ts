@@ -13,6 +13,7 @@ import type { useUpgradesStore } from '../upgradesStore'
 import type { useAllocationStore } from '../allocationStore'
 import type { useFeaturesStore } from '../featuresStore'
 import type { usePrestigeStore } from '../prestigeStore'
+import type { useCognitiveStore } from '../cognitiveStore'
 
 export interface StoreCollection {
   terminal: ReturnType<typeof useTerminalStore>
@@ -22,6 +23,7 @@ export interface StoreCollection {
   allocation: ReturnType<typeof useAllocationStore>
   features: ReturnType<typeof useFeaturesStore>
   prestigeStore: ReturnType<typeof usePrestigeStore>
+  cognitiveStore: ReturnType<typeof useCognitiveStore>
   meta: {
     version: Ref<string>
     gameStartTime: Ref<number>
@@ -55,6 +57,7 @@ export class GameStateHydrator {
       unlockedFeatures: stores.features.unlockedFeatures,
       lastOfflineReport: stores.meta.lastOfflineReport.value,
       prestige: stores.prestigeStore.getPrestigeState(),
+      cognitive: stores.cognitiveStore.getCognitiveState(),
     }
   }
 
@@ -82,6 +85,7 @@ export class GameStateHydrator {
     if (loaded.currentPhase !== undefined) stores.features.currentPhase = loaded.currentPhase
     if (loaded.totalCharsRead) stores.resources.totalCharsRead = loaded.totalCharsRead
     if (loaded.prestige) stores.prestigeStore.setPrestigeState(loaded.prestige)
+    if (loaded.cognitive) stores.cognitiveStore.setCognitiveState(loaded.cognitive)
   }
 
   /**
@@ -98,6 +102,7 @@ export class GameStateHydrator {
     stores.resources.totalTokensServed = new Decimal(0)
     stores.resources.totalCharsRead = new Decimal(0)
     stores.resources.resetBufferCapacities()
+    stores.cognitiveStore.resetState()
 
     // 2. Reset hardware to initial catalog
     stores.hardwareStore.hardware = createInitialHardware()
