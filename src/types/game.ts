@@ -10,6 +10,7 @@ import type {
 } from './systems'
 import type { PrestigeState, SerializedPrestigeState } from './prestige'
 import type { CognitiveState, SerializedCognitiveState } from './cognitive'
+import type { ParadigmState, SerializedParadigmState } from './paradigm'
 
 export * from './logs'
 export * from './resources'
@@ -18,6 +19,7 @@ export * from './upgrades'
 export * from './systems'
 export * from './prestige'
 export * from './cognitive'
+export * from './paradigm'
 
 export interface GameState {
   version: string
@@ -56,6 +58,9 @@ export interface GameState {
 
   // Cognitive Model (Entropy & Alignment)
   cognitive?: CognitiveState
+
+  // Paradigm Shift & Synthetic Dataset (Tier 2)
+  paradigm?: ParadigmState
 }
 
 export interface SerializedGameState {
@@ -78,5 +83,7 @@ export interface SerializedGameState {
   unlockedFeatures: UnlockedFeatures
   prestige?: SerializedPrestigeState
   cognitive?: SerializedCognitiveState
+  paradigm?: SerializedParadigmState
 }
+
 

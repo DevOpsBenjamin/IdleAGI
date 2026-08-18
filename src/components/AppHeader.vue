@@ -17,13 +17,18 @@ const props = defineProps<{
   architecturePoints?: number
   totalArchitecturePoints?: number
   hasPrestigeUnlocked?: boolean
+  insights?: number
+  totalInsights?: number
+  hasParadigmUnlocked?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'save'): void
   (e: 'reset'): void
   (e: 'open-talent-tree'): void
+  (e: 'open-paradigm-modal'): void
 }>()
+
 
 const savedRecently = ref(false)
 const showResetConfirm = ref(false)
@@ -162,13 +167,26 @@ const phaseBadgeClass = computed(() => {
       <button
         v-if="hasPrestigeUnlocked || (totalArchitecturePoints ?? 0) > 0 || currentPhase >= 3"
         @click="emit('open-talent-tree')"
-        class="px-2.5 py-1.5 rounded-lg bg-[#38BDF8]/10 hover:bg-[#38BDF8]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 shadow-[0_0_10px_rgba(56,189,248,0.15)]"
+        class="px-2.5 py-1.5 rounded-lg bg-[#38BDF8]/10 hover:bg-[#38BDF8]/20 border border-[#38BDF8]/40 text-[#38BDF8] text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 shadow-[0_0_10px_rgba(56,189,248,0.15)] min-h-[36px]"
         title="Ouvrir l'Arbre de Talents d'Architecture"
       >
         <Zap class="w-3.5 h-3.5 text-[#38BDF8] animate-pulse" />
         <span>{{ architecturePoints ?? 0 }} AP</span>
         <span class="hidden sm:inline text-[10px] text-[#38BDF8]/80 font-normal">[Talents]</span>
       </button>
+
+      <!-- Tier 2 Paradigm Shifts & Insights Button -->
+      <button
+        v-if="hasParadigmUnlocked || (totalInsights ?? 0) > 0"
+        @click="emit('open-paradigm-modal')"
+        class="px-2.5 py-1.5 rounded-lg bg-[#A855F7]/15 hover:bg-[#A855F7]/25 border border-[#A855F7]/40 text-[#A855F7] text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 shadow-[0_0_10px_rgba(168,85,247,0.2)] min-h-[36px]"
+        title="Ouvrir les Paradigmes Architecturaux (Tier 2)"
+      >
+        <span class="text-sm">✦</span>
+        <span>{{ insights ?? 0 }} $\Phi$</span>
+        <span class="hidden sm:inline text-[10px] text-[#A855F7]/80 font-normal">[Paradigmes]</span>
+      </button>
+
 
       <button
         @click="triggerSave"
