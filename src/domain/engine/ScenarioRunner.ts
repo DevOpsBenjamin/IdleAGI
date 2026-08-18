@@ -10,6 +10,7 @@ import type { AllocationPreset, AllocationState } from '@/types/systems'
 import type { HardwareNode } from '@/types/hardware'
 import type { SoftwareUpgrade } from '@/types/upgrades'
 import type { Resource } from '@/types/resources'
+import type { CognitiveStatus } from '@/types/cognitive'
 
 export interface ScenarioGameStore {
   currentPhase: number
@@ -35,6 +36,12 @@ export interface ScenarioGameStore {
     totalArchitecturePoints: number
     prestigeCount: number
   }
+  entropy?: Decimal
+  alignment?: Decimal
+  cognitiveStatus?: CognitiveStatus
+  rlhfBatchCount?: number
+  apiMultiplier?: number
+  researchMultiplier?: number
   manualScrape(amount?: number): void
   sellRawText(chars?: number, silent?: boolean): boolean
   sellAllRawText(): boolean
@@ -42,6 +49,7 @@ export interface ScenarioGameStore {
   buyUpgrade(id: string): boolean
   buyTalent?(id: string): boolean
   triggerPrestige?(): boolean
+  performRlhf?(): boolean
   updateAllocations(alloc: AllocationState): void
   setAllocationPreset(preset: AllocationPreset): void
   processTick(dt: number): void
@@ -78,6 +86,12 @@ export class ScenarioRunner {
       totalArchitecturePoints: this.store.prestige?.totalArchitecturePoints,
       prestigeCount: this.store.prestige?.prestigeCount,
       checkpointMultiplier: this.store.checkpointMultiplier,
+      entropy: this.store.entropy,
+      alignment: this.store.alignment,
+      cognitiveStatus: this.store.cognitiveStatus,
+      rlhfBatchCount: this.store.rlhfBatchCount,
+      apiMultiplier: this.store.apiMultiplier,
+      researchMultiplier: this.store.researchMultiplier,
     }
   }
 
@@ -231,6 +245,9 @@ export class ScenarioRunner {
 
       case 'trigger_prestige':
         return this.store.triggerPrestige ? this.store.triggerPrestige() : false
+
+      case 'perform_rlhf':
+        return this.store.performRlhf ? this.store.performRlhf() : false
 
       case 'set_allocations':
         this.store.updateAllocations(action.allocations)

@@ -1,5 +1,6 @@
 import type Decimal from 'break_infinity.js'
 import type { AllocationPreset, AllocationState } from './systems'
+import type { CognitiveStatus } from './cognitive'
 import type { LogType } from './logs'
 
 export type ScenarioAction =
@@ -10,6 +11,7 @@ export type ScenarioAction =
   | { type: 'buy_upgrade'; upgradeId: string }
   | { type: 'buy_talent'; talentId: string }
   | { type: 'trigger_prestige' }
+  | { type: 'perform_rlhf' }
   | { type: 'set_allocations'; allocations: AllocationState }
   | { type: 'set_preset'; preset: AllocationPreset }
   | { type: 'wait_seconds'; seconds: number }
@@ -53,6 +55,12 @@ export interface ScenarioStateAccessor {
   readonly totalArchitecturePoints?: number
   readonly prestigeCount?: number
   readonly checkpointMultiplier?: number
+  readonly entropy?: Decimal
+  readonly alignment?: Decimal
+  readonly cognitiveStatus?: CognitiveStatus
+  readonly rlhfBatchCount?: number
+  readonly apiMultiplier?: number
+  readonly researchMultiplier?: number
 }
 
 export interface SimulationOptions {

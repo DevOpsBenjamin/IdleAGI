@@ -308,6 +308,48 @@ export const INITIAL_UPGRADES_CONFIG: Record<string, SoftwareUpgrade> = {
     category: 'hardware',
     requiredFeature: 'trainingAllocation',
   },
+
+  // Phase 3 : AI Safety & Cognitive Upgrades
+  safety_constitutional_ai: {
+    id: 'safety_constitutional_ai',
+    name: 'Constitutional AI Ruleset',
+    description: 'Intègre des principes éthiques stricts dans la loss function d’entraînement (-20% de dérive d’entropie).',
+    cost: new Decimal(300.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'security',
+    requiredFeature: 'trainingAllocation',
+  },
+  safety_automated_rlhf: {
+    id: 'safety_automated_rlhf',
+    name: 'Pipeline Automated RLHF',
+    description: 'Déploie des modèles de récompense automatisés pour dissiper passivement l’entropie (-0.5% entropie/s).',
+    cost: new Decimal(750.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'security',
+    requiredFeature: 'trainingAllocation',
+  },
+  safety_dpo_optimization: {
+    id: 'safety_dpo_optimization',
+    name: 'Direct Preference Optimization (DPO)',
+    description: 'Optimisation directe des préférences sans réseau de récompense séparé (-30% de dérive d’entropie supplémentaire).',
+    cost: new Decimal(1500.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'security',
+    requiredFeature: 'trainingAllocation',
+  },
+  safety_benchmarks: {
+    id: 'safety_benchmarks',
+    name: 'Automated Safety Benchmarks',
+    description: 'Bancs d’évaluation continus garantissant un plancher de factualité : plafonne le malus d’hallucination API à -20% max.',
+    cost: new Decimal(3000.00),
+    currency: 'funds',
+    purchased: false,
+    category: 'security',
+    requiredFeature: 'trainingAllocation',
+  },
 }
 
 export function createInitialUpgrades(): Record<string, SoftwareUpgrade> {

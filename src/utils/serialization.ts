@@ -11,6 +11,8 @@ import type {
   PrestigeState,
   SerializedPrestigeState,
   TalentNode,
+  CognitiveState,
+  SerializedCognitiveState,
 } from '@/types'
 import { TALENT_TREE_NODES } from '@/domain/constants/talents'
 
@@ -148,6 +150,26 @@ export function deserializePrestigeState(
   }
 }
 
+export function serializeCognitiveState(cognitive: CognitiveState): SerializedCognitiveState {
+  return {
+    entropy: cognitive.entropy.toString(),
+    alignment: cognitive.alignment.toString(),
+    rlhfBatchCount: cognitive.rlhfBatchCount,
+    totalRlhfConducted: cognitive.totalRlhfConducted.toString(),
+  }
+}
+
+export function deserializeCognitiveState(
+  raw: Partial<SerializedCognitiveState> | undefined
+): CognitiveState {
+  return {
+    entropy: new Decimal(raw?.entropy ?? 0.0),
+    alignment: new Decimal(raw?.alignment ?? 1.0),
+    rlhfBatchCount: typeof raw?.rlhfBatchCount === 'number' ? raw.rlhfBatchCount : 0,
+    totalRlhfConducted: new Decimal(raw?.totalRlhfConducted ?? 0),
+  }
+}
+
 export function serializeGameState(state: GameState): string {
   const serialized: SerializedGameState = {
     version: CURRENT_SAVE_VERSION,
@@ -178,6 +200,7 @@ export function serializeGameState(state: GameState): string {
     terminalLogs: (state.terminalLogs || []).slice(-100), // Max 100 logs persisted
     unlockedFeatures: { ...state.unlockedFeatures },
     prestige: state.prestige ? serializePrestigeState(state.prestige) : undefined,
+    cognitive: state.cognitive ? serializeCognitiveState(state.cognitive) : undefined,
   }
 
   return JSON.stringify(serialized)
@@ -247,6 +270,9 @@ export function deserializeGameState(
             raw.prestige,
             initialState.prestige?.talents || TALENT_TREE_NODES
           )
+        : undefined,
+      cognitive: raw.cognitive
+        ? deserializeCognitiveState(raw.cognitive)
         : undefined,
     }
   } catch (err) {

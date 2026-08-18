@@ -8,6 +8,7 @@ import {
   useUpgradesStore,
   useAllocationStore,
   useFeaturesStore,
+  useCognitiveStore,
 } from '@/stores'
 
 describe('Modular Pinia Stores Unit Tests', () => {
@@ -197,6 +198,37 @@ describe('Modular Pinia Stores Unit Tests', () => {
       // Cannot regress phase
       store.setPhase(1)
       expect(store.currentPhase).toBe(2)
+    })
+  })
+
+  describe('useCognitiveStore', () => {
+    it('manages entropy, alignment, and RLHF executions', () => {
+      const store = useCognitiveStore()
+      expect(store.entropy.toNumber()).toBe(0.0)
+      expect(store.alignment.toNumber()).toBe(1.0)
+      expect(store.status).toBe('nominal')
+      expect(store.rlhfCost.toNumber()).toBe(50)
+
+      // Set divergent state
+      store.setCognitiveState({ entropy: new Decimal(0.40), alignment: new Decimal(0.60) })
+      expect(store.status).toBe('divergent')
+      expect(store.canPerformRlhf(new Decimal(20))).toBe(false)
+      expect(store.canPerformRlhf(new Decimal(50))).toBe(true)
+
+      // Perform RLHF
+      const rlhfRes = store.performRlhf(new Decimal(60))
+      expect(rlhfRes.success).toBe(true)
+      expect(rlhfRes.cost.toNumber()).toBe(50)
+      expect(store.entropy.toNumber()).toBeCloseTo(0.25, 4)
+      expect(store.alignment.toNumber()).toBeCloseTo(0.75, 4)
+      expect(store.rlhfBatchCount).toBe(1)
+      expect(store.status).toBe('nominal')
+
+      // Reset
+      store.resetState()
+      expect(store.entropy.toNumber()).toBe(0.0)
+      expect(store.alignment.toNumber()).toBe(1.0)
+      expect(store.rlhfBatchCount).toBe(0)
     })
   })
 })

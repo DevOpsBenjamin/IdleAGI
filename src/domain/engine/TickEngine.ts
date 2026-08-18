@@ -2,9 +2,11 @@ import Decimal from 'break_infinity.js'
 import type { Resource } from '@/types/resources'
 import type { SoftwareUpgrade } from '@/types/upgrades'
 import type { AllocationState, MilestoneState, UnlockedFeatures } from '@/types/systems'
+import type { CognitiveState } from '@/types/cognitive'
 import type { LogType } from '@/types/logs'
 import { EconomyEngine } from './EconomyEngine'
 import { MilestoneTracker } from './MilestoneTracker'
+import { CognitiveEngine, type CognitiveTickResult } from './CognitiveEngine'
 
 export interface TickContext {
   rawText: Resource
@@ -25,6 +27,7 @@ export interface TickContext {
   isOverloaded?: boolean
   totalTokensServed: Decimal
   autoBrokerAccumulator: number
+  cognitive?: CognitiveState
   onSellRawTextQuiet: (amount: number) => void
   onAddLog: (message: string, type?: LogType) => void
 }
@@ -39,6 +42,7 @@ export interface TickResult {
   newAutoBrokerAccumulator: number
   updatedTotalTokensServed: Decimal
   updatedParameters: Decimal
+  cognitiveTickResult?: CognitiveTickResult
 }
 
 export class TickEngine {
@@ -114,7 +118,53 @@ export class TickEngine {
       }
     }
 
-    // 3. Compute Tri-Allocation
+    // 3. Compute Tri-Allocation & Cognitive Dynamics
+    let cognitiveTickResult: CognitiveTickResult | undefined
+    let cognitiveApiMultiplier = 1.0
+    let cognitiveResearchMultiplier = 1.0
+
+    if (unlockedFeatures.trainingAllocation && context.cognitive) {
+      const prevStatus = CognitiveEngine.calculateStatus(context.cognitive.entropy)
+      cognitiveTickResult = CognitiveEngine.processTick(
+        {
+          entropy: context.cognitive.entropy,
+          alignment: context.cognitive.alignment,
+          trainingPercent: allocations.trainingPercent,
+          effectiveCompute,
+          upgrades,
+          isTrainingUnlocked: unlockedFeatures.trainingAllocation,
+        },
+        dt
+      )
+
+      context.cognitive.entropy = cognitiveTickResult.entropy
+      context.cognitive.alignment = cognitiveTickResult.alignment
+      cognitiveApiMultiplier = cognitiveTickResult.apiMultiplier
+      cognitiveResearchMultiplier = cognitiveTickResult.researchMultiplier
+
+      if (cognitiveTickResult.status !== prevStatus) {
+        if (cognitiveTickResult.status === 'divergent' && prevStatus === 'nominal') {
+          onAddLog(
+            'ÉMERGENCE COGNITIVE : L’entropie dépasse 30%. Le modèle devient divergent (+25% R&D, léger rejet API).',
+            'event'
+          )
+        } else if (cognitiveTickResult.status === 'critical_hallucination') {
+          onAddLog(
+            'ALERTE COGNITIVE : Entropie critique (>70%) ! Le modèle hallucine massivement (-80% à -90% de rentabilité API). Effectuez un Human RLHF Batch.',
+            'warn'
+          )
+        } else if (
+          cognitiveTickResult.status === 'nominal' &&
+          (prevStatus === 'divergent' || prevStatus === 'critical_hallucination')
+        ) {
+          onAddLog(
+            'RETOUR À LA NOMINALE : L’alignement du modèle est restauré (<30% entropie).',
+            'success'
+          )
+        }
+      }
+    }
+
     const infRatio = allocations.inferencePercent / 100
     const trainRatio = allocations.trainingPercent / 100
     const resRatio = allocations.researchPercent / 100
@@ -126,7 +176,7 @@ export class TickEngine {
     let researchGained = new Decimal(0)
 
     if (isTokenizerActive) {
-      // A. Inference: Consumes Tokens to earn Funds ($)
+      // A. Inference: Consumes Tokens to earn Funds ($) with cognitive impact
       const infCompute = effectiveCompute.mul(infRatio)
       const maxTokensToServe = infCompute.mul(20 * bwMultiplier).mul(dt)
       tokensServed = Decimal.min(maxTokensToServe, tokens.current)
@@ -139,7 +189,7 @@ export class TickEngine {
       if (tokensServed.gt(0)) {
         tokens.current = tokens.current.sub(tokensServed)
         totalTokensServed = totalTokensServed.add(tokensServed)
-        fundsGained = tokensServed.mul(actualPricePerToken)
+        fundsGained = tokensServed.mul(actualPricePerToken).mul(cognitiveApiMultiplier)
         funds.current = funds.current.add(fundsGained)
         funds.ratePerSec = dt > 0 ? fundsGained.div(dt) : new Decimal(0)
 
@@ -179,10 +229,10 @@ export class TickEngine {
         }
       }
 
-      // C. Research: Generates Research Points
+      // C. Research: Generates Research Points with cognitive creativity bonus
       if (unlockedFeatures.researchAllocation) {
         const resCompute = effectiveCompute.mul(resRatio)
-        researchGained = resCompute.mul(2).mul(dt)
+        researchGained = resCompute.mul(2).mul(cognitiveResearchMultiplier).mul(dt)
         if (researchGained.gt(0)) {
           researchPoints.current = Decimal.min(
             researchPoints.max,
@@ -242,6 +292,7 @@ export class TickEngine {
       newAutoBrokerAccumulator: autoBrokerAcc,
       updatedTotalTokensServed: totalTokensServed,
       updatedParameters: parameters,
+      cognitiveTickResult,
     }
   }
 }
