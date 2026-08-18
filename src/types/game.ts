@@ -11,8 +11,10 @@ import type {
 import type { PrestigeState, SerializedPrestigeState } from './prestige'
 import type { CognitiveState, SerializedCognitiveState } from './cognitive'
 import type { ParadigmState, SerializedParadigmState } from './paradigm'
+import type { SingularityState, SerializedSingularityState } from './singularity'
 
 export * from './logs'
+
 export * from './resources'
 export * from './hardware'
 export * from './upgrades'
@@ -20,6 +22,9 @@ export * from './systems'
 export * from './prestige'
 export * from './cognitive'
 export * from './paradigm'
+export * from './singularity'
+export * from './save'
+
 
 export interface GameState {
   version: string
@@ -61,6 +66,9 @@ export interface GameState {
 
   // Paradigm Shift & Synthetic Dataset (Tier 2)
   paradigm?: ParadigmState
+
+  // Singularity & Temporal Loop (Tier 3)
+  singularity?: SingularityState
 }
 
 export interface SerializedGameState {
@@ -84,6 +92,8 @@ export interface SerializedGameState {
   prestige?: SerializedPrestigeState
   cognitive?: SerializedCognitiveState
   paradigm?: SerializedParadigmState
+  singularity?: SerializedSingularityState
 }
+
 
 

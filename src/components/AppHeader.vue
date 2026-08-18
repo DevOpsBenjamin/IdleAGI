@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Terminal, Zap, Cpu, DollarSign, Save, RotateCcw, Check } from 'lucide-vue-next'
+import { Terminal, Zap, Cpu, DollarSign, Save, RotateCcw, Check, Sparkles, Database } from 'lucide-vue-next'
 import { formatMoney, formatWatts, formatFlops } from '@/utils/format'
+
 import type { PowerState } from '@/types/game'
 import type Decimal from 'break_infinity.js'
 
@@ -20,6 +21,9 @@ const props = defineProps<{
   insights?: number
   totalInsights?: number
   hasParadigmUnlocked?: boolean
+  chronoCores?: number
+  singularitiesCompleted?: number
+  canTriggerSingularity?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -27,7 +31,10 @@ const emit = defineEmits<{
   (e: 'reset'): void
   (e: 'open-talent-tree'): void
   (e: 'open-paradigm-modal'): void
+  (e: 'open-singularity-modal'): void
+  (e: 'open-save-manager'): void
 }>()
+
 
 
 const savedRecently = ref(false)
@@ -187,10 +194,31 @@ const phaseBadgeClass = computed(() => {
         <span class="hidden sm:inline text-[10px] text-[#A855F7]/80 font-normal">[Paradigmes]</span>
       </button>
 
+      <!-- Tier 3 Singularity & Chrono-Cores Button -->
+      <button
+        v-if="canTriggerSingularity || (chronoCores ?? 0) > 0 || (singularitiesCompleted ?? 0) > 0 || currentPhase >= 3"
+        @click="emit('open-singularity-modal')"
+        class="px-2.5 py-1.5 rounded-lg bg-[#00FF66]/15 hover:bg-[#00FF66]/25 border border-[#00FF66]/40 text-[#00FF66] text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none active:scale-95 shadow-[0_0_12px_rgba(0,255,102,0.2)] min-h-[36px]"
+        title="Ouvrir la Singularité Technologique (Tier 3)"
+      >
+        <Sparkles class="w-3.5 h-3.5 text-[#00FF66] animate-pulse" />
+        <span>{{ chronoCores ?? 0 }} $\Omega$</span>
+        <span class="hidden sm:inline text-[10px] text-[#00FF66]/80 font-normal">[Singularité]</span>
+      </button>
+
+      <!-- Save Manager (Export/Import Base64) Button -->
+      <button
+        @click="emit('open-save-manager')"
+        class="px-2.5 py-1.5 rounded bg-[#161B22] hover:bg-[#21262D] text-[#8B949E] hover:text-[#38BDF8] border border-[#21262D] hover:border-[#38BDF8]/40 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer min-h-[36px]"
+        title="Gestionnaire de sauvegardes (Export/Import Base64)"
+      >
+        <Database class="w-3.5 h-3.5 text-[#38BDF8]" />
+        <span class="hidden md:inline">Sauvegardes</span>
+      </button>
 
       <button
         @click="triggerSave"
-        class="px-3 py-1.5 rounded bg-[#161B22] hover:bg-[#21262D] text-[#8B949E] hover:text-[#00FF66] border border-[#21262D] text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer"
+        class="px-3 py-1.5 rounded bg-[#161B22] hover:bg-[#21262D] text-[#8B949E] hover:text-[#00FF66] border border-[#21262D] text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer min-h-[36px]"
         title="Sauvegarder l'état local"
       >
         <Check v-if="savedRecently" class="w-3.5 h-3.5 text-[#00FF66]" />
@@ -200,13 +228,14 @@ const phaseBadgeClass = computed(() => {
 
       <button
         @click="showResetConfirm = true"
-        class="px-3 py-1.5 rounded bg-[#161B22] hover:bg-[#EF4444]/20 text-[#8B949E] hover:text-[#EF4444] border border-[#21262D] hover:border-[#EF4444]/40 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer"
+        class="px-3 py-1.5 rounded bg-[#161B22] hover:bg-[#EF4444]/20 text-[#8B949E] hover:text-[#EF4444] border border-[#21262D] hover:border-[#EF4444]/40 text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer min-h-[36px]"
         title="Réinitialiser la partie"
       >
         <RotateCcw class="w-3.5 h-3.5" />
         <span class="hidden sm:inline">Reset</span>
       </button>
     </div>
+
 
     <!-- Reset Confirmation Dialog -->
     <div

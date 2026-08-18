@@ -15,8 +15,11 @@ import type {
   SerializedCognitiveState,
   ParadigmState,
   SerializedParadigmState,
+  SingularityState,
+  SerializedSingularityState,
 } from '@/types'
 import { TALENT_TREE_NODES } from '@/domain/constants/talents'
+
 
 export const SAVE_KEY = 'idleagi_singularity_save'
 export const CURRENT_SAVE_VERSION = '0.1.0'
@@ -205,6 +208,31 @@ export function deserializeParadigmState(
   }
 }
 
+export function serializeSingularityState(
+  singularity: SingularityState
+): SerializedSingularityState {
+  return {
+    singularitiesCompleted: singularity.singularitiesCompleted,
+    discoveredEndings: [...singularity.discoveredEndings],
+    chronoCores: singularity.chronoCores,
+    lastAscensionTimestamp: singularity.lastAscensionTimestamp,
+    currentEndingSelected: singularity.currentEndingSelected,
+  }
+}
+
+export function deserializeSingularityState(
+  raw: Partial<SerializedSingularityState> | undefined
+): SingularityState {
+  return {
+    singularitiesCompleted: typeof raw?.singularitiesCompleted === 'number' ? raw.singularitiesCompleted : 0,
+    discoveredEndings: Array.isArray(raw?.discoveredEndings) ? [...raw.discoveredEndings] : [],
+    chronoCores: typeof raw?.chronoCores === 'number' ? raw.chronoCores : 0,
+    lastAscensionTimestamp: typeof raw?.lastAscensionTimestamp === 'number' ? raw.lastAscensionTimestamp : null,
+    currentEndingSelected: raw?.currentEndingSelected ?? null,
+  }
+}
+
+
 export function serializeGameState(state: GameState): string {
   const serialized: SerializedGameState = {
     version: CURRENT_SAVE_VERSION,
@@ -237,6 +265,7 @@ export function serializeGameState(state: GameState): string {
     prestige: state.prestige ? serializePrestigeState(state.prestige) : undefined,
     cognitive: state.cognitive ? serializeCognitiveState(state.cognitive) : undefined,
     paradigm: state.paradigm ? serializeParadigmState(state.paradigm) : undefined,
+    singularity: state.singularity ? serializeSingularityState(state.singularity) : undefined,
   }
 
   return JSON.stringify(serialized)
@@ -313,9 +342,13 @@ export function deserializeGameState(
       paradigm: raw.paradigm
         ? deserializeParadigmState(raw.paradigm)
         : undefined,
+      singularity: raw.singularity
+        ? deserializeSingularityState(raw.singularity)
+        : undefined,
     }
   } catch (err) {
     console.error('[Serialization] Failed to parse savegame:', err)
     return null
   }
 }
+

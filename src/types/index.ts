@@ -6,4 +6,7 @@ export * from './systems'
 export * from './simulation'
 export * from './cognitive'
 export * from './paradigm'
+export * from './singularity'
+export * from './save'
 export * from './game'
+

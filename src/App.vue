@@ -18,6 +18,8 @@ import MobileNavigation, { type MobileTab } from '@/components/MobileNavigation.
 import ArchitectureTalentTree from '@/components/ArchitectureTalentTree.vue'
 import SyntheticDatasetControl from '@/components/telemetry/SyntheticDatasetControl.vue'
 import ParadigmModal from '@/components/ParadigmModal.vue'
+import SingularityModal from '@/components/SingularityModal.vue'
+import SaveManagerModal from '@/components/SaveManagerModal.vue'
 
 const store = useGameStore()
 const { fps, currentTps } = useGameLoop()
@@ -25,6 +27,9 @@ const { fps, currentTps } = useGameLoop()
 const activeMobileTab = ref<MobileTab>('ingestion')
 const showTalentTreeModal = ref(false)
 const showParadigmModal = ref(false)
+const showSingularityModal = ref(false)
+const showSaveManagerModal = ref(false)
+
 
 
 const hardwareArray = computed(() => Object.values(store.hardware))
@@ -126,11 +131,17 @@ onUnmounted(() => {
       :insights="store.insights"
       :total-insights="store.totalInsights"
       :has-paradigm-unlocked="store.currentPhase >= 3 || store.parameters.gte(100000000)"
+      :chrono-cores="store.chronoCores"
+      :singularities-completed="store.singularitiesCompleted"
+      :can-trigger-singularity="store.canTriggerSingularity"
       @save="store.saveToLocalStorage()"
       @reset="store.hardReset()"
       @open-talent-tree="showTalentTreeModal = true"
       @open-paradigm-modal="showParadigmModal = true"
+      @open-singularity-modal="showSingularityModal = true"
+      @open-save-manager="showSaveManagerModal = true"
     />
+
 
 
     <!-- Main Scrollable Content Area -->
@@ -225,13 +236,20 @@ onUnmounted(() => {
               :total-insights="store.totalInsights"
               :active-paradigm-name="store.activeParadigmDef.name"
               :active-paradigm-tflops-mult="store.activeTflopsMultiplier"
+              :can-trigger-singularity="store.canTriggerSingularity"
+              :chrono-cores="store.chronoCores"
+              :singularities-completed="store.singularitiesCompleted"
+              :qualified-ending-title="store.qualifiedEndingDef?.title"
+              :qualified-ending-color="store.qualifiedEndingDef?.color"
               @open-talent-tree="showTalentTreeModal = true"
               @trigger-prestige="store.triggerPrestige()"
               @perform-rlhf="store.performRlhf()"
               @open-paradigm-modal="showParadigmModal = true"
               @trigger-tier2-prestige="store.triggerTier2Prestige()"
+              @open-singularity-modal="showSingularityModal = true"
             />
           </Transition>
+
 
 
           <!-- 4. Tri-Allocation Panel (Unlocked in Phase 3) -->
@@ -407,6 +425,40 @@ onUnmounted(() => {
       @unlock-paradigm="(id) => store.unlockParadigm(id)"
       @trigger-tier2-prestige="store.triggerTier2Prestige()"
     />
+
+    <!-- Tier 3 Singularity Modal -->
+    <SingularityModal
+      v-if="showSingularityModal"
+      :parameters="store.parameters"
+      :entropy="store.entropy.toNumber()"
+      :alignment="store.alignment.toNumber()"
+      :active-paradigm-id="store.activeParadigmId"
+      :singularities-completed="store.singularitiesCompleted"
+      :discovered-endings="store.discoveredEndings"
+      :chrono-cores="store.chronoCores"
+      :can-trigger-singularity="store.canTriggerSingularity"
+      @close="showSingularityModal = false"
+      @trigger-ascension="
+        (endingId) => {
+          store.triggerSingularityAscension(endingId)
+          showSingularityModal = false
+        }
+      "
+    />
+
+    <!-- Save Manager (Export/Import Base64) Modal -->
+    <SaveManagerModal
+      v-if="showSaveManagerModal"
+      :game-state="store.getFullState()"
+      @close="showSaveManagerModal = false"
+      @restore-save="
+        (envelope) => {
+          store.restoreSaveEnvelope(envelope)
+          showSaveManagerModal = false
+        }
+      "
+    />
   </div>
 </template>
+
 
