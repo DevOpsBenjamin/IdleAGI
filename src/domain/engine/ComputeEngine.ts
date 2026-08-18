@@ -228,15 +228,28 @@ export class ComputeEngine {
   }
 
   /**
-   * Compute thermodynamic state, thermal throttling efficiency, and temperature factoring in talent cooling multipliers.
+   * Compute thermodynamic state, thermal throttling efficiency, and temperature factoring in talent cooling multipliers and paradigm properties.
    */
   public static calculateThermalState(
     totalPowerWatts: Decimal,
     coolingCapacityWatts: Decimal,
-    coolingEfficiencyMultiplier = 1.0
+    coolingEfficiencyMultiplier = 1.0,
+    hasNoThrottling = false
   ): ThermalState {
     const heat = this.calculateHeatGenerated(totalPowerWatts)
     const cooling = coolingCapacityWatts.mul(coolingEfficiencyMultiplier)
+
+    if (hasNoThrottling) {
+      return {
+        heatGeneratedWatts: heat,
+        coolingCapacityWatts: cooling,
+        efficiency: 1.0,
+        isThrottling: false,
+        temperatureCelsius: 30.0,
+        status: 'nominal',
+      }
+    }
+
     let efficiency = 1.0
 
     if (heat.gt(0) && heat.gt(cooling)) {

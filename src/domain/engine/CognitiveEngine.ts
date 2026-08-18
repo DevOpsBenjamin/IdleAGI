@@ -13,6 +13,7 @@ export interface CognitiveTickContext {
   effectiveCompute: Decimal
   upgrades: Record<string, SoftwareUpgrade>
   isTrainingUnlocked: boolean
+  syntheticDriftMultiplier?: number
 }
 
 export interface CognitiveTickResult {
@@ -222,7 +223,14 @@ export class CognitiveEngine {
     context: CognitiveTickContext,
     dt: number
   ): CognitiveTickResult {
-    const { entropy, trainingPercent, effectiveCompute, upgrades, isTrainingUnlocked } = context
+    const {
+      entropy,
+      trainingPercent,
+      effectiveCompute,
+      upgrades,
+      isTrainingUnlocked,
+      syntheticDriftMultiplier = 1.0,
+    } = context
 
     let driftAmount = new Decimal(0)
     let passiveDissipationAmount = new Decimal(0)
@@ -234,7 +242,7 @@ export class CognitiveEngine {
         effectiveCompute,
         safetyReduction,
         dt
-      )
+      ).mul(syntheticDriftMultiplier)
 
       const passiveRate = this.calculatePassiveDissipationRate(upgrades)
       if (passiveRate > 0) {

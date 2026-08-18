@@ -6,5 +6,6 @@ export * from './allocationStore'
 export * from './featuresStore'
 export * from './prestigeStore'
 export * from './cognitiveStore'
+export * from './paradigmStore'
 export * from './gameStore'
 

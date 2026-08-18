@@ -13,9 +13,12 @@ import { useAllocationStore } from './allocationStore'
 import { useFeaturesStore } from './featuresStore'
 import { usePrestigeStore } from './prestigeStore'
 import { useCognitiveStore } from './cognitiveStore'
+import { useParadigmStore } from './paradigmStore'
 import { GameSaveManager } from './helpers/gameSaveManager'
 import { GameStateHydrator, type StoreCollection } from './helpers/gameStateHydrator'
 import { GameActionHandler } from './helpers/gameActionHandler'
+import { SyntheticDataEngine } from '@/domain/engine/SyntheticDataEngine'
+import type { ParadigmId } from '@/types/paradigm'
 
 export { MAX_OFFLINE_SECONDS, RAW_TEXT_SNIPPETS }
 
@@ -32,6 +35,7 @@ export const useGameStore = defineStore('game', () => {
   const features = useFeaturesStore()
   const prestigeStore = usePrestigeStore()
   const cognitiveStore = useCognitiveStore()
+  const paradigmStore = useParadigmStore()
 
   const version = ref(CURRENT_SAVE_VERSION)
   const gameStartTime = ref(Date.now())
@@ -50,6 +54,7 @@ export const useGameStore = defineStore('game', () => {
     features,
     prestigeStore,
     cognitiveStore,
+    paradigmStore,
     meta: { version, gameStartTime, lastTickTimestamp, lastOfflineReport },
   }
 
@@ -66,6 +71,8 @@ export const useGameStore = defineStore('game', () => {
     return hardwareStore.effectiveCompute
       .mul(prestigeStore.checkpointMultiplier)
       .mul(prestigeStore.talentMultipliers.tflopsMultiplier)
+      .mul(paradigmStore.passiveTflopsMultiplier)
+      .mul(paradigmStore.activeTflopsMultiplier)
   })
 
   // Cognitive computeds & impact multipliers
@@ -76,6 +83,20 @@ export const useGameStore = defineStore('game', () => {
   const cognitiveStatus = computed(() => cognitiveMultipliers.value.status)
   const canPerformRlhf = computed(() => cognitiveStore.canPerformRlhf(resources.funds.current))
   const rlhfCost = computed(() => cognitiveStore.rlhfCost)
+
+  // Paradigm computeds
+  const canTriggerTier2 = computed(() => paradigmStore.canTriggerTier2(resources.parameters))
+  const pendingInsights = computed(() => paradigmStore.calculatePendingInsights(resources.parameters))
+  const syntheticRateCharsPerSec = computed(() =>
+    SyntheticDataEngine.calculateSyntheticRate(
+      effectiveCompute.value,
+      paradigmStore.syntheticSpeedBonus,
+      paradigmStore.isSyntheticActive
+    )
+  )
+  const collapseThreshold = computed(() =>
+    SyntheticDataEngine.calculateCollapseThreshold(upgradesStore.upgrades)
+  )
 
   // Core Actions
   function manualScrape(amount?: number) {
@@ -132,6 +153,48 @@ export const useGameStore = defineStore('game', () => {
       return true
     }
     return false
+  }
+
+  function triggerTier2Prestige(): boolean {
+    const res = paradigmStore.claimTier2Prestige(resources.parameters)
+    if (res.success) {
+      GameStateHydrator.performHardReset(stores)
+      saveToLocalStorage()
+      return true
+    }
+    return false
+  }
+
+  function selectParadigm(id: ParadigmId): boolean {
+    const res = paradigmStore.selectParadigm(id)
+    if (res.success) {
+      terminal.addLog(`Architecture neuronale active modifiée : ${paradigmStore.activeParadigmDef.name}.`, 'info')
+      saveToLocalStorage()
+      return true
+    }
+    return false
+  }
+
+  function unlockParadigm(id: ParadigmId): boolean {
+    const res = paradigmStore.unlockParadigm(id)
+    if (res.success) {
+      terminal.addLog(`Nouveau paradigme découvert et débloqué : ${paradigmStore.activeParadigmDef.name}.`, 'success')
+      saveToLocalStorage()
+      return true
+    }
+    return false
+  }
+
+  function toggleSynthetic(): boolean {
+    const state = paradigmStore.toggleSynthetic()
+    terminal.addLog(
+      state
+        ? 'Générateur de données synthétiques ACTIVÉ (auto-ingestion continue).'
+        : 'Générateur de données synthétiques DÉSACTIVÉ.',
+      'info'
+    )
+    saveToLocalStorage()
+    return state
   }
 
   function performRlhf(): boolean {
@@ -254,6 +317,32 @@ export const useGameStore = defineStore('game', () => {
     canPerformRlhf,
     performRlhf,
     cognitive: cognitiveStore,
+    paradigm: paradigmStore,
+    insights: bridge(() => paradigmStore.insights, (v) => { paradigmStore.insights = v }),
+    totalInsights: computed(() => paradigmStore.totalInsightsEarned),
+    activeParadigmId: bridge(() => paradigmStore.activeParadigm, (v) => { paradigmStore.activeParadigm = v }),
+    unlockedParadigmIds: computed(() => paradigmStore.unlockedParadigms),
+    activeParadigmDef: computed(() => paradigmStore.activeParadigmDef),
+    passiveTflopsBonusPercent: computed(() => paradigmStore.passiveTflopsBonusPercent),
+    passiveTflopsMultiplier: computed(() => paradigmStore.passiveTflopsMultiplier),
+    activeTflopsMultiplier: computed(() => paradigmStore.activeTflopsMultiplier),
+    powerReduction: computed(() => paradigmStore.powerReduction),
+    vramEfficiency: computed(() => paradigmStore.vramEfficiency),
+    syntheticSpeedBonus: computed(() => paradigmStore.syntheticSpeedBonus),
+    isSyntheticActive: bridge(() => paradigmStore.isSyntheticActive, (v) => { paradigmStore.isSyntheticActive = v }),
+    syntheticTextProduced: computed(() => paradigmStore.syntheticTextProduced),
+    syntheticRatio: computed(() => paradigmStore.syntheticRatio),
+    syntheticRateCharsPerSec,
+    modelCollapseActive: computed(() => paradigmStore.modelCollapseActive),
+    collapseThreshold,
+    canTriggerTier2,
+    pendingInsights,
+    tier2PrestigeCount: computed(() => paradigmStore.tier2PrestigeCount),
+    selectParadigm,
+    unlockParadigm,
+    toggleSynthetic,
+    triggerTier2Prestige,
+    hardResetTier2: triggerTier2Prestige,
     addLog: terminal.addLog,
     clearLogs: terminal.clearLogs,
     manualScrape,

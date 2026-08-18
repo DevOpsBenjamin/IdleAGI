@@ -123,6 +123,8 @@ onUnmounted(() => {
       :architecture-points="store.prestige.architecturePoints"
       :total-architecture-points="store.prestige.totalArchitecturePoints"
       :has-prestige-unlocked="store.canPrestige || store.prestige.totalArchitecturePoints > 0 || store.currentPhase >= 3"
+      :insights="store.insights"
+      :total-insights="store.totalInsights"
       :has-paradigm-unlocked="store.currentPhase >= 3 || store.parameters.gte(100000000)"
       @save="store.saveToLocalStorage()"
       @reset="store.hardReset()"
@@ -180,7 +182,14 @@ onUnmounted(() => {
           <Transition name="fade-slide">
             <SyntheticDatasetControl
               v-if="store.unlockedFeatures.trainingAllocation"
+              :is-synthetic-active="store.isSyntheticActive"
+              :synthetic-ratio="store.syntheticRatio"
+              :synthetic-rate-chars-per-sec="store.syntheticRateCharsPerSec"
+              :synthetic-text-produced="store.syntheticTextProduced"
+              :model-collapse-active="store.modelCollapseActive"
+              :collapse-threshold="store.collapseThreshold"
               :unlocked="store.unlockedFeatures.trainingAllocation"
+              @toggle-synthetic="store.toggleSynthetic()"
             />
           </Transition>
 
@@ -210,10 +219,17 @@ onUnmounted(() => {
               :is-training-active="store.allocations.trainingPercent > 0 && store.effectiveCompute.gt(0)"
               :show-cognitive="true"
               :has-paradigm-unlocked="store.currentPhase >= 3 || store.parameters.gte(100000000)"
+              :can-trigger-tier2="store.canTriggerTier2"
+              :pending-insights="store.pendingInsights"
+              :insights="store.insights"
+              :total-insights="store.totalInsights"
+              :active-paradigm-name="store.activeParadigmDef.name"
+              :active-paradigm-tflops-mult="store.activeTflopsMultiplier"
               @open-talent-tree="showTalentTreeModal = true"
               @trigger-prestige="store.triggerPrestige()"
               @perform-rlhf="store.performRlhf()"
               @open-paradigm-modal="showParadigmModal = true"
+              @trigger-tier2-prestige="store.triggerTier2Prestige()"
             />
           </Transition>
 
@@ -379,8 +395,17 @@ onUnmounted(() => {
     <!-- Tier 2 Paradigm Shift Modal -->
     <ParadigmModal
       v-if="showParadigmModal"
+      :insights="store.insights"
+      :total-insights="store.totalInsights"
+      :active-paradigm-id="store.activeParadigmId"
+      :unlocked-paradigm-ids="store.unlockedParadigmIds"
       :parameters="store.parameters"
+      :can-trigger-tier2="store.canTriggerTier2"
+      :pending-insights="store.pendingInsights"
       @close="showParadigmModal = false"
+      @select-paradigm="(id) => store.selectParadigm(id)"
+      @unlock-paradigm="(id) => store.unlockParadigm(id)"
+      @trigger-tier2-prestige="store.triggerTier2Prestige()"
     />
   </div>
 </template>

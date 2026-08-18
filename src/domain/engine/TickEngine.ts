@@ -3,10 +3,12 @@ import type { Resource } from '@/types/resources'
 import type { SoftwareUpgrade } from '@/types/upgrades'
 import type { AllocationState, MilestoneState, UnlockedFeatures } from '@/types/systems'
 import type { CognitiveState } from '@/types/cognitive'
+import type { ParadigmState } from '@/types/paradigm'
 import type { LogType } from '@/types/logs'
 import { EconomyEngine } from './EconomyEngine'
 import { MilestoneTracker } from './MilestoneTracker'
 import { CognitiveEngine, type CognitiveTickResult } from './CognitiveEngine'
+import { SyntheticDataEngine, type SyntheticTickResult } from './SyntheticDataEngine'
 
 export interface TickContext {
   rawText: Resource
@@ -23,11 +25,14 @@ export interface TickContext {
   bandwidthSpeedMultiplier?: number
   tokenGenerationMultiplier?: number
   scrapeMultiplier?: number
+  syntheticSpeedBonus?: number
   isThrottling?: boolean
   isOverloaded?: boolean
   totalTokensServed: Decimal
+  totalCharsRead?: Decimal
   autoBrokerAccumulator: number
   cognitive?: CognitiveState
+  paradigm?: ParadigmState
   onSellRawTextQuiet: (amount: number) => void
   onAddLog: (message: string, type?: LogType) => void
 }
@@ -42,7 +47,9 @@ export interface TickResult {
   newAutoBrokerAccumulator: number
   updatedTotalTokensServed: Decimal
   updatedParameters: Decimal
+  updatedTotalCharsRead?: Decimal
   cognitiveTickResult?: CognitiveTickResult
+  syntheticTickResult?: SyntheticTickResult
 }
 
 export class TickEngine {
@@ -67,6 +74,7 @@ export class TickEngine {
 
     let autoBrokerAcc = context.autoBrokerAccumulator
     let totalTokensServed = context.totalTokensServed
+    let totalCharsRead = context.totalCharsRead ?? new Decimal(0)
     let parameters = context.parameters
 
     // 1. Automatic scraping
@@ -75,9 +83,51 @@ export class TickEngine {
     if (baseAutoScrapePerSec > 0) {
       const charsGained = new Decimal(baseAutoScrapePerSec * dt)
       rawText.current = Decimal.min(rawText.max, rawText.current.add(charsGained))
+      totalCharsRead = totalCharsRead.add(charsGained)
       rawText.ratePerSec = new Decimal(baseAutoScrapePerSec)
     } else {
       rawText.ratePerSec = new Decimal(0)
+    }
+
+    // 1.25. Synthetic Data Auto-Generation & Model Collapse
+    let syntheticTickResult: SyntheticTickResult | undefined
+    if (context.paradigm) {
+      const prevCollapse = context.paradigm.modelCollapseActive
+      syntheticTickResult = SyntheticDataEngine.processTick({
+        effectiveCompute,
+        syntheticSpeedBonus: context.syntheticSpeedBonus ?? 1.0,
+        isSyntheticActive: context.paradigm.isSyntheticActive,
+        syntheticProducedSoFar: context.paradigm.syntheticTextProduced,
+        totalCharsReadSoFar: totalCharsRead,
+        upgrades,
+        dt,
+      })
+
+      if (syntheticTickResult.charsProducedThisTick.gt(0)) {
+        rawText.current = Decimal.min(
+          rawText.max,
+          rawText.current.add(syntheticTickResult.charsProducedThisTick)
+        )
+      }
+
+      context.paradigm.syntheticTextProduced = syntheticTickResult.updatedSyntheticProduced
+      totalCharsRead = syntheticTickResult.updatedTotalChars
+      context.paradigm.syntheticRatio = syntheticTickResult.syntheticRatio
+      context.paradigm.modelCollapseActive = syntheticTickResult.isModelCollapseActive
+
+      if (syntheticTickResult.isModelCollapseActive !== prevCollapse) {
+        if (syntheticTickResult.isModelCollapseActive) {
+          onAddLog(
+            `⚠️ EFFONDREMENT DE MODÈLE : Ratio synthétique critique (${(syntheticTickResult.syntheticRatio * 100).toFixed(0)}% > ${(syntheticTickResult.collapseThreshold * 100).toFixed(0)}%) ! Dérive doublée et entraînement -50%.`,
+            'warn'
+          )
+        } else {
+          onAddLog(
+            'RÉTABLISSEMENT DU MODÈLE : Le ratio de données synthétiques est revenu sous le seuil critique.',
+            'success'
+          )
+        }
+      }
     }
 
     // 1.5. Cron Auto-Broker (Passive data selling)
@@ -125,6 +175,7 @@ export class TickEngine {
 
     if (unlockedFeatures.trainingAllocation && context.cognitive) {
       const prevStatus = CognitiveEngine.calculateStatus(context.cognitive.entropy)
+      const synDriftMult = syntheticTickResult ? syntheticTickResult.syntheticDriftMultiplier : 1.0
       cognitiveTickResult = CognitiveEngine.processTick(
         {
           entropy: context.cognitive.entropy,
@@ -133,6 +184,7 @@ export class TickEngine {
           effectiveCompute,
           upgrades,
           isTrainingUnlocked: unlockedFeatures.trainingAllocation,
+          syntheticDriftMultiplier: synDriftMult,
         },
         dt
       )
@@ -206,7 +258,7 @@ export class TickEngine {
         funds.ratePerSec = new Decimal(0)
       }
 
-      // B. Neural Training: Consumes Tokens and Compute to increase Parameters
+      // B. Neural Training: Consumes Tokens and Compute to increase Parameters factoring in Model Collapse
       if (unlockedFeatures.trainingAllocation) {
         const trainCompute = effectiveCompute.mul(trainRatio)
         const maxTokensToTrain = trainCompute.mul(10).mul(dt)
@@ -214,7 +266,10 @@ export class TickEngine {
 
         if (tokensTrained.gt(0)) {
           tokens.current = tokens.current.sub(tokensTrained)
-          paramsGained = tokensTrained.mul(100)
+          const synTrainEfficiency = syntheticTickResult
+            ? syntheticTickResult.syntheticTrainingEfficiencyMultiplier
+            : 1.0
+          paramsGained = tokensTrained.mul(100).mul(synTrainEfficiency)
           parameters = parameters.add(paramsGained)
 
           // Check research unlock milestone
@@ -292,7 +347,9 @@ export class TickEngine {
       newAutoBrokerAccumulator: autoBrokerAcc,
       updatedTotalTokensServed: totalTokensServed,
       updatedParameters: parameters,
+      updatedTotalCharsRead: totalCharsRead,
       cognitiveTickResult,
+      syntheticTickResult,
     }
   }
 }
