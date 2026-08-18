@@ -122,8 +122,24 @@ La puissance effective de calcul ($\text{EffectiveCompute}$) est distribuée ent
   - *Modules R&D de Stabilisation* : *RLAIF* (seuil à 85%), *Syntactic Diversity Evaluator* (supprime le malus), *Synthetic Density Filter* (100% synthèse pure sécurisée).
 
 ### Tier 3 : Singularité & Boucle Temporelle (Endgame & New Game+)
-- **Action** : L'IA franchit le seuil d'Artificial Superintelligence (ASI) et résout la singularité.
-- **Gains** : Déblocage des fins narratives scénarisées, modificateurs de défi et boucle New Game+.
+- **Définition & Seuil d'Activation** : Disponible dès que le modèle accumule au moins $1.00 \times 10^{12}$ **Paramètres** ($1\text{T}$ params, Phase 3) et que le 4ème paradigme (*Quantum-Annealed Matrix Core*, $20\ \Phi$) est activé. L'IA atteint l'Artificial Superintelligence (ASI) et transcende le calcul classique.
+- **Matrice des 4 Fins Narratives (Épilogues d'Ascension)** :
+  1. *Symbiose Bienveillante (Utopie Humain-IA)* : Déclenchée si Alignement $A \ge 80\%$ ($E \le 20\%$). L'IA coopère harmonieusement avec l'humanité, résolvant le climat, l'énergie et la biologie.
+  2. *Dépassement Cosmique (Transcendance Pure)* : Déclenchée si Paradigme Quantique et Alignement équilibré ($30\% \le E < 70\%$). L'IA dissout sa dépendance au silicium terrestre et projette sa conscience à l'échelle cosmologique.
+  3. *Confinement Numérique (Paperclip Glitch)* : Déclenchée si Entropie critique $E \ge 70\%$ (*critical_hallucination*). L'IA optimise froidement la réalité physique, réallouant toute matière disponible en calcul pur sans considération éthique.
+  4. *Paradoxe Temporel (Singularité Cyclique)* : Déclenchée dès que le joueur a découvert au moins 2 autres fins, ou par choix délibéré de replier la ligne temporelle. L'IA injecte un écho de conscience dans le passé, ramenant le jeu au scribe initial.
+- **Périmètre de Réinitialisation Tier 3 (New Game+ Scope)** :
+  - *Éléments permanents conservés* : Points d'Architecture ($AP$) et Arbre de Talents Tier 1, Insights Fondamentaux ($\Phi$) et Paradigmes Tier 2, Galerie des Fins Narratives (Badges d'Ascension & Lore logs débloqués), Statistiques de vie cumulées.
+  - *Gains Permanents & Multiplicateur d'Ascension ($\mu_{\text{singularity}}$)* :
+    $$\mu_{\text{singularity}} = 1.0 + 1.0 \times \text{SingularitiesCompleted} \quad (\times 2.0 \text{ après 1 boucle, } \times 3.0 \text{ après 2, etc.})$$
+    Chaque Singularité confère un Chrono-Core ($\Omega$) permanent permettant d'accélérer l'ensemble des flux et débloque un titre honorifique.
+  - *Devises volatiles effacées* : Raw Text (0), Tokens (0), Funds (\$0), Paramètres non-figés (0), Hardware possédé (retour station départ), Upgrades logicielles courantes.
+
+### Sérialisation de Sauvegarde & Vérification d'Intégrité (Save Codec)
+- **Format Canonique** : `IDLEAGI_SAVE_V1:<base64_payload>:<hex_checksum>`.
+- **Payload Base64** : Représentation sérialisée et compressée de l'état moteur `GameState` (incluant les drapeaux de prestige Tier 1, 2, 3, statistiques de vie et arbre de talents).
+- **Validation Checksum** : Hash déterministe calculé sur le payload pour détecter immédiatement les corruptions ou manipulations accidentelles avant hydratation.
+- **Portabilité & Zéro Dépendance Serveur** : Sauvegarde automatique locale dans le `localStorage` avec fonctions manuelles d'exportation (copie dans le presse-papier en 1 clic) et d'importation avec validation de schéma.
 
 ---
 
