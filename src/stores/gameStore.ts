@@ -14,13 +14,18 @@ import { useFeaturesStore } from './featuresStore'
 import { usePrestigeStore } from './prestigeStore'
 import { useCognitiveStore } from './cognitiveStore'
 import { useParadigmStore } from './paradigmStore'
+import { useSingularityStore } from './singularityStore'
 import { GameSaveManager } from './helpers/gameSaveManager'
 import { GameStateHydrator, type StoreCollection } from './helpers/gameStateHydrator'
 import { GameActionHandler } from './helpers/gameActionHandler'
 import { SyntheticDataEngine } from '@/domain/engine/SyntheticDataEngine'
+import { SINGULARITY_ENDINGS } from '@/domain/constants/singularity'
 import type { ParadigmId } from '@/types/paradigm'
+import type { SingularityEndingId } from '@/types/singularity'
+import type { SerializedSaveEnvelope } from '@/types/save'
 
 export { MAX_OFFLINE_SECONDS, RAW_TEXT_SNIPPETS }
+
 
 function bridge<T>(getter: () => T, setter: (v: T) => void) {
   return computed({ get: getter, set: setter })
@@ -36,6 +41,7 @@ export const useGameStore = defineStore('game', () => {
   const prestigeStore = usePrestigeStore()
   const cognitiveStore = useCognitiveStore()
   const paradigmStore = useParadigmStore()
+  const singularityStore = useSingularityStore()
 
   const version = ref(CURRENT_SAVE_VERSION)
   const gameStartTime = ref(Date.now())
@@ -55,6 +61,7 @@ export const useGameStore = defineStore('game', () => {
     prestigeStore,
     cognitiveStore,
     paradigmStore,
+    singularityStore,
     meta: { version, gameStartTime, lastTickTimestamp, lastOfflineReport },
   }
 
@@ -73,6 +80,7 @@ export const useGameStore = defineStore('game', () => {
       .mul(prestigeStore.talentMultipliers.tflopsMultiplier)
       .mul(paradigmStore.passiveTflopsMultiplier)
       .mul(paradigmStore.activeTflopsMultiplier)
+      .mul(singularityStore.globalAscensionMultiplier)
   })
 
   // Cognitive computeds & impact multipliers
@@ -97,6 +105,20 @@ export const useGameStore = defineStore('game', () => {
   const collapseThreshold = computed(() =>
     SyntheticDataEngine.calculateCollapseThreshold(upgradesStore.upgrades)
   )
+
+  // Singularity computeds (Tier 3)
+  const canTriggerSingularity = computed(() =>
+    singularityStore.canInitiate(resources.parameters, paradigmStore.activeParadigm)
+  )
+  const qualifiedEndingId = computed<SingularityEndingId>(() =>
+    singularityStore.evaluateEnding(
+      cognitiveStore.entropy.toNumber(),
+      cognitiveStore.alignment.toNumber(),
+      paradigmStore.activeParadigm
+    )
+  )
+  const qualifiedEndingDef = computed(() => SINGULARITY_ENDINGS[qualifiedEndingId.value])
+
 
   // Core Actions
   function manualScrape(amount?: number) {
@@ -164,6 +186,21 @@ export const useGameStore = defineStore('game', () => {
     }
     return false
   }
+
+  function triggerSingularityAscension(endingId: SingularityEndingId): boolean {
+    GameStateHydrator.performSingularityAscension(stores, endingId)
+    saveToLocalStorage()
+    return true
+  }
+
+  function restoreSaveEnvelope(envelope: SerializedSaveEnvelope): boolean {
+    if (!envelope || !envelope.state) return false
+    GameStateHydrator.hydrateStores(envelope.state as Partial<GameState>, stores)
+    saveToLocalStorage()
+    terminal.addLog('💾 Sauvegarde restaurée avec succès.', 'success')
+    return true
+  }
+
 
   function selectParadigm(id: ParadigmId): boolean {
     const res = paradigmStore.selectParadigm(id)
@@ -343,6 +380,17 @@ export const useGameStore = defineStore('game', () => {
     toggleSynthetic,
     triggerTier2Prestige,
     hardResetTier2: triggerTier2Prestige,
+    // Singularity (Tier 3)
+    singularity: singularityStore,
+    chronoCores: bridge(() => singularityStore.chronoCores, (v) => { singularityStore.chronoCores = v }),
+    singularitiesCompleted: computed(() => singularityStore.singularitiesCompleted),
+    discoveredEndings: computed(() => singularityStore.discoveredEndings),
+    canTriggerSingularity,
+    qualifiedEndingId,
+    qualifiedEndingDef,
+    globalAscensionMultiplier: computed(() => singularityStore.globalAscensionMultiplier),
+    triggerSingularityAscension,
+    restoreSaveEnvelope,
     addLog: terminal.addLog,
     clearLogs: terminal.clearLogs,
     manualScrape,
@@ -365,3 +413,4 @@ export const useGameStore = defineStore('game', () => {
     hardReset: () => GameSaveManager.hardReset(),
   }
 })
+

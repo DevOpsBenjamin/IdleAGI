@@ -143,4 +143,34 @@ describe('ModelTelemetry.vue', () => {
     await rlhfBtn.trigger('click')
     expect(wrapper.emitted('perform-rlhf')).toHaveLength(1)
   })
+
+  it('renders Tier 3 Singularity banner and emits open-singularity-modal', async () => {
+    const wrapper = mount(ModelTelemetry, {
+      props: {
+        parameters: new Decimal(1_000_000_000_000),
+        totalVramGB: new Decimal(128),
+        effectiveCompute: new Decimal(500),
+        thermalEfficiency: 1.0,
+        activeParadigmName: 'Quantum-Annealed Matrix Core',
+        canTriggerSingularity: true,
+        chronoCores: 1,
+        singularitiesCompleted: 1,
+        qualifiedEndingTitle: 'Symbiose Bienveillante',
+        qualifiedEndingColor: '#00FF66',
+      },
+    })
+
+    expect(wrapper.text()).toContain('Singularité & ASI // Tier 3')
+    expect(wrapper.text()).toContain('Émergence ASI Prête !')
+    expect(wrapper.text()).toContain('Symbiose Bienveillante')
+    expect(wrapper.text()).toContain('1 $\\Omega$')
+
+    const singularityBtn = wrapper.findAll('button').find((b) =>
+      b.text().includes('Déclencher la Singularité Technologique'),
+    )
+    expect(singularityBtn).toBeDefined()
+    await singularityBtn?.trigger('click')
+    expect(wrapper.emitted('open-singularity-modal')).toHaveLength(1)
+  })
 })
+

@@ -7,5 +7,7 @@ export * from './featuresStore'
 export * from './prestigeStore'
 export * from './cognitiveStore'
 export * from './paradigmStore'
+export * from './singularityStore'
 export * from './gameStore'
+
 

@@ -15,6 +15,7 @@ import type { useFeaturesStore } from '../featuresStore'
 import type { usePrestigeStore } from '../prestigeStore'
 import type { useCognitiveStore } from '../cognitiveStore'
 import type { useParadigmStore } from '../paradigmStore'
+import type { useSingularityStore } from '../singularityStore'
 
 export interface StoreCollection {
   terminal: ReturnType<typeof useTerminalStore>
@@ -26,6 +27,7 @@ export interface StoreCollection {
   prestigeStore: ReturnType<typeof usePrestigeStore>
   cognitiveStore: ReturnType<typeof useCognitiveStore>
   paradigmStore: ReturnType<typeof useParadigmStore>
+  singularityStore: ReturnType<typeof useSingularityStore>
   meta: {
     version: Ref<string>
     gameStartTime: Ref<number>
@@ -33,6 +35,7 @@ export interface StoreCollection {
     lastOfflineReport: Ref<OfflineProgressSummary | null>
   }
 }
+
 
 export class GameStateHydrator {
   /**
@@ -61,6 +64,7 @@ export class GameStateHydrator {
       prestige: stores.prestigeStore.getPrestigeState(),
       cognitive: stores.cognitiveStore.getCognitiveState(),
       paradigm: stores.paradigmStore.getParadigmState(),
+      singularity: stores.singularityStore.getSingularityState(),
     }
   }
 
@@ -90,9 +94,11 @@ export class GameStateHydrator {
     if (loaded.prestige) stores.prestigeStore.setPrestigeState(loaded.prestige)
     if (loaded.cognitive) stores.cognitiveStore.setCognitiveState(loaded.cognitive)
     if (loaded.paradigm) stores.paradigmStore.setParadigmState(loaded.paradigm)
+    if (loaded.singularity) stores.singularityStore.setSingularityState(loaded.singularity)
   }
 
   /**
+
    * Performs a Tier 1 Soft Reset (Fine-Tuning / Checkpoint):
    * Resets volatile resources & hardware while preserving AP, talents, lifetime stats, and unlock flags.
    */
@@ -240,4 +246,89 @@ export class GameStateHydrator {
       'event'
     )
   }
+
+  /**
+   * Performs a Tier 3 Singularity Ascension (New Game+ / Boucle Temporelle):
+   * Records the ending, awards +1 Chrono-Core (Omega), and resets volatile resources & hardware
+   * while preserving AP & Talents (T1), Insights & Paradigmes (T2), discovered endings gallery,
+   * and permanent Chrono-Cores speed multipliers.
+   */
+  public static performSingularityAscension(
+    stores: StoreCollection,
+    endingId: import('@/types/singularity').SingularityEndingId
+  ): void {
+    // 1. Claim ascension in singularity store
+    stores.singularityStore.claimAscension(endingId)
+
+    // 2. Reset volatile currencies & counters
+    stores.resources.rawText.current = new Decimal(0)
+    stores.resources.tokens.current = new Decimal(0)
+    stores.resources.funds.current = new Decimal(0)
+    stores.resources.parameters = new Decimal(0)
+    stores.resources.researchPoints.current = new Decimal(0)
+    stores.resources.totalTokensServed = new Decimal(0)
+    stores.resources.totalCharsRead = new Decimal(0)
+    stores.resources.resetBufferCapacities()
+    stores.cognitiveStore.resetState()
+    stores.paradigmStore.resetForHardReset()
+
+    // 3. Reset hardware to initial catalog
+    stores.hardwareStore.hardware = createInitialHardware()
+    stores.hardwareStore.gridCapacityWatts = new Decimal(100)
+    stores.hardwareStore.coolingCapacityWatts = new Decimal(50)
+
+    // 4. Reset regular upgrades
+    stores.upgradesStore.upgrades = createInitialUpgrades()
+
+    // 5. Reset allocations
+    stores.allocation.allocations = {
+      inferencePercent: 100,
+      trainingPercent: 0,
+      researchPercent: 0,
+    }
+
+    // 6. Reset phase to Phase 0
+    stores.features.setPhase(0, true)
+
+    // 7. Reset early milestones
+    stores.features.reachedMilestones = {
+      readingSkill1: false,
+      readingSkill2: false,
+      dataBrokerUnlocked: false,
+      potatoPcUnlocked: false,
+      firstPotatoPc: false,
+      firstCpu: false,
+      firstGpu: false,
+      trainingUnlocked: false,
+      researchUnlocked: false,
+      first1000Params: false,
+      first10000Params: false,
+      first1000Funds: false,
+      firstThrottling: false,
+    }
+
+    // 8. Reset early features while keeping T1, T2 and T3 prestige unlocked
+    stores.features.unlockedFeatures = {
+      ...stores.features.unlockedFeatures,
+      dataBroker: false,
+      hardwareSection: false,
+      scriptsSection: false,
+      autoBroker: false,
+      autoScraping: false,
+      tokenizerUnlocked: false,
+      oscilloscope: false,
+      trainingAllocation: false,
+      researchAllocation: false,
+      prestigeT1: true,
+      prestigeT2: true,
+      prestigeT3: true,
+      syntheticData: true,
+    }
+
+    stores.terminal.addLog(
+      `🌌 ASCENSION ACCOMPLIE // Épilogue : ${endingId}. +1 Chrono-Core (Ω) débloqué. La boucle temporelle s'est repliée avec succès.`,
+      'event'
+    )
+  }
 }
+
