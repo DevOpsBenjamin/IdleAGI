@@ -16,12 +16,16 @@ import OscilloscopeCanvas from '@/components/OscilloscopeCanvas.vue'
 import DatacenterTelemetry from '@/components/DatacenterTelemetry.vue'
 import MobileNavigation, { type MobileTab } from '@/components/MobileNavigation.vue'
 import ArchitectureTalentTree from '@/components/ArchitectureTalentTree.vue'
+import SyntheticDatasetControl from '@/components/telemetry/SyntheticDatasetControl.vue'
+import ParadigmModal from '@/components/ParadigmModal.vue'
 
 const store = useGameStore()
 const { fps, currentTps } = useGameLoop()
 
 const activeMobileTab = ref<MobileTab>('ingestion')
 const showTalentTreeModal = ref(false)
+const showParadigmModal = ref(false)
+
 
 const hardwareArray = computed(() => Object.values(store.hardware))
 const upgradesArray = computed(() => Object.values(store.upgrades))
@@ -119,10 +123,13 @@ onUnmounted(() => {
       :architecture-points="store.prestige.architecturePoints"
       :total-architecture-points="store.prestige.totalArchitecturePoints"
       :has-prestige-unlocked="store.canPrestige || store.prestige.totalArchitecturePoints > 0 || store.currentPhase >= 3"
+      :has-paradigm-unlocked="store.currentPhase >= 3 || store.parameters.gte(100000000)"
       @save="store.saveToLocalStorage()"
       @reset="store.hardReset()"
       @open-talent-tree="showTalentTreeModal = true"
+      @open-paradigm-modal="showParadigmModal = true"
     />
+
 
     <!-- Main Scrollable Content Area -->
     <main class="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 pb-24 lg:pb-6 min-h-0 z-10">
@@ -169,7 +176,15 @@ onUnmounted(() => {
             />
           </Transition>
 
-          <!-- 3. Model Parameters Telemetry (Unlocked in Phase 3) -->
+          <!-- 3. Synthetic Dataset Generator Control (Unlocked in Phase 3) -->
+          <Transition name="fade-slide">
+            <SyntheticDatasetControl
+              v-if="store.unlockedFeatures.trainingAllocation"
+              :unlocked="store.unlockedFeatures.trainingAllocation"
+            />
+          </Transition>
+
+          <!-- 4. Model Parameters Telemetry (Unlocked in Phase 3) -->
           <Transition name="fade-slide">
             <ModelTelemetry
               v-if="store.unlockedFeatures.trainingAllocation"
@@ -194,11 +209,14 @@ onUnmounted(() => {
               :research-multiplier="store.researchMultiplier"
               :is-training-active="store.allocations.trainingPercent > 0 && store.effectiveCompute.gt(0)"
               :show-cognitive="true"
+              :has-paradigm-unlocked="store.currentPhase >= 3 || store.parameters.gte(100000000)"
               @open-talent-tree="showTalentTreeModal = true"
               @trigger-prestige="store.triggerPrestige()"
               @perform-rlhf="store.performRlhf()"
+              @open-paradigm-modal="showParadigmModal = true"
             />
           </Transition>
+
 
           <!-- 4. Tri-Allocation Panel (Unlocked in Phase 3) -->
           <Transition name="fade-slide">
@@ -357,5 +375,13 @@ onUnmounted(() => {
       @close="showTalentTreeModal = false"
       @buy-talent="(id) => store.buyTalent(id)"
     />
+
+    <!-- Tier 2 Paradigm Shift Modal -->
+    <ParadigmModal
+      v-if="showParadigmModal"
+      :parameters="store.parameters"
+      @close="showParadigmModal = false"
+    />
   </div>
 </template>
+
