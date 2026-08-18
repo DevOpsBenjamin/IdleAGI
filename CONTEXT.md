@@ -102,9 +102,24 @@ La puissance effective de calcul ($\text{EffectiveCompute}$) est distribuée ent
   - *Branche Calcul & Matrice* : GEMM Matrix Acceleration (+20% TFLOPS), FlashAttention-2 (+35% TFLOPS), Speculative Decoding (+50% valeur API), MoE Sparse Gating (+100% TFLOPS).
 
 ### Tier 2 : Changement de Paradigme (Hard Reset local ~2-3h)
-- **Action** : Transition vers une nouvelle architecture fondamentale (Transformer classique $\to$ Mixture of Experts (MoE) $\to$ Neuromorphique $\to$ Quantum AI).
-- **Gains** : Découvertes Fondamentales (Insights).
-- **Bonus** : Synthèse de données auto-générées, contournement partiel des contraintes de VRAM.
+- **Définition & Seuil d'Activation** : Disponible dès que le modèle accumule au moins $1.00 \times 10^9$ **Paramètres** ($1\text{B}$ params, Phase 3). Le joueur effectue une refonte architecturale profonde de son intelligence artificielle.
+- **Formule des Insights Fondamentaux ($\Phi$)** :
+  $$\Phi = \left\lfloor \left( \frac{\text{Parameters}}{10^9} \right)^{0.5} \right\rfloor$$
+  *(Ex: $1\text{B} \to 1\ \Phi$, $4\text{B} \to 2\ \Phi$, $9\text{B} \to 3\ \Phi$, $16\text{B} \to 4\ \Phi$, $100\text{B} \to 10\ \Phi$)*
+- **Bonus Passif Universel ($\mu_{\text{paradigm\_passive}}$)** : Chaque Insight accumulé confère $+10\%$ de vitesse de calcul brute permanente ($+10\% \text{ TFLOPS}$ par $\Phi$).
+- **Périmètre de Réinitialisation (Hard Reset Scope)** :
+  - *Éléments permanents conservés* : Points d'Architecture ($AP$) et Arbre de Talents Tier 1, Insights Fondamentaux ($\Phi$), Paradigmes débloqués, Statistiques cumulées.
+  - *Devises volatiles effacées* : Raw Text (0), Tokens (0), Funds (\$0), Paramètres non-figés (0), Hardware possédé (retour station départ), Upgrades logicielles courantes.
+- **Catalogue des Paradigmes Fondamentaux** :
+  - *Dense Monolithic Transformer* ($0\ \Phi$) : Ratio VRAM 1:1, TFLOPS nominaux (Baseline).
+  - *Mixture of Experts (MoE)* ($1\ \Phi$) : Sparse Gating Top-2 $\implies$ $+150\%$ vitesse brute ($\mu_{\text{tflops}} = 2.5$) pour la même VRAM.
+  - *Neuromorphic Spiking Matrix* ($5\ \Phi$) : Calcul asynchrone bio-inspiré $\implies$ $-75\%$ Watts/Chaleur ($P_{\text{draw}} \times 0.25$) et zéro thermal throttling.
+  - *Quantum-Annealed Matrix Core* ($20\ \Phi$) : Superposition quantique $\implies$ $\times 10.0\text{ TFLOPS}$ et passerelle vers la Singularité Tier 3.
+- **Génération de Datasets Synthétiques & Risque de Model Collapse** :
+  - *Production continue* : $\text{SyntheticRate} = \text{EffectiveCompute} \times \mu_{\text{synthetic\_speed}}$ (Raw Text synthétique autonome).
+  - *Ratio Synthétique ($R_{\text{synth}}$)* : Part de données synthétiques dans le buffer d'ingestion.
+  - *Model Collapse ($R_{\text{synth}} > 70\%$)* : Doublement de la dérive d'entropie ($\Delta E \times 2.0$) et $-50\%$ efficacité d'entraînement sans filtrage.
+  - *Modules R&D de Stabilisation* : *RLAIF* (seuil à 85%), *Syntactic Diversity Evaluator* (supprime le malus), *Synthetic Density Filter* (100% synthèse pure sécurisée).
 
 ### Tier 3 : Singularité & Boucle Temporelle (Endgame & New Game+)
 - **Action** : L'IA franchit le seuil d'Artificial Superintelligence (ASI) et résout la singularité.
