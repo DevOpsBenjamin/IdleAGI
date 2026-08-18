@@ -6,6 +6,7 @@ import type {
 } from '@/types'
 import { createInitialHardware } from '@/domain/constants/hardware'
 import { createInitialUpgrades } from '@/domain/constants/upgrades'
+import { deserializeGameState } from '@/utils/serialization'
 import type { useTerminalStore } from '../terminalStore'
 import type { useResourcesStore } from '../resourcesStore'
 import type { useHardwareStore } from '../hardwareStore'
@@ -69,33 +70,40 @@ export class GameStateHydrator {
   }
 
   /**
-   * Hydrates sub-stores from a partial loaded GameState.
+   * Hydrates sub-stores from a partial loaded GameState or SerializedGameState payload.
    */
   public static hydrateStores(
-    loaded: Partial<GameState>,
+    loaded: Partial<GameState> | Record<string, unknown>,
     stores: StoreCollection
   ): void {
-    if (loaded.rawText) stores.resources.rawText = loaded.rawText
-    if (loaded.tokens) stores.resources.tokens = loaded.tokens
-    if (loaded.funds) stores.resources.funds = loaded.funds
-    if (loaded.parameters) stores.resources.parameters = loaded.parameters
-    if (loaded.researchPoints) stores.resources.researchPoints = loaded.researchPoints
-    if (loaded.hardware) stores.hardwareStore.hardware = loaded.hardware
-    if (loaded.upgrades) stores.upgradesStore.upgrades = loaded.upgrades
-    if (loaded.allocations) stores.allocation.allocations = loaded.allocations
-    if (loaded.gridCapacityWatts) stores.hardwareStore.gridCapacityWatts = loaded.gridCapacityWatts
-    if (loaded.coolingCapacityWatts) stores.hardwareStore.coolingCapacityWatts = loaded.coolingCapacityWatts
-    if (loaded.terminalLogs) stores.terminal.setLogs(loaded.terminalLogs)
-    if (loaded.unlockedFeatures) stores.features.unlockedFeatures = loaded.unlockedFeatures
-    if (loaded.lastTickTimestamp) stores.meta.lastTickTimestamp.value = loaded.lastTickTimestamp
-    if (loaded.gameStartTime) stores.meta.gameStartTime.value = loaded.gameStartTime
-    if (loaded.currentPhase !== undefined) stores.features.currentPhase = loaded.currentPhase
-    if (loaded.totalCharsRead) stores.resources.totalCharsRead = loaded.totalCharsRead
-    if (loaded.prestige) stores.prestigeStore.setPrestigeState(loaded.prestige)
-    if (loaded.cognitive) stores.cognitiveStore.setCognitiveState(loaded.cognitive)
-    if (loaded.paradigm) stores.paradigmStore.setParadigmState(loaded.paradigm)
-    if (loaded.singularity) stores.singularityStore.setSingularityState(loaded.singularity)
+    const defaultState = this.extractFullState(stores)
+    const normalized: Partial<GameState> =
+      loaded && typeof loaded === 'object' && 'parameters' in loaded && typeof (loaded as Record<string, unknown>).parameters === 'string'
+        ? deserializeGameState(JSON.stringify(loaded), defaultState) ?? (loaded as Partial<GameState>)
+        : (loaded as Partial<GameState>)
+
+    if (normalized.rawText) stores.resources.rawText = normalized.rawText
+    if (normalized.tokens) stores.resources.tokens = normalized.tokens
+    if (normalized.funds) stores.resources.funds = normalized.funds
+    if (normalized.parameters) stores.resources.parameters = normalized.parameters
+    if (normalized.researchPoints) stores.resources.researchPoints = normalized.researchPoints
+    if (normalized.hardware) stores.hardwareStore.hardware = normalized.hardware
+    if (normalized.upgrades) stores.upgradesStore.upgrades = normalized.upgrades
+    if (normalized.allocations) stores.allocation.allocations = normalized.allocations
+    if (normalized.gridCapacityWatts) stores.hardwareStore.gridCapacityWatts = normalized.gridCapacityWatts
+    if (normalized.coolingCapacityWatts) stores.hardwareStore.coolingCapacityWatts = normalized.coolingCapacityWatts
+    if (normalized.terminalLogs) stores.terminal.setLogs(normalized.terminalLogs)
+    if (normalized.unlockedFeatures) stores.features.unlockedFeatures = normalized.unlockedFeatures
+    if (normalized.lastTickTimestamp) stores.meta.lastTickTimestamp.value = normalized.lastTickTimestamp
+    if (normalized.gameStartTime) stores.meta.gameStartTime.value = normalized.gameStartTime
+    if (normalized.currentPhase !== undefined) stores.features.currentPhase = normalized.currentPhase
+    if (normalized.totalCharsRead) stores.resources.totalCharsRead = normalized.totalCharsRead
+    if (normalized.prestige) stores.prestigeStore.setPrestigeState(normalized.prestige)
+    if (normalized.cognitive) stores.cognitiveStore.setCognitiveState(normalized.cognitive)
+    if (normalized.paradigm) stores.paradigmStore.setParadigmState(normalized.paradigm)
+    if (normalized.singularity) stores.singularityStore.setSingularityState(normalized.singularity)
   }
+
 
   /**
 

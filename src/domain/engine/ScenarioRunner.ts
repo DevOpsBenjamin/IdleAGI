@@ -42,6 +42,15 @@ export interface ScenarioGameStore {
   rlhfBatchCount?: number
   apiMultiplier?: number
   researchMultiplier?: number
+  insights?: number
+  totalInsights?: number
+  activeParadigmId?: string
+  isSyntheticActive?: boolean
+  syntheticRatio?: number
+  chronoCores?: number
+  singularitiesCompleted?: number
+  discoveredEndings?: import('@/types/singularity').SingularityEndingId[]
+  globalAscensionMultiplier?: number
   manualScrape(amount?: number): void
   sellRawText(chars?: number, silent?: boolean): boolean
   sellAllRawText(): boolean
@@ -50,6 +59,11 @@ export interface ScenarioGameStore {
   buyTalent?(id: string): boolean
   triggerPrestige?(): boolean
   performRlhf?(): boolean
+  triggerTier2Prestige?(): boolean
+  selectParadigm?(id: import('@/types/paradigm').ParadigmId): boolean
+  unlockParadigm?(id: import('@/types/paradigm').ParadigmId): boolean
+  toggleSynthetic?(): boolean
+  triggerSingularityAscension?(endingId: import('@/types/singularity').SingularityEndingId): boolean
   updateAllocations(alloc: AllocationState): void
   setAllocationPreset(preset: AllocationPreset): void
   processTick(dt: number): void
@@ -92,8 +106,18 @@ export class ScenarioRunner {
       rlhfBatchCount: this.store.rlhfBatchCount,
       apiMultiplier: this.store.apiMultiplier,
       researchMultiplier: this.store.researchMultiplier,
+      insights: this.store.insights,
+      totalInsights: this.store.totalInsights,
+      activeParadigmId: this.store.activeParadigmId,
+      isSyntheticActive: this.store.isSyntheticActive,
+      syntheticRatio: this.store.syntheticRatio,
+      chronoCores: this.store.chronoCores,
+      singularitiesCompleted: this.store.singularitiesCompleted,
+      discoveredEndings: this.store.discoveredEndings,
+      globalAscensionMultiplier: this.store.globalAscensionMultiplier,
     }
   }
+
 
   public getMetrics(realStartTime: number): SimulationMetrics {
     const purchasedHw = Object.values(this.store.hardware).reduce(
@@ -248,6 +272,23 @@ export class ScenarioRunner {
 
       case 'perform_rlhf':
         return this.store.performRlhf ? this.store.performRlhf() : false
+
+      case 'trigger_tier2_prestige':
+        return this.store.triggerTier2Prestige ? this.store.triggerTier2Prestige() : false
+
+      case 'select_paradigm':
+        return this.store.selectParadigm ? this.store.selectParadigm(action.paradigmId) : false
+
+      case 'unlock_paradigm':
+        return this.store.unlockParadigm ? this.store.unlockParadigm(action.paradigmId) : false
+
+      case 'toggle_synthetic':
+        return this.store.toggleSynthetic ? this.store.toggleSynthetic() : false
+
+      case 'trigger_singularity':
+        return this.store.triggerSingularityAscension
+          ? this.store.triggerSingularityAscension(action.endingId)
+          : false
 
       case 'set_allocations':
         this.store.updateAllocations(action.allocations)

@@ -10,4 +10,5 @@ export * from './PrestigeEngine'
 export * from './CognitiveEngine'
 export * from './ParadigmEngine'
 export * from './SyntheticDataEngine'
-
+export * from './SingularityEngine'
+export * from './SaveFormatCodec'

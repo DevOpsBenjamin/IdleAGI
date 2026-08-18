@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type Decimal from 'break_infinity.js'
-import type { SingularityEndingId, SingularityState } from '@/types/singularity'
+import type {
+  SingularityEndingId,
+  SingularityEndingDefinition,
+  SingularityState,
+} from '@/types/singularity'
 import type { ParadigmId } from '@/types/paradigm'
-import {
-  canInitiateSingularity,
-  evaluateQualifiedEnding,
-  getSingularityMultiplier,
-} from '@/domain/singularityEvaluator'
+import { SingularityEngine } from '@/domain/engine/SingularityEngine'
 
 export const useSingularityStore = defineStore('singularity', () => {
   const singularitiesCompleted = ref<number>(0)
@@ -17,23 +17,33 @@ export const useSingularityStore = defineStore('singularity', () => {
   const currentEndingSelected = ref<SingularityEndingId | null>(null)
 
   const globalAscensionMultiplier = computed<number>(() => {
-    return getSingularityMultiplier(chronoCores.value)
+    return SingularityEngine.calculateGlobalMultiplier(chronoCores.value)
+  })
+
+  const hasDiscoveredAllEndings = computed<boolean>(() => {
+    return SingularityEngine.hasDiscoveredAllEndings(discoveredEndings.value)
+  })
+
+  const allEndings = computed<SingularityEndingDefinition[]>(() => {
+    return SingularityEngine.getAllEndings()
   })
 
   function canInitiate(parameters: Decimal, activeParadigm: ParadigmId): boolean {
-    return canInitiateSingularity(parameters, activeParadigm)
+    return SingularityEngine.canInitiateSingularity(parameters, activeParadigm)
   }
 
   function evaluateEnding(
     entropy: number,
     alignment: number,
     activeParadigm: ParadigmId,
+    forceCyclicChoice = false,
   ): SingularityEndingId {
-    return evaluateQualifiedEnding(
+    return SingularityEngine.evaluateQualifiedEnding(
       entropy,
       alignment,
       activeParadigm,
       discoveredEndings.value,
+      forceCyclicChoice,
     )
   }
 
@@ -84,6 +94,14 @@ export const useSingularityStore = defineStore('singularity', () => {
     }
   }
 
+  function resetState(): void {
+    singularitiesCompleted.value = 0
+    discoveredEndings.value = []
+    chronoCores.value = 0
+    lastAscensionTimestamp.value = null
+    currentEndingSelected.value = null
+  }
+
   return {
     singularitiesCompleted,
     discoveredEndings,
@@ -91,10 +109,14 @@ export const useSingularityStore = defineStore('singularity', () => {
     lastAscensionTimestamp,
     currentEndingSelected,
     globalAscensionMultiplier,
+    hasDiscoveredAllEndings,
+    allEndings,
     canInitiate,
     evaluateEnding,
     claimAscension,
     getSingularityState,
     setSingularityState,
+    resetState,
   }
 })
+
