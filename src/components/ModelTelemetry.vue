@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Cpu, Sparkles, Gauge, Activity, Zap, RotateCcw } from 'lucide-vue-next'
-
+import { Cpu, Sparkles, Gauge, Activity } from 'lucide-vue-next'
 import { formatNumber, formatFlops, formatVram, formatBandwidth } from '@/utils/format'
 import CognitiveTelemetry from './telemetry/CognitiveTelemetry.vue'
+import Tier1PrestigeBanner from './telemetry/Tier1PrestigeBanner.vue'
+import Tier2ParadigmBanner from './telemetry/Tier2ParadigmBanner.vue'
+import Tier3SingularityBanner from './telemetry/Tier3SingularityBanner.vue'
 import type { CognitiveStatus } from '@/types/cognitive'
 import type Decimal from 'break_infinity.js'
 
@@ -64,8 +66,6 @@ const emit = defineEmits<{
   (e: 'open-singularity-modal'): void
 }>()
 
-
-
 const paramsFormatted = computed(() => formatNumber(props.parameters))
 const vramFormatted = computed(() => formatVram(props.totalVramGB))
 const bandwidthFormatted = computed(() => {
@@ -83,7 +83,7 @@ const shouldShowCognitive = computed(() => props.showCognitive ?? true)
 </script>
 
 <template>
-  <div class="bg-[#0D1117] border border-[#21262D] rounded-lg p-4 flex flex-col gap-3">
+  <div class="bg-[#0D1117] border border-[#21262D] rounded-lg p-4 flex flex-col gap-3 font-mono">
     <!-- Header -->
     <div class="flex items-center justify-between border-b border-[#21262D] pb-3">
       <div class="flex items-center gap-2">
@@ -171,166 +171,41 @@ const shouldShowCognitive = computed(() => props.showCognitive ?? true)
       @perform-rlhf="emit('perform-rlhf')"
     />
 
-    <!-- Tier 1 Checkpoint & Talent Tree Banner (Progressive disclosure when parameters >= 500k or AP > 0) -->
-    <div
-      v-if="parameters.gte(500000) || (totalArchitecturePoints ?? 0) > 0"
-      class="mt-1 p-3 rounded-lg bg-[#161B22]/90 border border-[#38BDF8]/40 flex flex-col gap-2.5 shadow-[0_0_15px_rgba(56,189,248,0.1)]"
-    >
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-1.5 text-xs font-bold text-[#F0F6FC]">
-          <Zap class="w-4 h-4 text-[#38BDF8] animate-pulse" />
-          <span>Checkpoint & Fine-Tuning</span>
-        </div>
-        <span
-          class="text-[10px] font-bold px-2 py-0.5 rounded border"
-          :class="
-            canPrestige
-              ? 'bg-[#00FF66]/10 text-[#00FF66] border-[#00FF66]/30'
-              : 'bg-[#FFB800]/10 text-[#FFB800] border-[#FFB800]/30'
-          "
-        >
-          {{ canPrestige ? `+${pendingAP} AP Disponibles` : 'Seuil : 1.00M Params' }}
-        </span>
-      </div>
+    <!-- Tier 1 Checkpoint & Talent Tree Banner -->
+    <Tier1PrestigeBanner
+      :parameters="parameters"
+      :can-prestige="canPrestige"
+      :pending-a-p="pendingAP"
+      :architecture-points="architecturePoints"
+      :total-architecture-points="totalArchitecturePoints"
+      @open-talent-tree="emit('open-talent-tree')"
+      @trigger-prestige="emit('trigger-prestige')"
+    />
 
-      <div class="text-[11px] text-[#8B949E] leading-relaxed">
-        Figez les poids synaptiques du modèle pour convertir vos connaissances en
-        <strong class="text-[#38BDF8]">Points d'Architecture permanents</strong>.
-      </div>
+    <!-- Tier 2 Paradigm Shift Banner -->
+    <Tier2ParadigmBanner
+      :parameters="parameters"
+      :total-insights="totalInsights"
+      :has-paradigm-unlocked="hasParadigmUnlocked"
+      :can-trigger-tier2="canTriggerTier2"
+      :pending-insights="pendingInsights"
+      :insights="insights"
+      :active-paradigm-name="activeParadigmName"
+      :active-paradigm-tflops-mult="activeParadigmTflopsMult"
+      @open-paradigm-modal="emit('open-paradigm-modal')"
+      @trigger-tier2-prestige="emit('trigger-tier2-prestige')"
+    />
 
-      <div class="grid grid-cols-2 gap-2 pt-1">
-        <button
-          type="button"
-          @click="emit('open-talent-tree')"
-          class="min-h-[40px] px-3 py-2 rounded-lg bg-[#38BDF8]/15 hover:bg-[#38BDF8]/25 border border-[#38BDF8]/40 text-[#38BDF8] text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 touch-manipulation"
-        >
-          <Sparkles class="w-3.5 h-3.5" />
-          <span>Arbre de Talents ({{ architecturePoints ?? 0 }} AP)</span>
-        </button>
-
-        <button
-          type="button"
-          :disabled="!canPrestige"
-          @click="emit('trigger-prestige')"
-          class="min-h-[40px] px-3 py-2 rounded-lg text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all select-none touch-manipulation"
-          :class="
-            canPrestige
-              ? 'bg-[#00FF66] hover:bg-[#00DD55] text-black shadow-[0_0_12px_rgba(0,255,102,0.3)] cursor-pointer active:scale-95'
-              : 'bg-[#21262D] text-[#8B949E] border border-transparent cursor-not-allowed opacity-60'
-          "
-        >
-          <Cpu class="w-3.5 h-3.5" />
-          <span>{{ canPrestige ? `Prestige (+${pendingAP} AP)` : 'Non Éligible' }}</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Tier 2 Paradigm Shift Banner (Progressive disclosure when parameters >= 100M or insights > 0) -->
-    <div
-      v-if="parameters.gte(100000000) || (totalInsights ?? 0) > 0 || hasParadigmUnlocked"
-      class="mt-1 p-3 rounded-lg bg-[#161B22]/90 border border-[#A855F7]/40 flex flex-col gap-2.5 shadow-[0_0_15px_rgba(168,85,247,0.15)]"
-    >
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-1.5 text-xs font-bold text-[#F0F6FC]">
-          <Sparkles class="w-4 h-4 text-[#A855F7] animate-pulse" />
-          <span>Paradigmes IA // Tier 2</span>
-        </div>
-        <span
-          class="text-[10px] font-bold px-2 py-0.5 rounded border"
-          :class="
-            canTriggerTier2
-              ? 'bg-[#A855F7]/20 text-[#A855F7] border-[#A855F7]/40'
-              : 'bg-[#FFB800]/10 text-[#FFB800] border-[#FFB800]/30'
-          "
-        >
-          {{ canTriggerTier2 ? `+${pendingInsights} $\\Phi$ Disponibles` : 'Seuil : 1.00B Params' }}
-        </span>
-      </div>
-
-      <div class="text-[11px] text-[#8B949E] leading-relaxed flex items-center justify-between">
-        <span>
-          Architecture active : <strong class="text-[#A855F7]">{{ activeParadigmName ?? 'Dense Transformer' }}</strong>
-        </span>
-        <span v-if="(activeParadigmTflopsMult ?? 1) > 1" class="text-[#00FF66] font-bold text-[10px]">
-          x{{ activeParadigmTflopsMult?.toFixed(1) }} TFLOPS
-        </span>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2 pt-1">
-        <button
-          type="button"
-          @click="emit('open-paradigm-modal')"
-          class="min-h-[40px] px-3 py-2 rounded-lg bg-[#A855F7]/15 hover:bg-[#A855F7]/25 border border-[#A855F7]/40 text-[#A855F7] text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 touch-manipulation"
-        >
-          <Sparkles class="w-3.5 h-3.5" />
-          <span>Paradigmes ({{ insights ?? 0 }} $\Phi$)</span>
-        </button>
-
-        <button
-          type="button"
-          :disabled="!canTriggerTier2 && (pendingInsights ?? 0) <= 0"
-          @click="emit('trigger-tier2-prestige')"
-          class="min-h-[40px] px-3 py-2 rounded-lg text-xs font-bold font-mono flex items-center justify-center gap-1.5 transition-all select-none touch-manipulation"
-          :class="
-            canTriggerTier2 || (pendingInsights ?? 0) > 0
-              ? 'bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white shadow-[0_0_12px_rgba(168,85,247,0.4)] cursor-pointer active:scale-95'
-              : 'bg-[#21262D] text-[#8B949E] border border-transparent cursor-not-allowed opacity-60'
-          "
-        >
-          <RotateCcw class="w-3.5 h-3.5" />
-          <span>{{ (pendingInsights ?? 0) > 0 ? `Reset (+${pendingInsights} $\\Phi$)` : 'Non Éligible' }}</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Tier 3 Singularity Banner (Progressive disclosure when parameters >= 100B, quantum paradigm active, or singularities > 0) -->
-    <div
-      v-if="parameters.gte(100000000000) || activeParadigmName?.includes('Quantum') || (singularitiesCompleted ?? 0) > 0 || canTriggerSingularity"
-      class="mt-1 p-3 rounded-lg bg-[#07090E] border border-[#00FF66]/50 flex flex-col gap-2.5 shadow-[0_0_20px_rgba(0,255,102,0.15)]"
-    >
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-1.5 text-xs font-bold text-[#F0F6FC]">
-          <Sparkles class="w-4 h-4 text-[#00FF66] animate-pulse" />
-          <span>Singularité & ASI // Tier 3</span>
-        </div>
-        <span
-          class="text-[10px] font-bold px-2 py-0.5 rounded border"
-          :class="
-            canTriggerSingularity
-              ? 'bg-[#00FF66]/20 text-[#00FF66] border-[#00FF66]/50 shadow-[0_0_8px_rgba(0,255,102,0.3)] animate-pulse'
-              : 'bg-[#FFB800]/10 text-[#FFB800] border-[#FFB800]/30'
-          "
-        >
-          {{ canTriggerSingularity ? 'Émergence ASI Prête !' : 'Seuil : 1.00T Params + Quantum' }}
-        </span>
-      </div>
-
-      <div class="text-[11px] text-[#8B949E] leading-relaxed flex items-center justify-between">
-        <span>
-          Épilogue qualifié : <strong :style="{ color: qualifiedEndingColor ?? '#00FF66' }">{{ qualifiedEndingTitle ?? 'Symbiose Bienveillante' }}</strong>
-        </span>
-        <span v-if="(chronoCores ?? 0) > 0" class="text-[#38BDF8] font-bold text-[10px]">
-          {{ chronoCores }} $\Omega$ (x{{ (1 + (chronoCores ?? 0)).toFixed(1) }} All)
-        </span>
-      </div>
-
-      <div class="pt-1">
-        <button
-          type="button"
-          @click="emit('open-singularity-modal')"
-          class="w-full min-h-[42px] px-4 py-2 rounded-lg text-xs font-bold font-mono flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-95 touch-manipulation"
-          :class="
-            canTriggerSingularity
-              ? 'bg-gradient-to-r from-[#00FF66] via-[#38BDF8] to-[#A855F7] text-black shadow-[0_0_15px_rgba(0,255,102,0.4)] hover:brightness-110'
-              : 'bg-[#00FF66]/15 hover:bg-[#00FF66]/25 border border-[#00FF66]/40 text-[#00FF66]'
-          "
-        >
-          <Sparkles class="w-4 h-4" />
-          <span>{{ canTriggerSingularity ? 'Déclencher la Singularité Technologique (Tier 3)' : 'Examiner la Singularité & Galerie' }}</span>
-        </button>
-      </div>
-    </div>
+    <!-- Tier 3 Singularity Banner -->
+    <Tier3SingularityBanner
+      :parameters="parameters"
+      :active-paradigm-name="activeParadigmName"
+      :singularities-completed="singularitiesCompleted"
+      :can-trigger-singularity="canTriggerSingularity"
+      :qualified-ending-title="qualifiedEndingTitle"
+      :qualified-ending-color="qualifiedEndingColor"
+      :chrono-cores="chronoCores"
+      @open-singularity-modal="emit('open-singularity-modal')"
+    />
   </div>
 </template>
-
-

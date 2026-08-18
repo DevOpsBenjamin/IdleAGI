@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref } from 'vue'
 import { useGameStore } from '@/stores/gameStore'
 import { useGameLoop } from '@/composables/useGameLoop'
 import AppHeader from '@/components/AppHeader.vue'
@@ -21,8 +21,24 @@ import ParadigmModal from '@/components/ParadigmModal.vue'
 import SingularityModal from '@/components/SingularityModal.vue'
 import SaveManagerModal from '@/components/SaveManagerModal.vue'
 
+import { useGlobalShortcuts } from '@/composables/useGlobalShortcuts'
+import { useAppLayout } from '@/composables/useAppLayout'
+
 const store = useGameStore()
 const { fps, currentTps } = useGameLoop()
+const {
+  hardwareArray,
+  upgradesArray,
+  ramUpgradesArray,
+  coolingUpgradesArray,
+  powerUpgradesArray,
+  purchasedUpgradeIds,
+  hasHardware,
+  hasCpu,
+  affordableUpgradesCount,
+  hasThermalOrPowerWarning,
+  unreadErrorsCount,
+} = useAppLayout(store)
 
 const activeMobileTab = ref<MobileTab>('ingestion')
 const showTalentTreeModal = ref(false)
@@ -30,76 +46,19 @@ const showParadigmModal = ref(false)
 const showSingularityModal = ref(false)
 const showSaveManagerModal = ref(false)
 
-
-
-const hardwareArray = computed(() => Object.values(store.hardware))
-const upgradesArray = computed(() => Object.values(store.upgrades))
-const ramUpgradesArray = computed(() => Object.values(store.upgrades).filter((u) => u.category === 'hardware'))
-const coolingUpgradesArray = computed(() => Object.values(store.upgrades).filter((u) => u.category === 'cooling'))
-const powerUpgradesArray = computed(() => Object.values(store.upgrades).filter((u) => u.category === 'power'))
-const purchasedUpgradeIds = computed(() => Object.values(store.upgrades).filter((u) => u.purchased).map((u) => u.id))
-const hasHardware = computed(() => store.hasPotatoPc || store.hasWorkstation || store.totalRawCompute.gt(0))
-const hasCpu = computed(() => store.hasWorkstation)
-
-const affordableUpgradesCount = computed(() => {
-  let count = 0
-  for (const up of upgradesArray.value) {
-    if (!up.purchased) {
-      if (up.currency === 'funds' && store.funds.current.gte(up.cost)) {
-        if (
-          up.category === 'human' ||
-          (up.requiredFeature === 'dataBroker' && store.unlockedFeatures.dataBroker) ||
-          (up.requiredFeature === 'scriptsSection' && store.unlockedFeatures.scriptsSection) ||
-          (up.requiredFeature === 'tokenizerUnlocked' && store.unlockedFeatures.tokenizerUnlocked) ||
-          (up.requiredFeature === 'trainingAllocation' && store.currentPhase >= 3) ||
-          !up.requiredFeature
-        ) {
-          count++
-        }
-      }
-    }
-  }
-  return count
-})
-
-const hasThermalOrPowerWarning = computed(() => {
-  return store.thermalState.isThrottling || store.powerState.isOverloaded
-})
-
-const unreadErrorsCount = computed(() => {
-  return store.terminalLogs.filter((l) => l.type === 'error' || l.type === 'warn').length
-})
-
 const humanReaderRef = ref<InstanceType<typeof HumanReaderPanel> | null>(null)
 
-// Keyboard shortcuts for active game loop ergonomics
-function handleKeyDown(e: KeyboardEvent) {
-  // Do not intercept if user is typing in an input
-  const activeEl = document.activeElement
-  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-    return
-  }
-
-  if (e.code === 'Space') {
-    e.preventDefault()
-    if (e.repeat) return // Prevent holding space key spam
+useGlobalShortcuts({
+  onManualScrape: () => {
     if (humanReaderRef.value) {
       humanReaderRef.value.triggerScrape()
     } else {
       store.manualScrape()
     }
-  } else if (e.key === 'v' || e.key === 'V') {
-    e.preventDefault()
+  },
+  onSellAllRawText: () => {
     store.sellAllRawText()
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown)
+  },
 })
 </script>
 

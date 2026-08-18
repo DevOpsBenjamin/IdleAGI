@@ -5,15 +5,13 @@ import {
   Cpu,
   RotateCcw,
   X,
-  Check,
   Layers,
-  Lock,
-  AlertTriangle,
 } from 'lucide-vue-next'
 import { PARADIGMS, PARADIGM_PASSIVE_TFLOPS_BONUS_PER_INSIGHT } from '@/domain/constants/paradigms'
 import type { ParadigmId, ParadigmDefinition } from '@/types/paradigm'
 import type Decimal from 'break_infinity.js'
-
+import ParadigmCard from './paradigm/ParadigmCard.vue'
+import ParadigmResetConfirmDialog from './paradigm/ParadigmResetConfirmDialog.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -146,199 +144,46 @@ function confirmPrestige() {
 
       <!-- Paradigms Catalog Grid -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div
+        <ParadigmCard
           v-for="p in paradigmList"
           :key="p.id"
-          class="bg-[#161B22]/90 border rounded-xl p-4 flex flex-col justify-between gap-3 transition-all duration-200"
-          :class="
-            isActive(p.id)
-              ? 'border-[#00FF66] shadow-[0_0_20px_rgba(0,255,102,0.15)] bg-[#00FF66]/5'
-              : isUnlocked(p.id)
-                ? 'border-[#A855F7]/40 hover:border-[#A855F7]'
-                : canUnlock(p)
-                  ? 'border-[#FFB800]/50 hover:border-[#FFB800] bg-[#FFB800]/5'
-                  : 'border-[#21262D] opacity-60'
-          "
+          :paradigm="p"
+          :is-unlocked="isUnlocked(p.id)"
+          :is-active="isActive(p.id)"
+          :can-unlock="canUnlock(p)"
+          @action="handleParadigmAction"
+        />
+      </div>
+
+      <!-- Prestige Reset Footer Action -->
+      <div class="border-t border-[#21262D] pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="text-xs text-[#8B949E]">
+          <span>Prochain palier de gain $\Phi$ à partir de <strong>1.00B Paramètres</strong> (1.000.000.000).</span>
+        </div>
+
+        <button
+          type="button"
+          :disabled="!canTriggerTier2 && (pendingInsights ?? 0) <= 0"
+          class="w-full sm:w-auto px-6 py-3 rounded-lg text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 min-h-[46px] select-none touch-manipulation"
+          :class="[
+            canTriggerTier2 || (pendingInsights ?? 0) > 0
+              ? 'bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] cursor-pointer active:scale-95'
+              : 'bg-[#21262D] text-[#8B949E] border border-transparent cursor-not-allowed opacity-60',
+          ]"
+          @click="showResetConfirmation = true"
         >
-          <!-- Paradigm Top Info -->
-          <div class="flex flex-col gap-2">
-            <div class="flex items-start justify-between gap-2">
-              <div>
-                <h3 class="text-sm font-bold text-[#F0F6FC]">{{ p.name }}</h3>
-                <p class="text-[10px] text-[#A855F7]">{{ p.subtitle }}</p>
-              </div>
-
-              <!-- Status Badge -->
-              <span
-                v-if="isActive(p.id)"
-                class="text-[10px] px-2 py-0.5 rounded border bg-[#00FF66]/20 border-[#00FF66]/50 text-[#00FF66] font-bold"
-              >
-                ACTIVE
-              </span>
-              <span
-                v-else-if="isUnlocked(p.id)"
-                class="text-[10px] px-2 py-0.5 rounded border bg-[#38BDF8]/20 border-[#38BDF8]/40 text-[#38BDF8] font-bold"
-              >
-                DÉBLOQUÉE
-              </span>
-              <span
-                v-else
-                class="text-[10px] px-2 py-0.5 rounded border bg-[#161B22] border-[#21262D] text-[#8B949E] font-bold"
-              >
-                {{ p.cost }} $\Phi$
-              </span>
-            </div>
-
-            <p class="text-xs text-[#8B949E] leading-relaxed">{{ p.description }}</p>
-
-            <!-- Multipliers Pill Matrix -->
-            <div class="grid grid-cols-2 gap-1.5 pt-1 text-[11px]">
-              <div class="p-1.5 rounded bg-[#0D1117] border border-[#21262D] flex items-center justify-between">
-                <span class="text-[#8B949E]">Calcul brut :</span>
-                <span class="font-bold text-[#38BDF8]">x{{ p.tflopsMultiplier.toFixed(1) }}</span>
-              </div>
-              <div class="p-1.5 rounded bg-[#0D1117] border border-[#21262D] flex items-center justify-between">
-                <span class="text-[#8B949E]">Conso Watts :</span>
-                <span class="font-bold" :class="p.powerReduction > 0 ? 'text-[#00FF66]' : 'text-[#8B949E]'">
-                  {{ p.powerReduction > 0 ? `-${Math.round(p.powerReduction * 100)}%` : 'Standard' }}
-                </span>
-              </div>
-              <div class="p-1.5 rounded bg-[#0D1117] border border-[#21262D] flex items-center justify-between">
-                <span class="text-[#8B949E]">Efficacité VRAM :</span>
-                <span class="font-bold text-[#FFB800]">x{{ p.vramEfficiency.toFixed(1) }}</span>
-              </div>
-              <div class="p-1.5 rounded bg-[#0D1117] border border-[#21262D] flex items-center justify-between">
-                <span class="text-[#8B949E]">Auto-Synthèse :</span>
-                <span class="font-bold text-[#A855F7]">x{{ p.syntheticSpeedBonus.toFixed(1) }}</span>
-              </div>
-            </div>
-
-            <blockquote class="text-[10px] italic text-[#8B949E]/80 border-l-2 border-[#A855F7]/30 pl-2 pt-0.5">
-              {{ p.quote }}
-            </blockquote>
-          </div>
-
-          <!-- Action Button -->
-          <button
-            type="button"
-            class="w-full py-2.5 px-4 rounded-lg text-xs font-bold font-mono transition-all flex items-center justify-center gap-2 min-h-[44px] cursor-pointer active:scale-95"
-            :disabled="isActive(p.id) || (!isUnlocked(p.id) && !canUnlock(p))"
-            :class="
-              isActive(p.id)
-                ? 'bg-[#00FF66]/10 border border-[#00FF66]/40 text-[#00FF66] cursor-default'
-                : isUnlocked(p.id)
-                  ? 'bg-[#38BDF8]/20 border border-[#38BDF8] text-[#38BDF8] hover:bg-[#38BDF8]/30 shadow-[0_0_10px_rgba(56,189,248,0.2)]'
-                  : canUnlock(p)
-                    ? 'bg-[#FFB800]/20 border border-[#FFB800] text-[#FFB800] hover:bg-[#FFB800]/30 shadow-[0_0_12px_rgba(255,184,0,0.3)]'
-                    : 'bg-[#161B22] border border-[#21262D] text-[#8B949E] cursor-not-allowed opacity-50'
-            "
-            @click="handleParadigmAction(p)"
-          >
-            <span v-if="isActive(p.id)" class="flex items-center gap-1.5">
-              <Check class="w-4 h-4" /> Architecture Active
-            </span>
-            <span v-else-if="isUnlocked(p.id)" class="flex items-center gap-1.5">
-              <Layers class="w-4 h-4" /> Activer cette Architecture
-            </span>
-            <span v-else-if="canUnlock(p)" class="flex items-center gap-1.5">
-              <Sparkles class="w-4 h-4" /> Débloquer pour {{ p.cost }} $\Phi$
-            </span>
-            <span v-else class="flex items-center gap-1.5">
-              <Lock class="w-4 h-4" /> Verrouillé (Requis {{ p.cost }} $\Phi$)
-            </span>
-          </button>
-        </div>
+          <RotateCcw class="w-4 h-4" />
+          <span>{{ (pendingInsights ?? 0) > 0 ? `Initier le Changement Tier 2 (+${pendingInsights} $\\Phi$)` : 'Non Éligible au Reset Tier 2' }}</span>
+        </button>
       </div>
 
-      <!-- Tier 2 Prestige Trigger Section -->
-      <div class="border-t border-[#21262D] pt-4 flex flex-col gap-3">
-        <div class="bg-[#161B22]/90 border border-[#A855F7]/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div class="flex flex-col gap-1">
-            <div class="flex items-center gap-2 text-sm font-bold text-[#F0F6FC]">
-              <Sparkles class="w-4 h-4 text-[#A855F7] animate-pulse" />
-              <span>Changement de Paradigme (Tier 2 Prestige)</span>
-            </div>
-            <p class="text-xs text-[#8B949E]">
-              Réinitialise le hardware et les devises tout en conservant les Points d'Architecture ($AP$), l'Arbre de Talents et les Insights Fondamentaux ($\Phi$).
-            </p>
-            <div v-if="pendingInsights > 0" class="text-xs text-[#00FF66] font-bold mt-1">
-              Gain potentiel : +{{ pendingInsights }} Insights Fondamentaux ($\Phi$)
-            </div>
-            <div v-else class="text-xs text-[#8B949E] mt-1">
-              Seuil requis : 1.00B de Paramètres (1 milliard)
-            </div>
-          </div>
-
-          <button
-            type="button"
-            class="shrink-0 px-5 py-3 rounded-lg text-xs font-bold font-mono transition-all flex items-center gap-2 min-h-[48px] cursor-pointer active:scale-95"
-            :disabled="!canTriggerTier2 && pendingInsights <= 0"
-            :class="
-              canTriggerTier2 || pendingInsights > 0
-                ? 'bg-gradient-to-r from-[#A855F7] to-[#EC4899] text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:brightness-110'
-                : 'bg-[#161B22] border border-[#21262D] text-[#8B949E] cursor-not-allowed opacity-50'
-            "
-            @click="showResetConfirmation = true"
-          >
-            <RotateCcw class="w-4 h-4" />
-            <span>Initier le Changement Tier 2 (+{{ pendingInsights }} $\Phi$)</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Prestige Confirmation Dialog Overlay -->
-      <div
+      <!-- Hard Reset Confirmation Modal Overlay -->
+      <ParadigmResetConfirmDialog
         v-if="showResetConfirmation"
-        class="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-60 animate-fade-in"
-      >
-        <div class="bg-[#0D1117] border border-[#FF0055]/70 rounded-xl p-5 sm:p-6 max-w-md w-full flex flex-col gap-4 shadow-[0_0_40px_rgba(255,0,85,0.3)]">
-          <div class="flex items-center gap-3 text-[#FF0055]">
-            <AlertTriangle class="w-6 h-6 shrink-0" />
-            <h3 class="text-base font-bold uppercase tracking-wider">Confirmer le Changement de Paradigme</h3>
-          </div>
-
-          <p class="text-xs text-[#E2E8F0] leading-relaxed">
-            Vous êtes sur le point de déclencher un <strong>Hard Reset Tier 2</strong>.
-          </p>
-
-          <div class="bg-[#161B22] border border-[#21262D] p-3 rounded-lg text-xs flex flex-col gap-2 font-mono">
-            <div class="text-[#00FF66] font-bold flex items-center gap-1.5">
-              <Check class="w-3.5 h-3.5" /> Éléments conservés :
-            </div>
-            <ul class="text-[11px] text-[#8B949E] list-disc list-inside space-y-0.5">
-              <li>Points d'Architecture ($AP$) et Arbre de Talents T1</li>
-              <li>Insights Fondamentaux ($\Phi$) et Paradigmes débloqués</li>
-              <li>Statistiques de progression globales</li>
-            </ul>
-
-            <div class="text-[#FF0055] font-bold flex items-center gap-1.5 pt-1">
-              <RotateCcw class="w-3.5 h-3.5" /> Éléments réinitialisés :
-            </div>
-            <ul class="text-[11px] text-[#8B949E] list-disc list-inside space-y-0.5">
-              <li>Raw Text, Tokens, Funds ($) et Paramètres non-figés</li>
-              <li>Hardware actif (retour à la station initiale)</li>
-              <li>Upgrades logicielles courantes</li>
-            </ul>
-          </div>
-
-          <div class="flex items-center justify-end gap-3 pt-2">
-            <button
-              type="button"
-              class="px-4 py-2 rounded-lg text-xs font-mono text-[#8B949E] hover:text-[#F0F6FC] hover:bg-[#161B22] cursor-pointer min-h-[44px]"
-              @click="showResetConfirmation = false"
-            >
-              Annuler
-            </button>
-            <button
-              type="button"
-              class="px-5 py-2.5 rounded-lg text-xs font-bold font-mono bg-[#FF0055] text-white hover:bg-[#FF0055]/90 shadow-[0_0_15px_rgba(255,0,85,0.4)] cursor-pointer min-h-[44px] active:scale-95"
-              @click="confirmPrestige"
-            >
-              Confirmer la Transition
-            </button>
-          </div>
-        </div>
-      </div>
+        :pending-insights="pendingInsights ?? 0"
+        @cancel="showResetConfirmation = false"
+        @confirm="confirmPrestige"
+      />
     </div>
   </div>
 </template>
